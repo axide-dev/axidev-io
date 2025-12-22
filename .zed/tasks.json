@@ -34,9 +34,23 @@
     "args": ["--test-dir", "build", "--output-on-failure"],
   },
   {
+    "label": "Run integration tests (interactive)",
+    "command": "./build/tests/typr-io-unit-tests",
+    "args": [],
+    "env": {
+      "TYPR_IO_RUN_INTEGRATION_TESTS": "1",
+      "TYPR_IO_INTERACTIVE": "1",
+    },
+  },
+  {
     "label": "Run consumer (help)",
     "command": "./build/typr_io_consumer",
     "args": ["--help"],
+  },
+  {
+    "label": "Run unit tests (binary)",
+    "command": "./build/tests/typr-io-unit-tests",
+    "args": [],
   },
   {
     "label": "Export compile_commands.json",
