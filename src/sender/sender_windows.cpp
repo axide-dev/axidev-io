@@ -271,7 +271,7 @@ TYPR_IO_API Capabilities Sender::capabilities() const {
       .canInjectText = m_impl->ready,
       .canSimulateHID =
           false, // Align with macOS: treat platform events as not true HID
-      .supportsKeyRepeat = true,
+      .supportsKeyRepeat = false,
       .needsAccessibilityPerm = false,
       .needsInputMonitoringPerm = false,
       .needsUinputAccess = false,
