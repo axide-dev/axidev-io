@@ -91,8 +91,8 @@ jobs:
           path: ${{ steps.find-integration-binary.outputs.path }}
 
   integration-ubuntu-arm64:
-    name: Integration tests on ubuntu-22.04-arm64 (arm64)
-    runs-on: ubuntu-22.04-arm64
+    name: Integration tests on ubuntu-24.04-arm (arm64)
+    runs-on: ubuntu-24.04-arm
     env:
       TYPR_IO_RUN_INTEGRATION_TESTS: "1"
       TYPR_IO_AUTO_CONFIRM: "1"
