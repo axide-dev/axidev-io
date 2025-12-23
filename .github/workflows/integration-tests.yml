@@ -15,17 +15,13 @@ name: Integration tests (manual)
 # - TYPR_IO_AUTO_CONFIRM=1           : auto-confirm prompts (non-interactive)
 # - TYPR_IO_INTERACTIVE=(true|yes|1) : enable interactive prompts
 #
-# By default this workflow sets `TYPR_IO_RUN_INTEGRATION_TESTS=1` and
-# `TYPR_IO_AUTO_CONFIRM=1` so tests can run non-interactively in CI. To run
-# interactively, trigger the workflow manually and set the `interactive`
-# input to `true`.
+# By default this workflow sets `TYPR_IO_RUN_INTEGRATION_TESTS=1`,
+# `TYPR_IO_AUTO_CONFIRM=1` and `TYPR_IO_INTERACTIVE=1` so the integration
+# binaries are built in an interactive-friendly mode. The workflow is intended
+# to only build the binaries so they can be run/tested outside of CI.
 on:
   workflow_dispatch:
-    inputs:
-      interactive:
-        description: "Run tests in interactive mode (set to true to enable interactive prompts)"
-        required: false
-        default: "false"
+    # no inputs; workflow is always interactive
 
 permissions:
   contents: write
@@ -42,9 +38,9 @@ jobs:
       TYPR_IO_RUN_INTEGRATION_TESTS: "1"
       # Default to auto-confirm (so the workflow is non-interactive by default)
       TYPR_IO_AUTO_CONFIRM: "1"
-      # Pass through the interactive input (string 'true'/'false'); the test
-      # helper recognizes '1', 'true', 'yes' as enabled.
-      TYPR_IO_INTERACTIVE: ${{ github.event.inputs.interactive }}
+      # This workflow always builds binaries in interactive mode; set the env var
+      # so integration helpers that check TYPR_IO_INTERACTIVE will behave accordingly.
+      TYPR_IO_INTERACTIVE: "1"
       # For Linux (Xvfb) we'll use :99; harmless to set on macOS too.
       DISPLAY: ":99"
 
@@ -143,25 +139,9 @@ jobs:
           name: integration-test-binary-${{ matrix.os }}
           path: ${{ steps.find-integration-binary-unix.outputs.path || steps.find-integration-binary-windows.outputs.path }}
 
-      - name: Run integration tests (non-interactive by default)
-        env:
-          TYPR_IO_RUN_INTEGRATION_TESTS: ${{ env.TYPR_IO_RUN_INTEGRATION_TESTS }}
-          TYPR_IO_AUTO_CONFIRM: ${{ env.TYPR_IO_AUTO_CONFIRM }}
-          TYPR_IO_INTERACTIVE: ${{ env.TYPR_IO_INTERACTIVE }}
-          DISPLAY: ${{ env.DISPLAY }}
-          CTEST_OUTPUT_ON_FAILURE: "1"
-        run: |
-          # Run the integration test executable (built with TYPR_IO_BUILD_INTEGRATION_TESTS=ON).
-          ctest --test-dir build --output-on-failure -R typr-io-integration-tests -C Release
-
-      - name: Upload test logs (always)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-logs-${{ matrix.os }}
-          path: |
-            build/Testing
-            build/tests || true
+      # Integration tests are intentionally not run in this workflow.
+      # The workflow only builds the integration test binaries so they can be
+      # executed / validated outside of CI.
 
   release:
     name: Create integration test release
@@ -220,9 +200,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          DATE=$(date -u +%F)
-          RELEASE_NAME="${DATE} integration tests"
-          TAG="integration-tests-${DATE}"
+          UTC1_DATE=$(python3 -c "from datetime import datetime, timedelta; t=datetime.utcnow()+timedelta(hours=1); print(t.strftime('%Y-%m-%d'))")
+          UTC1_HOUR=$(python3 -c "from datetime import datetime, timedelta; t=datetime.utcnow()+timedelta(hours=1); print(t.strftime('%H'))")
+          RELEASE_NAME="${UTC1_DATE} ${UTC1_HOUR}:00 (UTC+1) integration tests"
+          TAG="integration-tests-${UTC1_DATE}-${UTC1_HOUR}"
           BODY="Integration test binaries produced by workflow run ${GITHUB_RUN_ID}."
           echo "Creating release ${RELEASE_NAME} (tag ${TAG})"
           resp=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" \
