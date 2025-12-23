@@ -25,7 +25,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     env:
       # Always enable integration tests for this workflow
       TYPR_IO_RUN_INTEGRATION_TESTS: "1"
@@ -58,6 +58,11 @@ jobs:
           brew update
           brew install cmake
 
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install -y cmake
+
       - name: Start Xvfb (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -72,11 +77,16 @@ jobs:
         if: runner.os == 'Windows'
         run: powershell -Command "Remove-Item -Path build -Recurse -Force -ErrorAction SilentlyContinue"
 
-      - name: Configure (CMake)
+      - name: Configure (CMake, Linux/macOS)
+        if: runner.os != 'Windows'
         run: cmake -S . -B build -DTYPR_IO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
 
+      - name: Configure (CMake, Windows)
+        if: runner.os == 'Windows'
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DTYPR_IO_BUILD_TESTS=ON
+
       - name: Build (CMake)
-        run: cmake --build build --parallel
+        run: cmake --build build --config Release --parallel
 
       - name: Run integration tests (non-interactive by default)
         env:
@@ -87,7 +97,7 @@ jobs:
           CTEST_OUTPUT_ON_FAILURE: "1"
         run: |
           # Run the unit/integration test executable (it contains gated integration tests).
-          ctest --test-dir build --output-on-failure -R typr-io-unit-tests
+          ctest --test-dir build --output-on-failure -R typr-io-unit-tests -C Release
 
       - name: Upload test logs (always)
         if: always()

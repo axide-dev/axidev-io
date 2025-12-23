@@ -71,8 +71,17 @@ target_include_directories(typr_io
 target_compile_features(typr_io PUBLIC cxx_std_20)
 
 # When building as a shared library on Windows we want to export symbols
-if(WIN32 AND TYPR_IO_BUILD_SHARED)
-    target_compile_definitions(typr_io PRIVATE typr_io_EXPORTS)
+if(TYPR_IO_BUILD_SHARED)
+    if(WIN32)
+        # Building a shared library on Windows - export symbols for DLL.
+        target_compile_definitions(typr_io PRIVATE typr_io_EXPORTS)
+    endif()
+else()
+    # Static build - expose macro so headers avoid __declspec(dllimport) on MSVC.
+    # This defines TYPR_IO_STATIC for consumers of the static target so the
+    # headers can disable import/export decorations when building/using a
+    # static library.
+    target_compile_definitions(typr_io PUBLIC TYPR_IO_STATIC)
 endif()
 
 # Platform specific linkages

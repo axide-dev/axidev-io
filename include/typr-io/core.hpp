@@ -23,15 +23,23 @@
 
 // Symbol export macro to support building shared libraries on Windows.
 // CMake configures `typr_io_EXPORTS` when building the shared target.
+// For static builds we expose `TYPR_IO_STATIC` so headers avoid using
+// __declspec(dllimport) which would make defining functions invalid on MSVC.
 #ifndef TYPR_IO_API
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__CYGWIN__)
 #if defined(typr_io_EXPORTS)
 #define TYPR_IO_API __declspec(dllexport)
+#elif defined(TYPR_IO_STATIC)
+#define TYPR_IO_API
 #else
 #define TYPR_IO_API __declspec(dllimport)
 #endif
 #else
+#if defined(__GNUC__) && (__GNUC__ >= 4)
+#define TYPR_IO_API __attribute__((visibility("default")))
+#else
 #define TYPR_IO_API
+#endif
 #endif
 #endif
 
