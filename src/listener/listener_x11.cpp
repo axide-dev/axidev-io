@@ -217,7 +217,7 @@ private:
     if (xiev->evtype != XI_RawKeyPress && xiev->evtype != XI_RawKeyRelease)
       return;
 
-    XI_RawEvent *rev = reinterpret_cast<XI_RawEvent *>(xiev);
+    XIRawEvent *rev = reinterpret_cast<XIRawEvent *>(xiev);
     int keycode = rev->detail; // X keycode (hardware keycode)
     bool pressed = (rev->evtype == XI_RawKeyPress);
 
@@ -228,16 +228,16 @@ private:
       std::memset(&kbState, 0, sizeof(kbState));
     }
 
-    Modifier mods = Modifier::None;
-    if (kbState.mods & XkbShiftMask)
+    Modifier mods = static_cast<Modifier>(0);
+    if (kbState.mods & ShiftMask)
       mods = mods | Modifier::Shift;
-    if (kbState.mods & XkbCtrlMask)
+    if (kbState.mods & ControlMask)
       mods = mods | Modifier::Ctrl;
-    if (kbState.mods & XkbMod1Mask)
+    if (kbState.mods & Mod1Mask)
       mods = mods | Modifier::Alt; // typically Mod1 == Alt
-    if (kbState.mods & XkbMod4Mask)
+    if (kbState.mods & Mod4Mask)
       mods = mods | Modifier::Super; // typically Mod4 == Super
-    if (kbState.locked_mods & XkbLockMask)
+    if (kbState.locked_mods & LockMask)
       mods = mods | Modifier::CapsLock;
 
     // Map keycode to a Key enum if possible
@@ -249,7 +249,7 @@ private:
       } else {
         // fallback: try to derive from keysym name
         KeySym ks = XkbKeycodeToKeysym(dpy, static_cast<KeyCode>(keycode), 0,
-                                       (kbState.mods & XkbShiftMask) ? 1 : 0);
+                                       (kbState.mods & ShiftMask) ? 1 : 0);
         if (ks != NoSymbol) {
           const char *ksName = XKeysymToString(ks);
           if (ksName) {
@@ -262,7 +262,7 @@ private:
     // Derive a best-effort codepoint: prefer ASCII/BMP printable characters
     char32_t codepoint = 0;
     KeySym ks = XkbKeycodeToKeysym(dpy, static_cast<KeyCode>(keycode), 0,
-                                   (kbState.mods & XkbShiftMask) ? 1 : 0);
+                                   (kbState.mods & ShiftMask) ? 1 : 0);
     if (ks != NoSymbol) {
       // For simple ASCII range
       if ((ks >= XK_space && ks <= XK_asciitilde)) {
@@ -293,13 +293,13 @@ private:
       cbCopy = callback;
     }
     if (cbCopy) {
-      cbCopy(codepoint, mapped, mods, pressed);
+      cbCopy(codepoint, mappedKey, mods, pressed);
     }
 
     // Debug logging (enabled by default for testing; disable with
     // TYPR_OSK_DEBUG_BACKEND=0)
     if (output_debug_enabled()) {
-      std::string keyName = keyToString(mapped);
+      std::string keyName = keyToString(mappedKey);
       fprintf(stderr,
               "[typr-backend] Listener (X11) %s: keycode=%d key=%s "
               "keysym=%lu cp=%u mods=%u\n",
