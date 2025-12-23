@@ -143,7 +143,7 @@
     std::lock_guard<std::mutex> lk(outputMutex());
 
     // Header: timestamp.millis [LEVEL] file:line:
-    std::fprintf(stderr, "[typr] %s.%03d [%s] %s:%d: ", timebuf,
+    std::fprintf(stderr, "[typr-io] %s.%03d [%s] %s:%d: ", timebuf,
                  static_cast<int>(ms.count()), levelToString(level), file,
                  line);
 
