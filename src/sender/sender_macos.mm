@@ -349,7 +349,7 @@ Capabilities Sender::capabilities() const {
       .canInjectKeys = m_impl->ready,
       .canInjectText = m_impl->ready,
       .canSimulateHID = false, // macOS CGEvent is not true HID
-      .supportsKeyRepeat = true,
+      .supportsKeyRepeat = false,
       .needsAccessibilityPerm = true,
       .needsInputMonitoringPerm = false,
       .needsUinputAccess = false,
