@@ -124,8 +124,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          # Find the built integration test executable and emit its path as step output.
-          $found = Get-ChildItem -Path build -Recurse -Filter 'typr-io-integration-tests*' -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          # Find the built integration test executable (.exe) and emit its path as step output.
+          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'typr-io-integration-tests*.exe' } | Select-Object -First 1
           if ($found) {
             Write-Output "path=$($found.FullName)" >> $env:GITHUB_OUTPUT
           } else {
@@ -201,9 +201,10 @@ jobs:
         run: |
           set -euo pipefail
           UTC1_DATE=$(python3 -c "from datetime import datetime, timedelta; t=datetime.utcnow()+timedelta(hours=1); print(t.strftime('%Y-%m-%d'))")
-          UTC1_HOUR=$(python3 -c "from datetime import datetime, timedelta; t=datetime.utcnow()+timedelta(hours=1); print(t.strftime('%H'))")
-          RELEASE_NAME="${UTC1_DATE} ${UTC1_HOUR}:00 (UTC+1) integration tests"
-          TAG="integration-tests-${UTC1_DATE}-${UTC1_HOUR}"
+          UTC1_HM_LABEL=$(python3 -c "from datetime import datetime, timedelta; t=datetime.utcnow()+timedelta(hours=1); print(t.strftime('%H:%M'))")
+          UTC1_HM_TAG=$(python3 -c "from datetime import datetime, timedelta; t=datetime.utcnow()+timedelta(hours=1); print(t.strftime('%H%M'))")
+          RELEASE_NAME="${UTC1_DATE} ${UTC1_HM_LABEL} integration tests"
+          TAG="integration-tests-${UTC1_DATE}-${UTC1_HM_TAG}"
           BODY="Integration test binaries produced by workflow run ${GITHUB_RUN_ID}."
           echo "Creating release ${RELEASE_NAME} (tag ${TAG})"
           resp=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" \
