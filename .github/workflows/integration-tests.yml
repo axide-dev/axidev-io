@@ -27,6 +27,9 @@ on:
         required: false
         default: "false"
 
+permissions:
+  contents: write
+
 jobs:
   integration:
     name: Integration tests on ${{ matrix.os }}
@@ -108,6 +111,38 @@ jobs:
       - name: Build (CMake)
         run: cmake --build build --config Release --parallel
 
+      - name: Find integration test binary (Unix)
+        id: find-integration-binary-unix
+        if: runner.os != 'Windows'
+        run: |
+          # Find the built integration test executable and emit its path as step output.
+          found=$(find build -type f -name 'typr-io-integration-tests*' -print -quit || true)
+          if [ -n "$found" ]; then
+            echo "path=$found" >> $GITHUB_OUTPUT
+          else
+            echo "path=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Find integration test binary (Windows)
+        id: find-integration-binary-windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Find the built integration test executable and emit its path as step output.
+          $found = Get-ChildItem -Path build -Recurse -Filter 'typr-io-integration-tests*' -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($found) {
+            Write-Output "path=$($found.FullName)" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Output "path=" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Upload integration test binary
+        if: steps.find-integration-binary-unix.outputs.path != '' || steps.find-integration-binary-windows.outputs.path != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-binary-${{ matrix.os }}
+          path: ${{ steps.find-integration-binary-unix.outputs.path || steps.find-integration-binary-windows.outputs.path }}
+
       - name: Run integration tests (non-interactive by default)
         env:
           TYPR_IO_RUN_INTEGRATION_TESTS: ${{ env.TYPR_IO_RUN_INTEGRATION_TESTS }}
@@ -127,3 +162,100 @@ jobs:
           path: |
             build/Testing
             build/tests || true
+
+  release:
+    name: Create integration test release
+    runs-on: ubuntu-latest
+    needs: integration
+    if: ${{ always() }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all workflow artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+        continue-on-error: true
+
+      - name: Prepare release assets
+        run: |
+          set -e
+          mkdir -p release-assets
+          shopt -s globstar || true
+          for d in artifacts/*; do
+            if [ -d "$d" ]; then
+              for f in "$d"/**/typr-io-integration-tests*; do
+                if [ -f "$f" ]; then
+                  os=$(basename "$d" | sed 's/^integration-test-binary-//')
+                  name="typr-io-integration-tests-${os}"
+                  ext="${f##*.}"
+                  if [ "$ext" = "$f" ]; then
+                    # No extension
+                    cp "$f" "release-assets/${name}"
+                  else
+                    cp "$f" "release-assets/${name}.${ext}"
+                  fi
+                fi
+              done
+            fi
+          done
+          echo "Prepared release assets:"
+          ls -la release-assets || true
+
+      - name: Check for release assets
+        id: check-assets
+        run: |
+          if [ -n "$(ls -A release-assets 2>/dev/null || true)" ]; then
+            echo "has_assets=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_assets=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub release and upload assets
+        if: steps.check-assets.outputs.has_assets == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          DATE=$(date -u +%F)
+          RELEASE_NAME="${DATE} integration tests"
+          TAG="integration-tests-${DATE}"
+          BODY="Integration test binaries produced by workflow run ${GITHUB_RUN_ID}."
+          echo "Creating release ${RELEASE_NAME} (tag ${TAG})"
+          resp=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" \
+            -d "{\"tag_name\":\"$TAG\",\"name\":\"$RELEASE_NAME\",\"body\":\"$BODY\",\"draft\":false,\"prerelease\":false}" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases")
+          release_id=$(echo "$resp" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('id') or '')")
+          upload_url=$(echo "$resp" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('upload_url') or '')")
+          if [ -z "$release_id" ]; then
+            echo "Release creation failed or already exists; fetching existing release by tag..."
+            resp=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/$TAG")
+            release_id=$(echo "$resp" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('id') or '')")
+            upload_url=$(echo "$resp" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('upload_url') or '')")
+          fi
+          if [ -z "$upload_url" ]; then
+            echo "Failed to determine upload URL for release"
+            echo "$resp"
+            exit 1
+          fi
+          # Trim the template suffix from upload_url if present (e.g. "{?name,label}")
+          upload_url="${upload_url%\{*}"
+          # Upload assets (delete any existing duplicate assets first)
+          assets=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/$release_id/assets")
+          for file in release-assets/*; do
+            if [ -f "$file" ]; then
+              name=$(basename "$file")
+              # Delete existing asset with same name, if present
+              asset_id=$(echo "$assets" | python3 -c "import sys, json; a=json.load(sys.stdin); import sys; name=sys.argv[1]; print(next((x.get('id') for x in a if x.get('name')==name), ''))" "$name")
+              if [ -n "$asset_id" ] && [ "$asset_id" != "None" ]; then
+                echo "Deleting existing asset $name (id $asset_id)"
+                curl -s -X DELETE -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id"
+              fi
+              echo "Uploading $name"
+              curl --fail -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" --data-binary @"$file" "${upload_url}?name=${name}"
+            fi
+          done
+          echo "Release ${RELEASE_NAME} ready."
