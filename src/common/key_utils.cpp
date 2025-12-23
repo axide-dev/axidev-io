@@ -179,6 +179,9 @@ TYPR_IO_API std::string keyToString(Key key) {
 
 TYPR_IO_API Key stringToKey(const std::string &input) {
   static std::unordered_map<std::string, Key> rev;
+  if (input.empty()) {
+      return Key::Unknown;
+  }
   if (rev.empty()) {
     for (const auto &pair : keyStringPairs()) {
       // Seed canonical mapping (lowercased)
