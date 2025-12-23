@@ -34,11 +34,11 @@
     "args": ["--test-dir", "build", "--output-on-failure"],
   },
   {
-    "label": "Run integration test",
+    "label": "Run integration test (interactive)",
     "command": "sh",
     "args": [
       "-lc",
-      "cmake -S . -B build -DTYPR_IO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel && ./build/tests/typr-io-unit-tests \"integration: simple STDIN loopback\"",
+      "cmake -S . -B build -DTYPR_IO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel && ./build/tests/typr-io-unit-tests \"[integration]\"",
     ],
     "env": {
       "TYPR_IO_RUN_INTEGRATION_TESTS": "1",

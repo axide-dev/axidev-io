@@ -32,7 +32,7 @@ endif()
 # Unit test executable
 add_executable(typr-io-unit-tests
     test_key_utils.cpp
-    test_backend_thread.cpp
+    test_integration_sender.cpp
 )
 
 target_link_libraries(typr-io-unit-tests
