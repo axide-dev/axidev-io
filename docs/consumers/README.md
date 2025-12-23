@@ -23,21 +23,21 @@ add_executable(myapp src/main.cpp)
 target_link_libraries(myapp PRIVATE typr::io)
 ```
 
-Include the umbrella header for quick access to the public API:
+Include the specific headers for the public API you need:
 
-```typr-io/docs/consumers/README.md#L14-24
-#include <typr-io/typr_io.hpp>
+```
+#include <typr-io/sender.hpp>
 #include <iostream>
 
 int main() {
-  typr::io::Backend backend;
-  auto caps = backend.capabilities();
+  typr::io::Sender sender;
+  auto caps = sender.capabilities();
   std::cout << "canInjectKeys: " << caps.canInjectKeys << "\n";
 
   if (caps.canInjectText) {
-    backend.typeText("Hello from typr-io");
+    sender.typeText("Hello from typr-io");
   } else if (caps.canInjectKeys) {
-    backend.tap(typr::io::Key::A);
+    sender.tap(typr::io::Key::A);
   }
   return 0;
 }
@@ -73,7 +73,7 @@ If a desired capability is not available on the target platform, use `capabiliti
 
 - Enable verbose backend debug logging by setting the environment variable:
   - `TYPR_OSK_DEBUG_BACKEND=1`
-  This will print backend decisions (whether a physical key or a Unicode injection was used), layout scanning details, and listener events.
+    This will print backend decisions (whether a physical key or a Unicode injection was used), layout scanning details, and listener events.
 - For macOS permission issues, check System Settings → Privacy & Security → Accessibility / Input Monitoring and confirm your app has been granted access.
 - For uinput permission problems on Linux, ensure your udev rule is installed and the running user is in the correct group, then re-login or reload udev rules.
 
@@ -88,10 +88,11 @@ If a desired capability is not available on the target platform, use `capabiliti
 ## Where to go next
 
 - Read `docs/developers/README.md` for build details, platform backend internals, and information on how to extend `typr-io`.
-- Browse the public headers at `include/typr-io/` (the umbrella header is `include/typr-io/typr_io.hpp`) for API reference and types.
+- Browse the public headers at `include/typr-io/` (e.g., `include/typr-io/core.hpp`, `include/typr-io/sender.hpp`, `include/typr-io/listener.hpp`) for API reference and types.
 - File issues or feature requests in the project's issue tracker if you encounter platform-specific behavior, layout mappings that don't match expectations, or missing capabilities.
 
 If you have specific problems reproducing expected keyboard behavior on a platform (wrong character, missing modifier, layout mismatch), please include:
+
 - OS and version
 - Keyboard layout (e.g. UK, French AZERTY, Dvorak)
 - Minimal reproduction steps or a small program

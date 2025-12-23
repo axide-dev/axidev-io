@@ -14,7 +14,7 @@ If you're not sure where to start, pick the audience that best matches your inte
 - Main project README: `README.md` — Platform-specific behaviour and overview.
 - Examples: `examples/` — Example programs demonstrating typical usage.
 - Test consumer: `test_consumer/` — Lightweight test harness used by CI and local checks.
-- Public API headers: `include/typr-io/` (umbrella header: `include/typr-io/typr_io.hpp`).
+- Public API headers: `include/typr-io/` (e.g., `include/typr-io/core.hpp`, `include/typr-io/sender.hpp`, `include/typr-io/listener.hpp`).
 
 ## Which doc should I read?
 
@@ -24,6 +24,7 @@ If you're not sure where to start, pick the audience that best matches your inte
 ## Contributing docs
 
 When you make changes that affect behavior, API, or developer workflows, please:
+
 1. Update the appropriate doc (`consumers` or `developers`) under `docs/`.
 2. Add or update examples in `examples/` when relevant.
 3. Add tests or update `test_consumer/` where applicable.

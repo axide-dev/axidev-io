@@ -253,5 +253,8 @@ enum class BackendType : uint8_t {
 TYPR_IO_API std::string keyToString(Key key);
 TYPR_IO_API Key stringToKey(const std::string &str);
 
+/// Convenience access to the library version string (mirrors TYPR_IO_VERSION).
+inline const char *libraryVersion() noexcept { return TYPR_IO_VERSION; }
+
 } // namespace io
 } // namespace typr

@@ -3,6 +3,7 @@
 This document is for maintainers and contributors who want to work on `typr-io`. It explains the repository layout, how to build and test locally, how to add or modify platform backends (senders/listeners), debugging tips, and the recommended PR workflow.
 
 Table of contents
+
 - [Quickstart](#quickstart)
 - [Repository layout](#repository-layout)
 - [Build & development workflow](#build--development-workflow)
@@ -14,8 +15,8 @@ Table of contents
 - [Troubleshooting & platform notes](#troubleshooting--platform-notes)
 - [Key files & references](#key-files--references)
 
-Quickstart
----------
+## Quickstart
+
 If you're diving in for the first time, here's the minimal flow I use when starting work:
 
 ```sh
@@ -45,13 +46,13 @@ make export-compile-commands
 # or make configure + build; the compile_commands.json lives in build
 ```
 
-Repository layout
------------------
+## Repository layout
+
 Top-level important paths (brief):
 
 - `CMakeLists.txt` — top-level build configuration and exported targets.
 - `Makefile` — convenience targets like `configure`, `build`, `test`, `run-consumer`.
-- `include/typr-io/` — public headers (umbrella header: `include/typr-io/typr_io.hpp`).
+- `include/typr-io/` — public headers (e.g., `include/typr-io/core.hpp`, `include/typr-io/sender.hpp`, `include/typr-io/listener.hpp`).
 - `src/`:
   - `src/sender/` — platform input injection (HID / virtual keyboard) implementations (e.g. `sender_macos.mm`, `sender_windows.cpp`, `sender_uinput.cpp`).
   - `src/listener/` — global output listener implementations (`listener_macos.mm`, `listener_windows.cpp`, `listener_x11.cpp`).
@@ -60,8 +61,8 @@ Top-level important paths (brief):
 - `test_consumer/` — lightweight test consumer used in `make test`.
 - Packaging manifests: `conanfile.py`, `vcpkg.json`.
 
-Build & development workflow
-----------------------------
+## Build & development workflow
+
 - Use `make configure` to configure the project and generate the `compile_commands.json` used by clangd.
 - Toggle options during `cmake` configure:
   - `-DTYPR_IO_BUILD_EXAMPLES=ON` — build examples.
@@ -71,19 +72,19 @@ Build & development workflow
 - Run `make test` to run the project's smoke tests.
 - Use the `Makefile` targets or the `.zed/tasks.json` for editor-integrated tasks if you use Zed.
 
-Debugging & logging
--------------------
+## Debugging & logging
+
 - Enable verbose backend logging with the environment variable:
   - `TYPR_OSK_DEBUG_BACKEND=1`
-  This will print backend layout scanning decisions, injection strategy (physical key vs Unicode), and listener events.
+    This will print backend layout scanning decisions, injection strategy (physical key vs Unicode), and listener events.
 - Platform-specific tips:
   - macOS: check System Settings → Privacy & Security (Accessibility / Input Monitoring).
   - Linux: check permissions on `/dev/uinput`, `udevadm` output, and `dmesg` for uinput errors.
   - Windows: use system event logs and verify `GetKeyboardLayout` usage in debug builds.
 - For layout or mapping issues, include OS version, keyboard layout, and short reproduction steps when opening issues.
 
-Adding a new backend (sender or listener)
------------------------------------------
+## Adding a new backend (sender or listener)
+
 When adding support for a new platform, follow this checklist:
 
 1. Decide where it belongs:
@@ -106,17 +107,18 @@ When adding support for a new platform, follow this checklist:
    - Validate permission and runtime behavior on the target OS.
 
 Listener vs Sender considerations
+
 - The listener focuses on monitoring key events produced by the user (global keyboard output); it should be lightweight and avoid complex IME handling where possible.
 - The sender is responsible for injecting input; prefer sending physical key events (scan codes / virtual keys) so that OS-level shortcuts and layout semantics are preserved. If physical events are not possible, implement reliable `typeText()` fallback for Unicode text injection.
 
-Testing & CI
-------------
+## Testing & CI
+
 - `make test` runs the repository's smoke tests (currently exercises the test consumer / example).
 - Keep tests platform-neutral where possible. For platform-specific behavior, provide small example-based tests and mark them so CI or maintainers can choose when to execute them.
 - When adding critical behavior, add a test (or smoke example) that reproduces the issue so regressions are less likely.
 
-Packaging & release notes
--------------------------
+## Packaging & release notes
+
 - The repository includes `conanfile.py` and `vcpkg.json` to help with packaging.
 - The public target exported by `CMakeLists.txt` is intended for `find_package(typr-io CONFIG REQUIRED)`.
 - When preparing a release:
@@ -124,17 +126,18 @@ Packaging & release notes
   - Add release notes describing platform caveats and any API changes.
   - Ensure tests and examples build on the supported platforms.
 
-Contribution checklist
-----------------------
+## Contribution checklist
+
 Before opening a PR:
+
 - [ ] Run `make configure && make build && make test`.
 - [ ] Add or update unit / example tests that cover your change where appropriate.
 - [ ] Update docs in `docs/consumers/` or `docs/developers/` when behavior or developer workflows change.
 - [ ] Describe the motivation and potential compatibility impact in the PR description.
 - [ ] Run quick static checks with your editor (clangd, clang-tidy if applicable) and keep code style consistent with the surrounding codebase.
 
-Troubleshooting & platform notes
---------------------------------
+## Troubleshooting & platform notes
+
 - macOS:
   - Accessibility and Input Monitoring permissions can block injection or listening. `requestPermissions()` can prompt for Accessibility permission where applicable, but some permissions require user action in Settings.
   - Use `.mm` files for Objective-C++ code that needs macOS system APIs.
@@ -146,9 +149,9 @@ Troubleshooting & platform notes
 - Windows:
   - VK-code scanning and Unicode injection are handled by `sender_windows.cpp`. Ensure `GetKeyboardLayout`, `MapVirtualKeyExW`, and `ToUnicodeEx` behavior matches expectations on localized layouts.
 
-Key files & references
-----------------------
-- `include/typr-io/typr_io.hpp` — umbrella header for consumers.
+## Key files & references
+
+- `include/typr-io/` — public headers (e.g., `include/typr-io/core.hpp`, `include/typr-io/sender.hpp`, `include/typr-io/listener.hpp`).
 - `src/sender/` — input injection implementations.
 - `src/listener/` — global output listener implementations.
 - `examples/` — sample apps demonstrating consumer APIs.
@@ -158,6 +161,7 @@ Key files & references
 - `docs/developers/README.md` — this file (developer docs).
 
 If you need help with a platform-specific problem, please open an issue and include:
+
 - OS and version,
 - Keyboard layout (e.g., `en-US`, `fr-FR (AZERTY)`, `dvorak`),
 - Short reproduction steps (a small program or sequence that demonstrates the problem),

@@ -19,17 +19,14 @@
 // and may need manual focus to be reliable.
 #include <catch2/catch_all.hpp>
 
-#include <typr-io/typr_io.hpp>
+#include <typr-io/listener.hpp>
+#include <typr-io/sender.hpp>
 
 #include <chrono>
-#include <condition_variable>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <mutex>
-#include <string>
 #include <thread>
-#include <vector>
 
 using namespace std::chrono_literals;
 using namespace typr::io;

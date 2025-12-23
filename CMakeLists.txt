@@ -115,7 +115,7 @@ target_link_libraries(typr_io PRIVATE Threads::Threads)
 set_target_properties(typr_io PROPERTIES
   VERSION ${PROJECT_VERSION}
   SOVERSION ${PROJECT_VERSION_MAJOR}
-  PUBLIC_HEADER "include/typr-io/core.hpp;include/typr-io/sender.hpp;include/typr-io/listener.hpp;include/typr-io/typr_io.hpp"
+  PUBLIC_HEADER "include/typr-io/core.hpp;include/typr-io/sender.hpp;include/typr-io/listener.hpp"
 )
 
 # Preferred public alias for consumers

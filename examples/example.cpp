@@ -18,7 +18,8 @@
 #include <string>
 #include <thread>
 
-#include <typr-io/typr_io.hpp>
+#include <typr-io/listener.hpp>
+#include <typr-io/sender.hpp>
 
 int main(int argc, char **argv) {
   using namespace std::chrono_literals;

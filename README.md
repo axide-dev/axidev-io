@@ -24,12 +24,12 @@ target_link_libraries(myapp PRIVATE typr::io)
 Minimal usage example:
 
 ```typr-io/README.md#L6-12
-#include <typr-io/typr_io.hpp>
+#include <typr-io/sender.hpp>
 
 int main() {
-  typr::io::Backend backend;
-  if (backend.capabilities().canInjectKeys) {
-    backend.tap(typr::io::Key::A);
+  typr::io::Sender sender;
+  if (sender.capabilities().canInjectKeys) {
+    sender.tap(typr::io::Key::A);
   }
   return 0;
 }

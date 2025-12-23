@@ -22,8 +22,9 @@ project(typr-io-consumer LANGUAGES CXX)
 #   ./build/typr_io_consumer
 #
 # This CMakeLists assumes there is a simple `main.cpp` in this directory that
-# uses the public typr-io umbrella header:
-#   #include <typr-io/typr_io.hpp>
+# uses the public typr-io headers (include the specific headers you need, e.g.):
+#   #include <typr-io/sender.hpp>
+#   #include <typr-io/listener.hpp>
 
 option(TYPR_IO_ROOT "Root prefix where typr-io is installed (sets CMAKE_PREFIX_PATH)" "")
 
