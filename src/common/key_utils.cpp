@@ -167,7 +167,7 @@ const std::vector<std::pair<Key, std::string>> &keyStringPairs() {
 
 } // namespace
 
-std::string keyToString(Key key) {
+TYPR_IO_API std::string keyToString(Key key) {
   for (const auto &pair : keyStringPairs()) {
     if (pair.first == key) {
       return pair.second;
@@ -176,7 +176,7 @@ std::string keyToString(Key key) {
   return {"Unknown"};
 }
 
-Key stringToKey(const std::string &input) {
+TYPR_IO_API Key stringToKey(const std::string &input) {
   static std::unordered_map<std::string, Key> rev;
   if (rev.empty()) {
     for (const auto &pair : keyStringPairs()) {

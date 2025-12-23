@@ -3,7 +3,7 @@
 #include <Windows.h>
 #include <chrono>
 #include <thread>
-#include <typr-io/backend.hpp>
+#include <typr-io/sender.hpp>
 #include <unordered_map>
 
 namespace typr::io {
@@ -258,14 +258,14 @@ struct Sender::Impl {
   }
 };
 
-Sender::Sender() : m_impl(std::make_unique<Impl>()) {}
-Sender::~Sender() = default;
-Sender::Sender(Sender &&) noexcept = default;
-Sender &Sender::operator=(Sender &&) noexcept = default;
+TYPR_IO_API Sender::Sender() : m_impl(std::make_unique<Impl>()) {}
+TYPR_IO_API Sender::~Sender() = default;
+TYPR_IO_API Sender::Sender(Sender &&) noexcept = default;
+TYPR_IO_API Sender &Sender::operator=(Sender &&) noexcept = default;
 
-BackendType Sender::type() const { return BackendType::Windows; }
+TYPR_IO_API BackendType Sender::type() const { return BackendType::Windows; }
 
-Capabilities Sender::capabilities() const {
+TYPR_IO_API Capabilities Sender::capabilities() const {
   return {
       .canInjectKeys = m_impl->ready,
       .canInjectText = m_impl->ready,
@@ -278,10 +278,10 @@ Capabilities Sender::capabilities() const {
   };
 }
 
-bool Sender::isReady() const { return m_impl->ready; }
-bool Sender::requestPermissions() { return true; }
+TYPR_IO_API bool Sender::isReady() const { return m_impl->ready; }
+TYPR_IO_API bool Sender::requestPermissions() { return true; }
 
-bool Sender::keyDown(Key key) {
+TYPR_IO_API bool Sender::keyDown(Key key) {
   // Update modifier state when a modifier key is pressed
   switch (key) {
   case Key::ShiftLeft:
@@ -306,7 +306,7 @@ bool Sender::keyDown(Key key) {
   return m_impl->sendKey(key, true);
 }
 
-bool Sender::keyUp(Key key) {
+TYPR_IO_API bool Sender::keyUp(Key key) {
   bool result = m_impl->sendKey(key, false);
   // Update modifier state when a modifier key is released
   switch (key) {
@@ -340,16 +340,18 @@ bool Sender::keyUp(Key key) {
   return result;
 }
 
-bool Sender::tap(Key key) {
+TYPR_IO_API bool Sender::tap(Key key) {
   if (!keyDown(key))
     return false;
   m_impl->delay();
   return keyUp(key);
 }
 
-Modifier Sender::activeModifiers() const { return m_impl->currentMods; }
+TYPR_IO_API Modifier Sender::activeModifiers() const {
+  return m_impl->currentMods;
+}
 
-bool Sender::holdModifier(Modifier mod) {
+TYPR_IO_API bool Sender::holdModifier(Modifier mod) {
   bool allModifiersPressed = true;
   if (hasModifier(mod, Modifier::Shift)) {
     allModifiersPressed &= keyDown(Key::ShiftLeft);
@@ -366,7 +368,7 @@ bool Sender::holdModifier(Modifier mod) {
   return allModifiersPressed;
 }
 
-bool Sender::releaseModifier(Modifier mod) {
+TYPR_IO_API bool Sender::releaseModifier(Modifier mod) {
   bool allModifiersReleased = true;
   if (hasModifier(mod, Modifier::Shift)) {
     allModifiersReleased &= keyUp(Key::ShiftLeft);
@@ -383,12 +385,12 @@ bool Sender::releaseModifier(Modifier mod) {
   return allModifiersReleased;
 }
 
-bool Sender::releaseAllModifiers() {
+TYPR_IO_API bool Sender::releaseAllModifiers() {
   return releaseModifier(Modifier::Shift | Modifier::Ctrl | Modifier::Alt |
                          Modifier::Super);
 }
 
-bool Sender::combo(Modifier mods, Key key) {
+TYPR_IO_API bool Sender::combo(Modifier mods, Key key) {
   if (!holdModifier(mods))
     return false;
   m_impl->delay();
@@ -398,11 +400,11 @@ bool Sender::combo(Modifier mods, Key key) {
   return ok;
 }
 
-bool Sender::typeText(const std::u32string &text) {
+TYPR_IO_API bool Sender::typeText(const std::u32string &text) {
   return m_impl->typeUnicode(text);
 }
 
-bool Sender::typeText(const std::string &utf8Text) {
+TYPR_IO_API bool Sender::typeText(const std::string &utf8Text) {
   // Convert UTF-8 to UTF-32
   std::u32string utf32;
   size_t i = 0;
@@ -444,15 +446,17 @@ bool Sender::typeText(const std::string &utf8Text) {
   return typeText(utf32);
 }
 
-bool Sender::typeCharacter(char32_t codepoint) {
+TYPR_IO_API bool Sender::typeCharacter(char32_t codepoint) {
   return typeText(std::u32string(1, codepoint));
 }
 
-void Sender::flush() {
+TYPR_IO_API void Sender::flush() {
   // Windows SendInput is synchronous, nothing to flush
 }
 
-void Sender::setKeyDelay(uint32_t delayUs) { m_impl->keyDelayUs = delayUs; }
+TYPR_IO_API void Sender::setKeyDelay(uint32_t delayUs) {
+  m_impl->keyDelayUs = delayUs;
+}
 
 } // namespace typr::io
 

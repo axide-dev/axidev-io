@@ -90,7 +90,7 @@ struct Listener::Impl {
     if (running.load())
       return false;
     {
-      std::lock_guard<std::mutex> lk(callbackMutex);
+      std::lock_guard<std::mutex> lk(cbMutex);
       callback = std::move(cb);
     }
     running.store(true);
@@ -392,7 +392,7 @@ private:
   void invokeCallback(char32_t cp, Key k, Modifier mods, bool pressed) {
     Callback cbCopy;
     {
-      std::lock_guard<std::mutex> lk(callbackMutex);
+      std::lock_guard<std::mutex> lk(cbMutex);
       cbCopy = callback;
     }
     if (cbCopy) {
@@ -450,21 +450,21 @@ std::atomic<Listener::Impl *> Listener::Impl::s_instance{nullptr};
 
 // OutputListener public API wrappers
 
-Listener::Listener() : m_impl(std::make_unique<Impl>()) {}
-Listener::~Listener() { stop(); }
-Listener::Listener(Listener &&) noexcept = default;
-Listener &Listener::operator=(Listener &&) noexcept = default;
+TYPR_IO_API Listener::Listener() : m_impl(std::make_unique<Impl>()) {}
+TYPR_IO_API Listener::~Listener() { stop(); }
+TYPR_IO_API Listener::Listener(Listener &&) noexcept = default;
+TYPR_IO_API Listener &Listener::operator=(Listener &&) noexcept = default;
 
-bool Listener::start(Callback cb) {
+TYPR_IO_API bool Listener::start(Callback cb) {
   return m_impl ? m_impl->start(std::move(cb)) : false;
 }
 
-void Listener::stop() {
+TYPR_IO_API void Listener::stop() {
   if (m_impl)
     m_impl->stop();
 }
 
-bool Listener::isListening() const {
+TYPR_IO_API bool Listener::isListening() const {
   return m_impl ? m_impl->isRunning() : false;
 }
 
