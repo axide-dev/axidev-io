@@ -58,6 +58,7 @@ set_property(TEST typr-io-unit-tests PROPERTY LABELS unit)
 if(TYPR_IO_BUILD_INTEGRATION_TESTS)
     add_executable(typr-io-integration-tests
         test_integration_sender.cpp
+        test_integration_listener.cpp
     )
 
     target_link_libraries(typr-io-integration-tests
