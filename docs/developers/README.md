@@ -55,7 +55,7 @@ Top-level important paths (brief):
 - `include/typr-io/` — public headers (e.g., `include/typr-io/core.hpp`, `include/typr-io/sender.hpp`, `include/typr-io/listener.hpp`).
 - `src/`:
   - `src/sender/` — platform input injection (HID / virtual keyboard) implementations (e.g. `sender_macos.mm`, `sender_windows.cpp`, `sender_uinput.cpp`).
-  - `src/listener/` — global output listener implementations (`listener_macos.mm`, `listener_windows.cpp`, `listener_x11.cpp`).
+  - `src/listener/` — global output listener implementations (`listener_macos.mm`, `listener_windows.cpp`, `listener_linux.cpp`).
   - `src/common/` — cross-platform helpers.
 - `examples/` — example programs demonstrating consumer usage.
 - `test_consumer/` — lightweight test consumer used in `make test`.
@@ -84,7 +84,7 @@ Top-level important paths (brief):
   - To enable very verbose logs for local debugging: `TYPR_IO_LOG_LEVEL=debug`
 - Platform-specific tips:
   - macOS: check System Settings → Privacy & Security (Accessibility / Input Monitoring).
-  - Linux: check permissions on `/dev/uinput`, `udevadm` output, and `dmesg` for uinput errors.
+  - Linux: the listener uses `libinput` + `xkbcommon` as the canonical Linux listener and these packages are required at configure time. Ensure the `libinput`, `libudev`, and `xkbcommon` development packages are installed (pkg-config detects them during configure) and that the running user has appropriate runtime privileges (for example, membership in the `input` group) to access `/dev/input/event*` devices.
   - Windows: use system event logs and verify `GetKeyboardLayout` usage in debug builds.
 - For layout or mapping issues, include OS version, keyboard layout, and short reproduction steps when opening issues.
 
@@ -95,7 +95,7 @@ When adding support for a new platform, follow this checklist:
 1. Decide where it belongs:
    - Input injection backends go in `src/sender/` (e.g. `sender_<platform>.[cpp|mm]`).
    - Global output listener backends go in `src/listener/` (e.g. `listener_<platform>.[cpp|mm]`).
-2. Use the existing platform implementations as a template (see `sender_macos.mm`, `sender_windows.cpp`, `sender_uinput.cpp`, `listener_x11.cpp`).
+2. Use the existing platform implementations as a template (see `sender_macos.mm`, `sender_windows.cpp`, `sender_uinput.cpp`, `listener_linux.cpp`).
 3. Keep platform-specific code out of shared headers; prefer implementation files and conditional build rules.
 4. Add the new source file to the CMake target:
    - Guard it with a platform check if required (e.g. `if(APPLE)` / `if(WIN32)` / `if(UNIX)`).

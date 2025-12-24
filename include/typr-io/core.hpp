@@ -383,8 +383,7 @@ enum class BackendType : uint8_t {
   Unknown,
   Windows,
   MacOS,
-  LinuxX11,
-  LinuxWayland,
+  LinuxLibinput,
   LinuxUInput,
 };
 

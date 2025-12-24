@@ -46,10 +46,18 @@ elseif(WIN32)
     src/listener/listener_windows.cpp
   )
 elseif(UNIX)
+    # Linux: require libinput + xkbcommon (Wayland / direct-udev) listener.
+    # Configure-time checks are required so configure fails early when deps
+    # are missing rather than silently falling back to an X11-based listener.
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBINPUT REQUIRED libinput)
+    pkg_check_modules(LIBUDEV REQUIRED libudev)
+    pkg_check_modules(XKBCOMMON REQUIRED xkbcommon)
+
     list(APPEND TYPR_SOURCES
-    src/sender/sender_uinput.cpp
-    src/listener/listener_x11.cpp
-  )
+        src/sender/sender_uinput.cpp
+        src/listener/listener_linux.cpp
+    )
 endif()
 
 # Create the library target (use an underscore in the target name to avoid
@@ -98,13 +106,10 @@ elseif(WIN32)
     user32
   )
 elseif(UNIX)
-    # Optional: bring in X11/XInput when available for the X11 output listener.
-    find_package(X11)
-    if(X11_FOUND)
-        target_include_directories(typr_io PRIVATE ${X11_INCLUDE_DIR})
-        # Link X11 core and XInput (XI) - Xi is needed for XInput2 / XI_Raw*
-        target_link_libraries(typr_io PRIVATE ${X11_LIBRARIES} Xi)
-    endif()
+    # On Linux we require libinput + xkbcommon for the listener implementation.
+    # Link against libinput, libudev and xkbcommon (discovered via pkg-config).
+    target_include_directories(typr_io PRIVATE ${LIBINPUT_INCLUDE_DIRS} ${XKBCOMMON_INCLUDE_DIRS} ${LIBUDEV_INCLUDE_DIRS})
+    target_link_libraries(typr_io PRIVATE ${LIBINPUT_LIBRARIES} ${XKBCOMMON_LIBRARIES} ${LIBUDEV_LIBRARIES})
 endif()
 
 # Threads are used by various backends / listeners

@@ -64,6 +64,7 @@ int main() {
 - Linux:
   - The uinput backend needs access to `/dev/uinput`. Add a udev rule or run with appropriate permissions (adding your user to an `input` group is a common approach).
   - The uinput backend emits kernel-level key events and does not provide direct Unicode `typeText()` injection in the current implementation.
+  - The listener implementation uses `libinput` + `xkbcommon` and reads events directly from input devices via udev. At build/configure time you must have the `libinput`, `libudev`, and `xkbcommon` development packages installed so pkg-config can find them. At runtime the listener typically requires membership in the `input` group or elevated privileges to access `/dev/input/event*` devices.
 - Windows:
   - Typical user-level injection works; some advanced injection behaviors may be limited by system policy.
 
