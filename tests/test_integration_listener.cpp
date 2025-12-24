@@ -12,7 +12,6 @@
 #include <typr-io/listener.hpp>
 #include <typr-io/log.hpp>
 
-#include <chrono>
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
