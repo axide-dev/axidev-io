@@ -194,6 +194,26 @@ enum class Key : uint16_t {
   Comma = 132,
   Period = 133,
   Slash = 134,
+
+  // Additional symbol keys (useful to represent shifted characters explicitly)
+  At = 135,
+  Hashtag = 136,
+  Exclamation = 137,
+  Dollar = 138,
+  Percent = 139,
+  Caret = 140,
+  Ampersand = 141,
+  Asterisk = 142,
+  LeftParen = 143,
+  RightParen = 144,
+  Underscore = 145,
+  Plus = 146,
+  Colon = 147,
+  Quote = 148,
+  QuestionMark = 149,
+  Bar = 150,
+  LessThan = 151,
+  GreaterThan = 152,
 };
 
 // Modifier bitmask (use enum class for type safety but provide bit ops).

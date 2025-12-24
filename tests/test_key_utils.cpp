@@ -114,6 +114,33 @@ TEST_CASE("Recognizes helpful aliases / synonyms", "[key_utils][aliases]") {
 
   REQUIRE(stringToKey("dot") == Key::Period);
   REQUIRE(stringToKey("period") == Key::Period);
+
+  // Additional single-character punctuation / shifted-symbol aliases
+  // commonly encountered on US-style keyboard layouts.
+  REQUIRE(stringToKey("@") == Key::Num2);
+  REQUIRE(stringToKey("#") == Key::Num3);
+  REQUIRE(stringToKey("!") == Key::Num1);
+  REQUIRE(stringToKey("$") == Key::Num4);
+  REQUIRE(stringToKey("%") == Key::Num5);
+  REQUIRE(stringToKey("^") == Key::Num6);
+  REQUIRE(stringToKey("&") == Key::Num7);
+  REQUIRE(stringToKey("*") == Key::Num8);
+  REQUIRE(stringToKey("(") == Key::Num9);
+  REQUIRE(stringToKey(")") == Key::Num0);
+
+  REQUIRE(stringToKey("_") == Key::Minus);
+  REQUIRE(stringToKey("+") == Key::Equal);
+  REQUIRE(stringToKey("|") == Key::Backslash);
+  REQUIRE(stringToKey("~") == Key::Grave);
+  REQUIRE(stringToKey(":") == Key::Semicolon);
+  REQUIRE(stringToKey("\"") == Key::Apostrophe);
+  REQUIRE(stringToKey("<") == Key::Comma);
+  REQUIRE(stringToKey(">") == Key::Period);
+  REQUIRE(stringToKey("?") == Key::Slash);
+
+  // Whitespace aliases
+  REQUIRE(stringToKey(" ") == Key::Space);
+  REQUIRE(stringToKey("\t") == Key::Tab);
 }
 
 TEST_CASE("Handles invalid and edge-case inputs", "[key_utils][edge]") {

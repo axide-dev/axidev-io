@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -19,6 +20,36 @@ std::string toLower(std::string inputString) {
             std::tolower(static_cast<unsigned char>(character)));
       });
   return inputString;
+}
+
+// Escape input for debug logging so control characters (e.g., newline)
+// don't break log lines. Non-printable characters are escaped as common
+// sequences (\\n, \\t) or as \\xHH.
+std::string escapeForLog(const std::string &input) {
+  std::string out;
+  out.reserve(input.size() * 2);
+  for (unsigned char c : input) {
+    switch (c) {
+    case '\n':
+      out += "\\n";
+      break;
+    case '\r':
+      out += "\\r";
+      break;
+    case '\t':
+      out += "\\t";
+      break;
+    default:
+      if (std::isprint(c)) {
+        out += static_cast<char>(c);
+      } else {
+        char buf[8];
+        std::snprintf(buf, sizeof(buf), "\\x%02X", c);
+        out += buf;
+      }
+    }
+  }
+  return out;
 }
 
 // Central list of canonical names for keys. These are used as the canonical
@@ -162,6 +193,25 @@ const std::vector<std::pair<Key, std::string>> &keyStringPairs() {
       {Key::Comma, ","},
       {Key::Period, "."},
       {Key::Slash, "/"},
+      // Shifted / symbol characters (canonical textual names)
+      {Key::At, "At"},
+      {Key::Hashtag, "Hashtag"},
+      {Key::Exclamation, "Exclamation"},
+      {Key::Dollar, "Dollar"},
+      {Key::Percent, "Percent"},
+      {Key::Caret, "Caret"},
+      {Key::Ampersand, "Ampersand"},
+      {Key::Asterisk, "Asterisk"},
+      {Key::LeftParen, "LeftParen"},
+      {Key::RightParen, "RightParen"},
+      {Key::Underscore, "Underscore"},
+      {Key::Plus, "Plus"},
+      {Key::Colon, "Colon"},
+      {Key::Quote, "Quote"},
+      {Key::QuestionMark, "QuestionMark"},
+      {Key::Bar, "Bar"},
+      {Key::LessThan, "LessThan"},
+      {Key::GreaterThan, "GreaterThan"},
   };
   return pairs;
 }
@@ -180,7 +230,7 @@ TYPR_IO_API std::string keyToString(Key key) {
 TYPR_IO_API Key stringToKey(const std::string &input) {
   static std::unordered_map<std::string, Key> rev;
   if (input.empty()) {
-      return Key::Unknown;
+    return Key::Unknown;
   }
   if (rev.empty()) {
     for (const auto &pair : keyStringPairs()) {
@@ -230,6 +280,62 @@ TYPR_IO_API Key stringToKey(const std::string &input) {
     rev.emplace("bracketleft", Key::LeftBracket);
     rev.emplace("bracketright", Key::RightBracket);
 
+    // Single-character aliases for punctuation / shifted characters.
+    rev.emplace(" ", Key::Space);
+
+    // Map single-character symbols to the physical/logical keys users
+    // commonly expect on US-style layouts (e.g., '@' is Shift+Num2).
+    rev.emplace("@", Key::Num2);
+    rev.emplace("#", Key::Num3);
+    rev.emplace("!", Key::Num1);
+    rev.emplace("$", Key::Num4);
+    rev.emplace("%", Key::Num5);
+    rev.emplace("^", Key::Num6);
+    rev.emplace("&", Key::Num7);
+    rev.emplace("*", Key::Num8);
+    rev.emplace("(", Key::Num9);
+    rev.emplace(")", Key::Num0);
+
+    // Other single-character punctuation aliases that map to existing
+    // layout-dependent keys.
+    rev.emplace("_", Key::Minus);
+    rev.emplace("+", Key::Equal);
+    rev.emplace(":", Key::Semicolon);
+    rev.emplace("\"", Key::Apostrophe);
+    rev.emplace("?", Key::Slash);
+    rev.emplace("|", Key::Backslash);
+    rev.emplace("<", Key::Comma);
+    rev.emplace(">", Key::Period);
+    rev.emplace("{", Key::LeftBracket);
+    rev.emplace("}", Key::RightBracket);
+    rev.emplace("~", Key::Grave);
+
+    // Helpful textual aliases for common symbols (lowercased by seeding logic)
+    rev.emplace("at", Key::At);
+    rev.emplace("hash", Key::Hashtag);
+    rev.emplace("hashtag", Key::Hashtag);
+    rev.emplace("pound", Key::Hashtag);
+    rev.emplace("bang", Key::Exclamation);
+    rev.emplace("exclamation", Key::Exclamation);
+    rev.emplace("dollar", Key::Dollar);
+    rev.emplace("percent", Key::Percent);
+    rev.emplace("caret", Key::Caret);
+    rev.emplace("ampersand", Key::Ampersand);
+    rev.emplace("star", Key::Asterisk);
+    rev.emplace("asterisk", Key::Asterisk);
+    rev.emplace("lparen", Key::LeftParen);
+    rev.emplace("rparen", Key::RightParen);
+    rev.emplace("underscore", Key::Underscore);
+    rev.emplace("plus", Key::Plus);
+    rev.emplace("colon", Key::Colon);
+    rev.emplace("quote", Key::Quote);
+    rev.emplace("pipe", Key::Bar);
+    rev.emplace("bar", Key::Bar);
+    rev.emplace("lt", Key::LessThan);
+    rev.emplace("gt", Key::GreaterThan);
+    rev.emplace("less", Key::LessThan);
+    rev.emplace("greater", Key::GreaterThan);
+
     // Numeric keypad aliases (numpadX is already present via canonical mapping,
     // but also allow \"kpX\" prefixes that some users might use).
     rev.emplace("kp0", Key::Numpad0);
@@ -249,7 +355,8 @@ TYPR_IO_API Key stringToKey(const std::string &input) {
   if (it != rev.end()) {
     return it->second;
   }
-  TYPR_IO_LOG_DEBUG("stringToKey: unknown input='%s'", input.c_str());
+  TYPR_IO_LOG_DEBUG("stringToKey: unknown input='%s'",
+                    escapeForLog(input).c_str());
   return Key::Unknown;
 }
 
