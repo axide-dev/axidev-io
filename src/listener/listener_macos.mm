@@ -213,6 +213,79 @@ private:
     CGEventFlags flags = CGEventGetFlags(event);
     Modifier mods = flagsToModifier(flags);
 
+    // Treat Enter and Backspace as control keys (non-printable). If we pass a
+    // non-zero codepoint for these keys the test callback will append that
+    // control character into the observed string rather than handling the
+    // key event; clear the codepoint so consumers observe the key event
+    // (e.g., key == Key::Enter / Key::Backspace) and can react accordingly.
+    if (mapped == Key::Enter || mapped == Key::Backspace) {
+      codepoint = 0;
+    }
+
+    // Handle a couple of platform quirks observed on macOS:
+    //  1) Some release events are delivered multiple times for the same key.
+    //     Debounce rapid duplicate releases to avoid emitting duplicate
+    //     characters to the consumer.
+    //  2) In some cases the release event does not contain a Unicode string
+    //     (actualLen == 0) while the corresponding press did. Cache the last
+    //     press codepoint and use it as a fallback for the release.
+    static constexpr std::chrono::milliseconds kReleaseDebounceMs{50};
+
+    if (pressed) {
+      // On press, remember the unicode output (if any) for potential use on
+      // the paired release event.
+      if (codepoint != 0) {
+        self->lastPressCp[keyCode] = codepoint;
+      } else {
+        // Clear any stale entry for this keycode when press does not produce
+        // a unicode character (e.g., modifiers).
+        self->lastPressCp.erase(keyCode);
+      }
+    } else {
+      // On release, debounce rapid duplicates coming from the system.
+      auto now = std::chrono::steady_clock::now();
+      auto rtIt = self->lastReleaseTime.find(keyCode);
+      auto sigIt = self->lastReleaseSig.find(keyCode);
+      if (rtIt != self->lastReleaseTime.end() && sigIt != self->lastReleaseSig.end()) {
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - rtIt->second);
+        if (elapsed < kReleaseDebounceMs && sigIt->second.first == codepoint && sigIt->second.second == mods) {
+          if (output_debug_enabled()) {
+            std::string kname = "Unknown";
+            auto kIt = self->cgKeyToKey.find(keyCode);
+            if (kIt != self->cgKeyToKey.end()) kname = keyToString(kIt->second);
+            TYPR_IO_LOG_DEBUG("Listener (macOS): ignoring duplicate release (same cp+mods) for keycode=%u key=%s cp=%u mods=%u",
+                              (unsigned)keyCode, kname.c_str(), (unsigned)codepoint, (unsigned)mods);
+          }
+          // Update timestamp & signature so subsequent quick duplicates remain debounced.
+          self->lastReleaseTime[keyCode] = now;
+          self->lastReleaseSig[keyCode] = std::make_pair(codepoint, mods);
+          return event;
+        }
+      }
+      // Not a duplicate matching the last cp+mods -> record the new signature/time.
+      self->lastReleaseTime[keyCode] = now;
+      self->lastReleaseSig[keyCode] = std::make_pair(codepoint, mods);
+
+      // If the release lacks a unicode string, fall back to the cached press
+      // codepoint for this keycode (if available).
+      if (codepoint == 0) {
+        auto cpIt = self->lastPressCp.find(keyCode);
+        if (cpIt != self->lastPressCp.end()) {
+          codepoint = cpIt->second;
+          if (output_debug_enabled()) {
+            TYPR_IO_LOG_DEBUG("Listener (macOS): using last-press cp=%u for release keycode=%u",
+                              static_cast<unsigned>(codepoint), static_cast<unsigned>(keyCode));
+          }
+        }
+      }
+
+      // We've handled the release, clear the cached press codepoint so we
+      // don't accidentally reuse it for future, unrelated events.
+      self->lastPressCp.erase(keyCode);
+    }
+
+
+
     // Invoke user callback outside the lock
     Callback cbCopy;
     {
@@ -425,6 +498,18 @@ private:
 
   // Reverse mapping
   std::unordered_map<CGKeyCode, Key> cgKeyToKey;
+
+  // Last-seen unicode codepoint for keycodes (press -> release fallback).
+  // Some macOS configurations produce keyup events without a Unicode string
+  // while the corresponding keydown contained the character. We cache the
+  // last press codepoint per keycode so releases can fall back to it.
+  std::unordered_map<CGKeyCode, char32_t> lastPressCp;
+
+  // Timestamp of the last release seen for a given keycode. Used to debounce
+  // duplicate release events which can otherwise cause repeated characters in
+  // the observed output.
+  std::unordered_map<CGKeyCode, std::chrono::steady_clock::time_point> lastReleaseTime;
+  std::unordered_map<CGKeyCode, std::pair<char32_t, Modifier>> lastReleaseSig;
 };
 
 // OutputListener public wrappers
