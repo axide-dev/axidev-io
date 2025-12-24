@@ -247,6 +247,12 @@ struct Sender::Impl {
         return "pt";
       if (langStr.find("ru_") == 0)
         return "ru";
+      if (langStr.find("zh_") == 0)
+        return "zh";
+      if (langStr.find("ja_") == 0)
+        return "ja";
+      if (langStr.find("ko_") == 0)
+        return "ko";
       // Add more as needed
     }
 
