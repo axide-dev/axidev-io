@@ -241,6 +241,84 @@ const std::vector<std::pair<Key, std::string>> &keyStringPairs() {
       {Key::AsciiRS, "RS"},
       {Key::AsciiUS, "US"},
       {Key::AsciiDEL, "DEL"},
+      // Additional canonical names for X11 / XF86 / international keys added
+      // to the Key enum so they can roundtrip via `keyToString` and seed the
+      // reverse lookup in `stringToKey`.
+      {Key::NumpadEqual, "NumpadEqual"},
+      {Key::Degree, "Degree"},
+      {Key::Sterling, "Sterling"},
+      {Key::Mu, "Mu"},
+      {Key::PlusMinus, "PlusMinus"},
+      {Key::DeadCircumflex, "DeadCircumflex"},
+      {Key::DeadDiaeresis, "DeadDiaeresis"},
+      {Key::Section, "Section"},
+      {Key::Cancel, "Cancel"},
+      {Key::Redo, "Redo"},
+      {Key::Undo, "Undo"},
+      {Key::Find, "Find"},
+      {Key::Hangul, "Hangul"},
+      {Key::HangulHanja, "HangulHanja"},
+      {Key::Katakana, "Katakana"},
+      {Key::Hiragana, "Hiragana"},
+      {Key::Henkan, "Henkan"},
+      {Key::Muhenkan, "Muhenkan"},
+      {Key::OE, "OE"},
+      {Key::SunProps, "SunProps"},
+      {Key::SunFront, "SunFront"},
+      {Key::Copy, "Copy"},
+      {Key::Open, "Open"},
+      {Key::Paste, "Paste"},
+      {Key::Cut, "Cut"},
+      {Key::Calculator, "Calculator"},
+      {Key::Explorer, "Explorer"},
+      {Key::Phone, "Phone"},
+      {Key::WebCam, "WebCam"},
+      {Key::AudioRecord, "AudioRecord"},
+      {Key::AudioRewind, "AudioRewind"},
+      {Key::AudioPreset, "AudioPreset"},
+      {Key::Messenger, "Messenger"},
+      {Key::Search, "Search"},
+      {Key::Go, "Go"},
+      {Key::Finance, "Finance"},
+      {Key::Game, "Game"},
+      {Key::Shop, "Shop"},
+      {Key::HomePage, "HomePage"},
+      {Key::Reload, "Reload"},
+      {Key::Close, "Close"},
+      {Key::Send, "Send"},
+      {Key::Xfer, "Xfer"},
+      {Key::LaunchA, "LaunchA"},
+      {Key::LaunchB, "LaunchB"},
+      {Key::Launch1, "Launch1"},
+      {Key::Launch2, "Launch2"},
+      {Key::Launch3, "Launch3"},
+      {Key::Launch4, "Launch4"},
+      {Key::Launch5, "Launch5"},
+      {Key::Launch6, "Launch6"},
+      {Key::Launch7, "Launch7"},
+      {Key::Launch8, "Launch8"},
+      {Key::Launch9, "Launch9"},
+      {Key::TouchpadToggle, "TouchpadToggle"},
+      {Key::TouchpadOn, "TouchpadOn"},
+      {Key::TouchpadOff, "TouchpadOff"},
+      {Key::KbdLightOnOff, "KbdLightOnOff"},
+      {Key::KbdBrightnessDown, "KbdBrightnessDown"},
+      {Key::KbdBrightnessUp, "KbdBrightnessUp"},
+      {Key::Mail, "Mail"},
+      {Key::MailForward, "MailForward"},
+      {Key::Save, "Save"},
+      {Key::Documents, "Documents"},
+      {Key::Battery, "Battery"},
+      {Key::Bluetooth, "Bluetooth"},
+      {Key::WLAN, "WLAN"},
+      {Key::UWB, "UWB"},
+      {Key::Next_VMode, "Next_VMode"},
+      {Key::Prev_VMode, "Prev_VMode"},
+      {Key::MonBrightnessCycle, "MonBrightnessCycle"},
+      {Key::BrightnessAuto, "BrightnessAuto"},
+      {Key::DisplayOff, "DisplayOff"},
+      {Key::WWAN, "WWAN"},
+      {Key::RFKill, "RFKill"},
   };
   return pairs;
 }
@@ -308,7 +386,7 @@ TYPR_IO_API Key stringToKey(const std::string &input) {
     rev.emplace("slash", Key::Slash);
     rev.emplace("bracketleft", Key::LeftBracket);
     rev.emplace("bracketright", Key::RightBracket);
-    
+
     // Single-character aliases for common symbol characters observed in inputs.
     rev.emplace("@", Key::At);
     rev.emplace("&", Key::Ampersand);
@@ -413,7 +491,8 @@ TYPR_IO_API Key stringToKey(const std::string &input) {
     rev.emplace("del", Key::AsciiDEL);
 
     // Numeric keypad aliases (numpadX is already present via canonical mapping,
-    // but also allow \"kpX\" prefixes that some users might use).
+    // but also allow \"kpX\" and other X11 KP_* names that some users / systems
+    // emit).
     rev.emplace("kp0", Key::Numpad0);
     rev.emplace("kp1", Key::Numpad1);
     rev.emplace("kp2", Key::Numpad2);
@@ -424,6 +503,80 @@ TYPR_IO_API Key stringToKey(const std::string &input) {
     rev.emplace("kp7", Key::Numpad7);
     rev.emplace("kp8", Key::Numpad8);
     rev.emplace("kp9", Key::Numpad9);
+
+    // Common X11 / keysym aliases observed on Linux systems (lowercased).
+    // Map keyboard modifier / special names to existing logical keys.
+    rev.emplace("control_l", Key::CtrlLeft);
+    rev.emplace("control_r", Key::CtrlRight);
+    rev.emplace("shift_l", Key::ShiftLeft);
+    rev.emplace("shift_r", Key::ShiftRight);
+    rev.emplace("alt_l", Key::AltLeft);
+    rev.emplace("alt_r", Key::AltRight);
+    rev.emplace("meta_l", Key::SuperLeft);
+    rev.emplace("super_l", Key::SuperLeft);
+    rev.emplace("super_r", Key::SuperRight);
+    rev.emplace("hyper_l", Key::SuperLeft);
+    rev.emplace("caps_lock", Key::CapsLock);
+    rev.emplace("num_lock", Key::NumLock);
+    rev.emplace("scroll_lock", Key::ScrollLock);
+
+    // ISO / dead-key and punctuation aliases
+    rev.emplace("iso_left_tab", Key::Tab);
+    rev.emplace("iso_level3_shift", Key::AltRight);
+    rev.emplace("iso_level5_shift", Key::AltRight);
+    rev.emplace("quotedbl", Key::Quote);
+    rev.emplace("parenleft", Key::LeftParen);
+    rev.emplace("parenright", Key::RightParen);
+    rev.emplace("equal", Key::Equal);
+    rev.emplace("question", Key::QuestionMark);
+    rev.emplace("exclam", Key::Exclamation);
+    rev.emplace("section", Key::Section);
+    rev.emplace("degree", Key::Degree);
+    rev.emplace("sterling", Key::Sterling);
+    rev.emplace("plusminus", Key::PlusMinus);
+    rev.emplace("dead_circumflex", Key::DeadCircumflex);
+    rev.emplace("dead_diaeresis", Key::DeadDiaeresis);
+
+    // Accented / ligature aliases -> map to reasonable logical letter keys
+    rev.emplace("eacute", Key::E);
+    rev.emplace("egrave", Key::E);
+    rev.emplace("agrave", Key::A);
+    rev.emplace("ugrave", Key::U);
+    rev.emplace("ccedilla", Key::C);
+    rev.emplace("oe", Key::O);
+    rev.emplace("mu", Key::Mu);
+
+    // Misc control / text aliases
+    rev.emplace("linefeed", Key::Enter);
+    rev.emplace("prior", Key::PageUp);
+    rev.emplace("next", Key::PageDown);
+    rev.emplace("print", Key::PrintScreen);
+    rev.emplace("sys_req", Key::PrintScreen);
+    rev.emplace("break", Key::Pause);
+    rev.emplace("cancel", Key::Cancel);
+    rev.emplace("redo", Key::Redo);
+    rev.emplace("undo", Key::Undo);
+    rev.emplace("find", Key::Find);
+    rev.emplace("sunprops", Key::SunProps);
+    rev.emplace("sunfront", Key::SunFront);
+
+    // Common UX / XF86 app / hardware alias textual fallbacks
+    rev.emplace("menu", Key::Menu);
+    rev.emplace("copy", Key::Copy);
+    rev.emplace("open", Key::Open);
+    rev.emplace("paste", Key::Paste);
+    rev.emplace("cut", Key::Cut);
+    rev.emplace("calculator", Key::Calculator);
+    rev.emplace("explorer", Key::Explorer);
+    rev.emplace("phone", Key::Phone);
+    rev.emplace("webcam", Key::WebCam);
+    rev.emplace("mail", Key::Mail);
+    rev.emplace("mailforward", Key::MailForward);
+    rev.emplace("save", Key::Save);
+    rev.emplace("documents", Key::Documents);
+
+    // Numeric keypad textual aliases are already seeded - leave room for
+    // dynamic parsing for `KP_*` forms in the lookup logic below.
   }
 
   std::string key = toLower(input);
@@ -431,6 +584,204 @@ TYPR_IO_API Key stringToKey(const std::string &input) {
   if (it != rev.end()) {
     return it->second;
   }
+
+  // Handle X11 numeric keypad (KP_*) names that may appear in input. These are
+  // often emitted as 'KP_7', 'KP_Home', 'KP_Decimal', etc. Provide a
+  // best-effort mapping to our `Numpad*` values.
+  if (key.rfind("kp", 0) == 0) {
+    std::string suffix = key.substr(2);
+    if (!suffix.empty() && suffix[0] == '_') {
+      suffix.erase(0, 1);
+    }
+    if (suffix == "multiply" || suffix == "mul")
+      return Key::NumpadMultiply;
+    if (suffix == "divide" || suffix == "div")
+      return Key::NumpadDivide;
+    if (suffix == "add" || suffix == "plus")
+      return Key::NumpadPlus;
+    if (suffix == "subtract" || suffix == "minus")
+      return Key::NumpadMinus;
+    if (suffix == "enter")
+      return Key::NumpadEnter;
+    if (suffix == "decimal" || suffix == "delete" || suffix == "del")
+      return Key::NumpadDecimal;
+    if (suffix == "equal")
+      return Key::NumpadEqual;
+    if (suffix == "home" || suffix == "7")
+      return Key::Numpad7;
+    if (suffix == "up" || suffix == "8")
+      return Key::Numpad8;
+    if (suffix == "prior" || suffix == "9")
+      return Key::Numpad9;
+    if (suffix == "left" || suffix == "4")
+      return Key::Numpad4;
+    if (suffix == "begin" || suffix == "5")
+      return Key::Numpad5;
+    if (suffix == "right" || suffix == "6")
+      return Key::Numpad6;
+    if (suffix == "end" || suffix == "1")
+      return Key::Numpad1;
+    if (suffix == "down" || suffix == "2")
+      return Key::Numpad2;
+    if (suffix == "next" || suffix == "3")
+      return Key::Numpad3;
+    if (suffix == "insert" || suffix == "0")
+      return Key::Numpad0;
+  }
+
+  // ISO-level special modifiers/keys
+  if (key == "iso_level3_shift" || key == "iso_level5_shift") {
+    return Key::AltRight;
+  }
+  if (key == "iso_left_tab") {
+    return Key::Tab;
+  }
+
+  // Map common XF86 hardware/media/app keys to logical keys where appropriate.
+  if (key.rfind("xf86", 0) == 0) {
+    if (key.find("audiomute") != std::string::npos)
+      return Key::Mute;
+    if (key.find("audiolowervolume") != std::string::npos)
+      return Key::VolumeDown;
+    if (key.find("audioraisevolume") != std::string::npos)
+      return Key::VolumeUp;
+    if (key.find("audionext") != std::string::npos)
+      return Key::MediaNext;
+    if (key.find("audioplay") != std::string::npos ||
+        key.find("audiopause") != std::string::npos)
+      return Key::MediaPlayPause;
+    if (key.find("audioprev") != std::string::npos)
+      return Key::MediaPrevious;
+    if (key.find("audiostop") != std::string::npos)
+      return Key::MediaStop;
+    if (key.find("audiorecord") != std::string::npos)
+      return Key::AudioRecord;
+    if (key.find("audiorewind") != std::string::npos)
+      return Key::AudioRewind;
+    if (key.find("audioforward") != std::string::npos)
+      return Key::MediaNext;
+    if (key.find("power") != std::string::npos)
+      return Key::Power;
+    if (key.find("sleep") != std::string::npos)
+      return Key::Sleep;
+    if (key.find("wakeup") != std::string::npos)
+      return Key::Wake;
+    if (key.find("eject") != std::string::npos)
+      return Key::Eject;
+    if (key.find("monbrightnessdown") != std::string::npos)
+      return Key::BrightnessDown;
+    if (key.find("monbrightnessup") != std::string::npos)
+      return Key::BrightnessUp;
+    if (key.find("audiomedia") != std::string::npos)
+      return Key::MediaPlayPause;
+    if (key.find("menukb") != std::string::npos ||
+        key.find("menu") != std::string::npos)
+      return Key::Menu;
+    if (key.find("calculator") != std::string::npos)
+      return Key::Calculator;
+    if (key.find("mail") != std::string::npos)
+      return Key::Mail;
+    if (key.find("webcam") != std::string::npos)
+      return Key::WebCam;
+    if (key.find("search") != std::string::npos)
+      return Key::Search;
+    if (key.find("launcha") != std::string::npos)
+      return Key::LaunchA;
+    if (key.find("launchb") != std::string::npos)
+      return Key::LaunchB;
+    if (key.find("launch1") != std::string::npos)
+      return Key::Launch1;
+    if (key.find("launch2") != std::string::npos)
+      return Key::Launch2;
+    if (key.find("launch3") != std::string::npos)
+      return Key::Launch3;
+    if (key.find("launch4") != std::string::npos)
+      return Key::Launch4;
+    if (key.find("launch5") != std::string::npos)
+      return Key::Launch5;
+    if (key.find("launch6") != std::string::npos)
+      return Key::Launch6;
+    if (key.find("launch7") != std::string::npos)
+      return Key::Launch7;
+    if (key.find("launch8") != std::string::npos)
+      return Key::Launch8;
+    if (key.find("launch9") != std::string::npos)
+      return Key::Launch9;
+    if (key.find("touchpad") != std::string::npos)
+      return Key::TouchpadToggle;
+    if (key.find("kbd") != std::string::npos) {
+      if (key.find("brightness") != std::string::npos) {
+        if (key.find("down") != std::string::npos)
+          return Key::KbdBrightnessDown;
+        if (key.find("up") != std::string::npos)
+          return Key::KbdBrightnessUp;
+      }
+      return Key::KbdLightOnOff;
+    }
+    if (key.find("battery") != std::string::npos)
+      return Key::Battery;
+    if (key.find("bluetooth") != std::string::npos)
+      return Key::Bluetooth;
+    if (key.find("wlan") != std::string::npos)
+      return Key::WLAN;
+    if (key.find("wwan") != std::string::npos)
+      return Key::WWAN;
+    if (key.find("rfkill") != std::string::npos)
+      return Key::RFKill;
+
+    // If we don't find a match here, allow the code below to either map a more
+    // generic alias or fall back to Unknown (and log) so missing names are
+    // still discoverable.
+  }
+
+  // Generic / common aliases that don't need XF86/KP prefixes.
+  if (key == "eacute" || key == "egrave")
+    return Key::E;
+  if (key == "agrave")
+    return Key::A;
+  if (key == "ugrave")
+    return Key::U;
+  if (key == "ccedilla")
+    return Key::C;
+  if (key == "oe")
+    return Key::O;
+  if (key == "quotedbl")
+    return Key::Quote;
+  if (key == "question")
+    return Key::QuestionMark;
+  if (key == "exclam")
+    return Key::Exclamation;
+  if (key == "degree")
+    return Key::Degree;
+  if (key == "sterling")
+    return Key::Sterling;
+  if (key == "mu")
+    return Key::Mu;
+  if (key == "section")
+    return Key::Section;
+  if (key == "plusminus")
+    return Key::PlusMinus;
+  if (key == "linefeed")
+    return Key::Enter;
+  if (key == "prior")
+    return Key::PageUp;
+  if (key == "next")
+    return Key::PageDown;
+  if (key == "print" || key == "sys_req")
+    return Key::PrintScreen;
+  if (key == "cancel")
+    return Key::Cancel;
+  if (key == "redo")
+    return Key::Redo;
+  if (key == "undo")
+    return Key::Undo;
+  if (key == "find")
+    return Key::Find;
+  if (key == "sunprops")
+    return Key::SunProps;
+  if (key == "sunfront")
+    return Key::SunFront;
+
   TYPR_IO_LOG_DEBUG("stringToKey: unknown input='%s'",
                     escapeForLog(input).c_str());
   return Key::Unknown;

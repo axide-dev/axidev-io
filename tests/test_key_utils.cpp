@@ -145,6 +145,73 @@ TEST_CASE("Recognizes helpful aliases / synonyms", "[key_utils][aliases]") {
   REQUIRE(stringToKey(" ") == Key::Space);
   REQUIRE(stringToKey("\t") == Key::Tab);
 }
+TEST_CASE("Recognizes X11 / XF86 / KP alias names", "[key_utils][x11]") {
+  TYPR_IO_LOG_INFO("test_key_utils: x11 aliases start");
+
+  // Modifier / control variants
+  REQUIRE(stringToKey("Control_L") == Key::CtrlLeft);
+  REQUIRE(stringToKey("Control_R") == Key::CtrlRight);
+  REQUIRE(stringToKey("Shift_L") == Key::ShiftLeft);
+  REQUIRE(stringToKey("Shift_R") == Key::ShiftRight);
+  REQUIRE(stringToKey("Alt_L") == Key::AltLeft);
+  REQUIRE(stringToKey("Meta_L") == Key::SuperLeft);
+  REQUIRE(stringToKey("ISO_Left_Tab") == Key::Tab);
+  REQUIRE(stringToKey("ISO_Level3_Shift") == Key::AltRight);
+
+  // X11 punctuation / named symbols
+  REQUIRE(stringToKey("quotedbl") == Key::Quote);
+  REQUIRE(stringToKey("parenleft") == Key::LeftParen);
+  REQUIRE(stringToKey("parenright") == Key::RightParen);
+  REQUIRE(stringToKey("equal") == Key::Equal);
+  REQUIRE(stringToKey("question") == Key::QuestionMark);
+  REQUIRE(stringToKey("exclam") == Key::Exclamation);
+  REQUIRE(stringToKey("section") == Key::Section);
+  REQUIRE(stringToKey("degree") == Key::Degree);
+  REQUIRE(stringToKey("sterling") == Key::Sterling);
+  REQUIRE(stringToKey("plusminus") == Key::PlusMinus);
+
+  // Accented/locale keys
+  REQUIRE(stringToKey("eacute") == Key::E);
+  REQUIRE(stringToKey("egrave") == Key::E);
+  REQUIRE(stringToKey("agrave") == Key::A);
+  REQUIRE(stringToKey("ugrave") == Key::U);
+  REQUIRE(stringToKey("ccedilla") == Key::C);
+  REQUIRE(stringToKey("oe") == Key::O);
+  REQUIRE(stringToKey("mu") == Key::Mu);
+
+  // Linefeed / control synonyms
+  REQUIRE(stringToKey("linefeed") == Key::Enter);
+  REQUIRE(stringToKey("prior") == Key::PageUp);
+  REQUIRE(stringToKey("next") == Key::PageDown);
+
+  // Numeric keypad / KP_* variants (underscore and non-underscore forms)
+  REQUIRE(stringToKey("KP_Multiply") == Key::NumpadMultiply);
+  REQUIRE(stringToKey("kp_multiply") == Key::NumpadMultiply);
+  REQUIRE(stringToKey("KP_Divide") == Key::NumpadDivide);
+  REQUIRE(stringToKey("KP_Enter") == Key::NumpadEnter);
+  REQUIRE(stringToKey("KP_Equal") == Key::NumpadEqual);
+  REQUIRE(stringToKey("KP_7") == Key::Numpad7);
+  REQUIRE(stringToKey("KP_Up") == Key::Numpad8);
+  REQUIRE(stringToKey("KP_Decimal") == Key::NumpadDecimal);
+
+  // XF86 / multimedia / hardware keys
+  REQUIRE(stringToKey("XF86AudioMute") == Key::Mute);
+  REQUIRE(stringToKey("XF86AudioLowerVolume") == Key::VolumeDown);
+  REQUIRE(stringToKey("XF86AudioRaiseVolume") == Key::VolumeUp);
+  REQUIRE(stringToKey("XF86AudioPlay") == Key::MediaPlayPause);
+  REQUIRE(stringToKey("XF86AudioNext") == Key::MediaNext);
+  REQUIRE(stringToKey("XF86Eject") == Key::Eject);
+  REQUIRE(stringToKey("XF86MonBrightnessDown") == Key::BrightnessDown);
+  REQUIRE(stringToKey("XF86MonBrightnessUp") == Key::BrightnessUp);
+  REQUIRE(stringToKey("XF86Launch1") == Key::Launch1);
+  REQUIRE(stringToKey("XF86LaunchA") == Key::LaunchA);
+  REQUIRE(stringToKey("XF86KbdBrightnessDown") == Key::KbdBrightnessDown);
+  REQUIRE(stringToKey("XF86KbdBrightnessUp") == Key::KbdBrightnessUp);
+
+  // Ensure case-insensitivity / underscore handling is robust
+  REQUIRE(stringToKey("kp_multiply") == Key::NumpadMultiply);
+  REQUIRE(stringToKey("KP_Multiply") == stringToKey("kp_multiply"));
+}
 TEST_CASE("Recognizes ASCII control inputs", "[key_utils][ascii]") {
   TYPR_IO_LOG_INFO("test_key_utils: ascii controls start");
   // Control characters commonly observed in terminal / listener input.
