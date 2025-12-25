@@ -10,7 +10,7 @@ option(TYPR_IO_BUILD_SHARED "Build typr-io as a shared library" OFF)
 option(TYPR_IO_BUILD_EXAMPLES "Build the example executables (if present)" OFF)
 option(TYPR_IO_BUILD_TESTS "Build tests for typr-io (lightweight smoke tests)" OFF)
 # Convenience options for local development
-option(TYPR_IO_BUILD_TEST_CONSUMER "Build a small in-tree consumer demo executable for manual testing (if test_consumer/main.cpp exists)" ON)
+option(TYPR_IO_BUILD_TEST_CONSUMER "Build a small in-tree consumer demo executable for manual testing (if test_consumer/main.cpp exists)" OFF)
 option(TYPR_IO_EXPORT_COMPILE_COMMANDS "Enable generation of compile_commands.json for clang tooling" ON)
 
 if(TYPR_IO_BUILD_SHARED)
@@ -254,7 +254,7 @@ endif()
 if(TYPR_IO_EXPORT_COMPILE_COMMANDS)
     add_custom_target(export-compile-commands
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${CMAKE_BINARY_DIR}/compile_commands.json ${CMAKE_SOURCE_DIR}/compile_commands.json
+            ${PROJECT_BINARY_DIR}/compile_commands.json ${CMAKE_SOURCE_DIR}/compile_commands.json
         COMMENT "Copy compile_commands.json from build/ to repository root"
     )
 endif()
