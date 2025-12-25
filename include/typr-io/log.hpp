@@ -1,25 +1,26 @@
 #pragma once
 
-// typr-io - log.hpp
-// Lightweight, header-only logging utility used by typr-io backends.
-//
-// Usage:
-//   #include <typr-io/log.hpp>
-//   TYPR_IO_LOG_DEBUG("something happened: %d", value);
-//   TYPR_IO_LOG_INFO("ready");
-//
-// Configuration via environment:
-//   - TYPR_IO_LOG_LEVEL (preferred): one of "debug", "info", "warn", "error"
-//   - If TYPR_IO_LOG_LEVEL is not set, legacy env var TYPR_OSK_DEBUG_BACKEND is
-//     respected: unset -> debug enabled (default during testing), "0" -> debug
-//     off, otherwise debug enabled.
-//   - TYPR_IO_FORCE_COLORS: if set and non-empty, force ANSI colors on (useful
-//     for CI or when stderr is not a TTY).
-//   - TYPR_IO_NO_COLOR: if set and non-empty, disable ANSI colors (overrides
-//     automatic detection).
-//
-// The header is intentionally small and portable (works in C++ and
-// Objective-C++).
+/**
+ * @file log.hpp
+ * @brief Lightweight, header-only logging utility used by typr-io backends.
+ *
+ * Usage:
+ *   @code{.cpp}
+ *   #include <typr-io/log.hpp>
+ *   TYPR_IO_LOG_DEBUG("something happened: %d", value);
+ *   TYPR_IO_LOG_INFO("ready");
+ *   @endcode
+ *
+ * Runtime configuration is controlled by environment variables:
+ *  - TYPR_IO_LOG_LEVEL: one of "debug", "info", "warn", "error".
+ *    If unset, the legacy TYPR_OSK_DEBUG_BACKEND is consulted (unset ->
+ *    debug enabled for testing; "0" disables debug).
+ *  - TYPR_IO_FORCE_COLORS: non-empty -> force ANSI colors on.
+ *  - TYPR_IO_NO_COLOR: non-empty -> disable ANSI colors.
+ *
+ * The header is intentionally small and portable and works in plain C++ and
+ * Objective-C++ translation units.
+ */
 
 #include <algorithm>
 #include <atomic>
@@ -41,6 +42,12 @@ namespace typr {
 namespace io {
 namespace log {
 
+/**
+ * @enum Level
+ * @brief Logging severity levels used by the internal logging facility.
+ *
+ * Lower enum values are more verbose (Debug is the most verbose).
+ */
 enum class Level : int {
   Debug = 0,
   Info = 1,
@@ -63,10 +70,13 @@ inline const char *levelToString(Level l) {
   }
 }
 
-// Parse runtime configuration to determine default log level. This prefers
-// TYPR_IO_LOG_LEVEL if present; otherwise falls back to legacy
-// TYPR_OSK_DEBUG_BACKEND behaviour (defaulting to Debug when unset for
-// testing).
+/**
+ * @brief Parse runtime configuration to determine the default log level.
+ *
+ * Prefers the TYPR_IO_LOG_LEVEL environment variable; falls back to the
+ * legacy TYPR_OSK_DEBUG_BACKEND behavior when TYPR_IO_LOG_LEVEL is not set.
+ * @return Level The determined default log level.
+ */
 inline Level parseLevelFromEnv() {
   const char *lvlEnv = std::getenv("TYPR_IO_LOG_LEVEL");
   if (lvlEnv && lvlEnv[0] != '\0') {
@@ -97,7 +107,12 @@ inline Level parseLevelFromEnv() {
   return Level::Debug;
 }
 
-// Global log level (atomic to allow runtime changes).
+/**
+ * @brief Accessor for the global log level used by the library.
+ *
+ * The log level is stored in an atomic so it can be changed safely at runtime.
+ * @return std::atomic<Level>& Reference to the global atomic log level.
+ */
 inline std::atomic<Level> &globalLevel() {
   static std::atomic<Level> lvl(parseLevelFromEnv());
   return lvl;
@@ -106,20 +121,32 @@ inline std::atomic<Level> &globalLevel() {
 inline void setLevel(Level l) { globalLevel().store(l); }
 inline Level getLevel() { return globalLevel().load(); }
 
-// Whether a message at `level` should be emitted under the current level.
-// Lower enum value is more verbose (Debug = 0). Emit if message level is
-// >= current minimum level.
+/**
+ * @brief Determine whether a message at `level` should be emitted under the
+ * current global level.
+ * @param level Candidate message level to test.
+ * @return true if the message should be emitted.
+ */
 inline bool isEnabled(Level level) {
   return static_cast<int>(level) >= static_cast<int>(getLevel());
 }
 
-// Internal: get a mutex for serialising output to stderr.
+/**
+ * @internal
+ * @brief Internal mutex used to serialize access to stderr.
+ * @return std::mutex& Reference to the mutex used for output serialization.
+ */
 inline std::mutex &outputMutex() {
   static std::mutex m;
   return m;
 }
 
-// Internal: return ANSI color code for a level.
+/**
+ * @internal
+ * @brief Return an ANSI color escape sequence for the given log level.
+ * @param l Log level.
+ * @return const char* Null-terminated ANSI escape sequence (or reset code).
+ */
 inline const char *levelColor(Level l) {
   switch (l) {
   case Level::Debug:
@@ -135,9 +162,14 @@ inline const char *levelColor(Level l) {
   }
 }
 
-// Internal: whether to emit ANSI color codes. Can be forced by
-// TYPR_IO_FORCE_COLORS or disabled by TYPR_IO_NO_COLOR. Otherwise colors are
-// enabled when stderr is a TTY.
+/**
+ * @internal
+ * @brief Determine whether ANSI colors should be emitted.
+ *
+ * Colors can be forced via TYPR_IO_FORCE_COLORS or disabled with
+ * TYPR_IO_NO_COLOR. Otherwise colors are enabled when stderr is a TTY.
+ * @return true if colors are enabled, false otherwise.
+ */
 inline bool colorsEnabled() {
   const char *force = std::getenv("TYPR_IO_FORCE_COLORS");
   if (force && force[0] != '\0')
@@ -152,8 +184,15 @@ inline bool colorsEnabled() {
 #endif
 }
 
-// Internal: trim a file path so it starts at the last "typr-io" path
-// component (e.g. "typr-io/..."). If not found, fall back to basename.
+/**
+ * @internal
+ * @brief Trim a file path so it starts at the last "typr-io" component.
+ *
+ * If the substring "typr-io" is not present this function returns the
+ * basename (the portion after the last slash/backslash).
+ * @param path Null-terminated file path.
+ * @return const char* Pointer into `path` that points to the trimmed start.
+ */
 inline const char *trimPathToTyprIo(const char *path) {
   if (!path)
     return path;
@@ -185,8 +224,19 @@ inline const char *trimPathToTyprIo(const char *path) {
   return base;
 }
 
-// Internal: emit a formatted message using a va_list. Thread-safe and prints
-// an ISO timestamp (local time) with millisecond precision.
+/**
+ * @internal
+ * @brief Emit a formatted log message using a va_list (thread-safe).
+ *
+ * Produces a timestamp (local time, millisecond precision), level name,
+ * and source file/line prefix before the formatted message body.
+ *
+ * @param level Log level for the message.
+ * @param file Source file name (typically `__FILE__`).
+ * @param line Source line number (typically `__LINE__`).
+ * @param fmt printf-style format string.
+ * @param ap Preinitialized va_list of arguments for `fmt`.
+ */
 inline void vlog(Level level, const char *file, int line, const char *fmt,
                  va_list ap) {
   if (!isEnabled(level))
@@ -247,6 +297,17 @@ inline void vlog(Level level, const char *file, int line, const char *fmt,
   std::fflush(stderr);
 }
 
+/**
+ * @brief Log a message with varargs.
+ *
+ * Convenience wrapper around `vlog` that accepts printf-style variadic
+ * arguments. Automatically checks the log level before formatting.
+ *
+ * @param level Log level for the message.
+ * @param file Source file name (typically `__FILE__`).
+ * @param line Source line number (typically `__LINE__`).
+ * @param fmt printf-style format string.
+ */
 inline void log(Level level, const char *file, int line, const char *fmt, ...) {
   if (!isEnabled(level))
     return;
@@ -256,14 +317,24 @@ inline void log(Level level, const char *file, int line, const char *fmt, ...) {
   va_end(ap);
 }
 
-// Convenience helpers
+/**
+ * @brief Convenience helper that returns whether debug logging is enabled.
+ * @return true if Debug messages will be emitted.
+ */
 inline bool debugEnabled() { return isEnabled(Level::Debug); }
 
 } // namespace log
 } // namespace io
 } // namespace typr
 
-// Helper macros (include file/line automatically)
+/**
+ * @defgroup LoggingMacros Helper logging macros
+ * @brief Convenience macros that include file and line automatically.
+ *
+ * These macros wrap `::typr::io::log::log` and automatically supply `__FILE__`
+ * and `__LINE__`.
+ * @{
+ */
 #define TYPR_IO_LOG_DEBUG(fmt, ...)                                            \
   ::typr::io::log::log(::typr::io::log::Level::Debug, __FILE__, __LINE__, fmt, \
                        ##__VA_ARGS__)
@@ -276,3 +347,4 @@ inline bool debugEnabled() { return isEnabled(Level::Debug); }
 #define TYPR_IO_LOG_ERROR(fmt, ...)                                            \
   ::typr::io::log::log(::typr::io::log::Level::Error, __FILE__, __LINE__, fmt, \
                        ##__VA_ARGS__)
+/** @} */ /* end of LoggingMacros */

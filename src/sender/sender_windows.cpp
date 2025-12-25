@@ -1,3 +1,12 @@
+/**
+ * @file sender_windows.cpp
+ * @brief Windows implementation of the Sender (keyboard injection).
+ *
+ * Implements an input injection backend using Win32 APIs (SendInput / keybd
+ * events). The implementation attempts to be layout-aware and discovers
+ * virtual-key mappings from the current keyboard layout.
+ */
+
 #ifdef _WIN32
 
 #include <Windows.h>
@@ -11,7 +20,19 @@ namespace typr::io {
 
 namespace {
 
-// Check if key needs EXTENDEDKEY flag
+/**
+ * @internal
+ * @brief Return true if a Win32 virtual-key should be treated as an "extended"
+ * key when synthesizing input.
+ *
+ * Certain virtual-key codes require the EXTENDEDKEY flag during input
+ * synthesis (e.g., navigation keys, some keypad keys, right-side modifiers).
+ * Centralizing the decision here keeps the injection and mapping logic
+ * consistent across the Windows backend.
+ *
+ * @param vk Virtual-key code to test.
+ * @return true if the key is considered an extended key; false otherwise.
+ */
 bool isExtendedKey(WORD vk) {
   switch (vk) {
   case VK_INSERT:
@@ -40,6 +61,15 @@ bool isExtendedKey(WORD vk) {
 
 } // namespace
 
+/**
+ * @internal
+ * @brief PIMPL implementation for the Windows Sender backend.
+ *
+ * Contains platform-specific state used for input injection on Windows,
+ * including discovered mappings (Key -> VK), the active keyboard layout
+ * handle (HKL), and the tracked modifier state. These details are internal
+ * implementation concerns and are not part of the public API.
+ */
 struct Sender::Impl {
   Modifier currentMods{Modifier::None};
   uint32_t keyDelayUs{1000}; // 1ms default
@@ -53,6 +83,17 @@ struct Sender::Impl {
                      static_cast<unsigned>(ready));
   }
 
+  /**
+   * @internal
+   * @brief Build layout-aware mappings for printable characters and logical
+   * keys.
+   *
+   * Scans physical scan codes against the active keyboard layout to discover
+   * which virtual-key codes produce which Unicode characters and which logical
+   * `Key` values. Populates `keyMap` (Key -> VK) and `charToKeycode` (codepoint
+   * -> (VK, requiresShift)). Falls back to sensible defaults when detailed
+   * layout information is not available.
+   */
   void initKeyMap() {
     // Try to discover printable mappings from the active keyboard layout.
     // Iterate physical scan codes (like macOS) and map them via the layout to
@@ -204,11 +245,39 @@ struct Sender::Impl {
                       keyMap.size());
   }
 
+  /**
+   * @internal
+   * @brief Return the Win32 virtual-key code (VK) for a logical `Key`.
+   *
+   * Looks up the provided `Key` in the internal `keyMap` and returns the
+   * associated Win32 `WORD` virtual-key code. If no mapping exists, returns 0.
+   *
+   * This helper is internal to the Windows sender implementation and is used
+   * by the event synthesis routines when translating logical `Key` values
+   * to platform-specific virtual-key codes.
+   *
+   * @param key Logical `Key` to translate.
+   * @return WORD Virtual-key code, or 0 if no mapping is present.
+   */
   WORD winVkFor(Key key) const {
     auto it = keyMap.find(key);
     return (it != keyMap.end()) ? it->second : 0;
   }
 
+  /**
+   * @internal
+   * @brief Synthesize a keyboard event for the given logical `Key`.
+   *
+   * This routine converts the logical `Key` to a Win32 virtual-key code using
+   * `winVkFor` and synthesizes a key press or release using `SendInput`.
+   * It sets the appropriate scancode and, when necessary, the extended-key
+   * flag for keys that require it.
+   *
+   * @param key Logical `Key` to send.
+   * @param down True to send a key-down event; false to send a key-up event.
+   * @return true on success (SendInput reports events were queued), false on
+   *         failure or when the key has no known mapping.
+   */
   bool sendKey(Key key, bool down) {
     WORD vk = winVkFor(key);
     if (vk == 0) {
@@ -242,6 +311,19 @@ struct Sender::Impl {
     return ok;
   }
 
+  /**
+   * @internal
+   * @brief Type a sequence of Unicode codepoints using Win32 synthetic events.
+   *
+   * This helper converts each UTF-32 codepoint to UTF-16 (handling surrogate
+   * pairs when necessary) and synthesizes the corresponding keyboard input
+   * events via `SendInput`. It assembles `INPUT` structures for each codepoint
+   * including the key-down / key-up pairs required to generate Unicode
+   * characters through the system's input pipeline.
+   *
+   * @param text UTF-32 string containing codepoints to type.
+   * @return true on success; false if an error occurred while sending input.
+   */
   bool typeUnicode(const std::u32string &text) {
     TYPR_IO_LOG_DEBUG("Sender::typeUnicode called with %zu codepoints",
                       text.size());

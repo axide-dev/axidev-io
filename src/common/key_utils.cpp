@@ -1,3 +1,12 @@
+/**
+ * @file key_utils.cpp
+ * @brief Utility helpers for mapping between `Key` enums and their canonical
+ * textual names, and other small string helpers used by the key utilities.
+ *
+ * This file implements `keyToString` and `stringToKey` and several internal
+ * helpers used to normalize and escape input for logging and lookups.
+ */
+
 #include <typr-io/core.hpp>
 #include <typr-io/log.hpp>
 
@@ -13,6 +22,16 @@ namespace io {
 
 namespace {
 
+/**
+ * @brief Convert a string to lower-case using a locale-independent algorithm.
+ *
+ * The function performs an unsigned-char `std::tolower` conversion to avoid
+ * undefined behavior when `char` is signed. The input is moved for efficiency
+ * and a lower-cased copy is returned.
+ *
+ * @param inputString String to convert (moved for efficiency).
+ * @return std::string Lower-cased result.
+ */
 std::string toLower(std::string inputString) {
   std::ranges::transform(
       inputString, inputString.begin(), [](char character) -> char {
@@ -22,9 +41,19 @@ std::string toLower(std::string inputString) {
   return inputString;
 }
 
-// Escape input for debug logging so control characters (e.g., newline)
-// don't break log lines. Non-printable characters are escaped as common
-// sequences (\\n, \\t) or as \\xHH.
+/**
+ * @brief Escape input for debug logging so control characters do not break
+ *        log lines.
+ *
+ * Non-printable characters are converted to readable escape sequences:
+ * - '\n' -> "\\n"
+ * - '\r' -> "\\r"
+ * - '\t' -> "\\t"
+ * - non-printable bytes -> "\\xHH"
+ *
+ * @param input Input string to escape.
+ * @return std::string Escaped string suitable for inline debug logging.
+ */
 std::string escapeForLog(const std::string &input) {
   std::string out;
   out.reserve(input.size() * 2);
@@ -52,9 +81,16 @@ std::string escapeForLog(const std::string &input) {
   return out;
 }
 
-// Central list of canonical names for keys. These are used as the canonical
-// string returned by `keyToString` and are used to seed the reverse map in
-// `stringToKey`.
+/**
+ * @brief Return a static vector of canonical Key -> string mappings.
+ *
+ * The returned reference points to a function-local static vector that contains
+ * canonical mappings used by `keyToString` and which is used to seed the
+ * reverse lookup map in `stringToKey`.
+ *
+ * @return const std::vector<std::pair<Key, std::string>>& Reference to the
+ *         static mapping vector.
+ */
 const std::vector<std::pair<Key, std::string>> &keyStringPairs() {
   static const std::vector<std::pair<Key, std::string>> pairs = {
       {Key::Unknown, "Unknown"},
@@ -326,6 +362,13 @@ const std::vector<std::pair<Key, std::string>> &keyStringPairs() {
 
 } // namespace
 
+/**
+ * @brief Convert a `Key` to its canonical textual representation.
+ *
+ * @param key Logical key enum value to convert.
+ * @return std::string Canonical name for the key (e.g., "A", "Enter").
+ *         Returns "Unknown" if the key does not have a canonical name.
+ */
 TYPR_IO_API std::string keyToString(Key key) {
   for (const auto &pair : keyStringPairs()) {
     if (pair.first == key) {
@@ -335,6 +378,17 @@ TYPR_IO_API std::string keyToString(Key key) {
   return {"Unknown"};
 }
 
+/**
+ * @brief Parse a textual key name into a `Key` value.
+ *
+ * The function accepts many aliases and single-character inputs. The reverse
+ * mapping is seeded on first call and cached for subsequent invocations.
+ * Comparison for textual aliases is case-insensitive when appropriate.
+ *
+ * @param input Input textual name (e.g., "A", "esc", "@", "space").
+ * @return Key Parsed `Key` value, or `Key::Unknown` for empty or unrecognized
+ *         inputs.
+ */
 TYPR_IO_API Key stringToKey(const std::string &input) {
   static std::unordered_map<std::string, Key> rev;
   if (input.empty()) {

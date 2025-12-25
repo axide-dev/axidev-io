@@ -1,5 +1,16 @@
 #if defined(__linux__) && !defined(BACKEND_USE_X11)
 
+/**
+ * @file sender_uinput.cpp
+ * @brief Linux/uinput implementation for typr::io::Sender.
+ *
+ * Uses the Linux uinput subsystem to create a virtual keyboard device and
+ * emit EV_KEY events. The implementation is layout-aware and uses xkbcommon
+ * to detect the active keyboard layout and translate characters to keycodes
+ * where possible. This file is compiled only when the uinput backend is
+ * selected (non-X11 builds).
+ */
+
 #include <typr-io/sender.hpp>
 
 #include <algorithm>
@@ -21,6 +32,15 @@
 
 namespace typr::io {
 
+/**
+ * @internal
+ * @brief Pimpl for Sender (uinput backend).
+ *
+ * Manages the uinput device file descriptor, XKB context/keymap/state, and
+ * layout-aware mappings from logical `Key` values and Unicode characters to
+ * evdev keycodes. These members and methods are internal implementation
+ * details and are not part of the public API.
+ */
 struct Sender::Impl {
   int fd{-1};
   Modifier currentMods{Modifier::None};
@@ -131,6 +151,16 @@ struct Sender::Impl {
     return *this;
   }
 
+  /**
+   * @internal
+   * @brief Initialize xkbcommon context, keymap and state for layout
+   * translation.
+   *
+   * This routine attempts to create an `xkb_context`, detect the active
+   * keyboard layout (via `detectKeyboardLayout`), and then compile and install
+   * a corresponding `xkb_keymap` and `xkb_state`. On any failure the function
+   * logs an error and returns without a usable xkb state.
+   */
   void initXkb() {
     xkbCtx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     if (!xkbCtx) {
@@ -163,6 +193,18 @@ struct Sender::Impl {
     }
   }
 
+  /**
+   * @internal
+   * @brief Detect the keyboard layout to be used for xkb initialization.
+   *
+   * Detection strategy:
+   *  1) Use the `XKB_DEFAULT_LAYOUT` environment variable if present.
+   *  2) Parse `/etc/default/keyboard` for Debian/Ubuntu systems as a fallback.
+   *  3) Return an empty string when no layout information can be determined.
+   *
+   * @return Detected layout name (e.g., "us", "fr"), or an empty string if not
+   *         determinable.
+   */
   std::string detectKeyboardLayout() {
     // 1. Check XKB_DEFAULT_LAYOUT environment variable
     const char *envLayout = std::getenv("XKB_DEFAULT_LAYOUT");
@@ -340,6 +382,22 @@ struct Sender::Impl {
         keyMap.size(), charToKeycode.size());
   }
 
+  /**
+   * @internal
+   * @brief Map an xkb keysym to a logical `Key` enum value.
+   *
+   * This helper attempts efficient mappings for common contiguous ranges:
+   * - ASCII letters (a-z, A-Z) map to `Key::A`..`Key::Z`
+   * - Digits (0-9) map to `Key::Num0`..`Key::Num9`
+   * - Function keys (F1..F20) map to `Key::F1`..`Key::F20`
+   *
+   * When a keysym does not fall into those ranges, the function falls back to
+   * an explicit switch that covers common control keys, punctuation and other
+   * symbol keysyms. If no mapping exists the function returns `Key::Unknown`.
+   *
+   * @param sym xkb keysym to translate.
+   * @return Key Mapped logical key, or `Key::Unknown` if unmapped.
+   */
   Key keysymToKey(xkb_keysym_t sym) {
     if (sym >= XKB_KEY_a && sym <= XKB_KEY_z)
       return static_cast<Key>(static_cast<int>(Key::A) + (sym - XKB_KEY_a));
@@ -406,6 +464,21 @@ struct Sender::Impl {
     }
   }
 
+  /**
+   * @internal
+   * @brief Populate `keyMap` with conservative fallback keycodes when XKB
+   *        layout information is unavailable.
+   *
+   * This helper installs sensible, layout-independent mappings for common
+   * modifier, navigation, function and numpad keys (typically based on
+   * physical positions or canonical evdev defaults). It is used as a fallback
+   * when the XKB `keymap` / `state` are not present so the uinput backend can
+   * still inject basic keys reliably.
+   *
+   * The function is intentionally conservative and only sets values that are
+   * safe across a wide range of layouts; it prefers physical key semantics
+   * over layout-dependent shifted/unshifted characters.
+   */
   void initFallbackKeyMap() {
     auto set = [this](Key k, int v) {
       if (keyMap.find(k) == keyMap.end())
@@ -473,6 +546,18 @@ struct Sender::Impl {
     set(Key::NumpadDecimal, KEY_KPDOT);
   }
 
+  /**
+   * @internal
+   * @brief Emit a raw input_event to the uinput device.
+   *
+   * This helper constructs an `input_event` and writes it directly to the
+   * uinput device file descriptor. It is a low-level primitive used by
+   * higher-level helpers to synthesize key and synchronization events.
+   *
+   * @param type Event type (e.g., EV_KEY, EV_SYN).
+   * @param code Event code (e.g., key code).
+   * @param val Event value (press/release/value).
+   */
   void emit(int type, int code, int val) {
     struct input_event ev{};
     ev.type = static_cast<unsigned short>(type);
@@ -481,8 +566,27 @@ struct Sender::Impl {
     write(fd, &ev, sizeof(ev));
   }
 
+  /**
+   * @internal
+   * @brief Emit a synchronization report (SYN_REPORT) to flush pending events.
+   *
+   * This ensures that any previously emitted EV_KEY/EV_REL/EV_ABS events are
+   * delivered as an atomic group to the input subsystem.
+   */
   void sync() { emit(EV_SYN, SYN_REPORT, 0); }
 
+  /**
+   * @internal
+   * @brief Send a key event for the given evdev keycode.
+   *
+   * Wraps `emit(EV_KEY, ...)` and follows with a `sync()` to ensure timely
+   * delivery. The function is resilient to a missing device or invalid key
+   * code and returns false in those cases.
+   *
+   * @param evdevCode evdev keycode to send (e.g., KEY_A).
+   * @param down true for key press, false for key release.
+   * @return true on success, false on failure (e.g. no device or invalid code).
+   */
   bool sendKey(int evdevCode, bool down) {
     if (fd < 0 || evdevCode < 0)
       return false;
@@ -491,6 +595,18 @@ struct Sender::Impl {
     return true;
   }
 
+  /**
+   * @internal
+   * @brief Send a key event for a logical `Key` by looking up its evdev code.
+   *
+   * Performs a lookup in the layout-aware `keyMap` and forwards to `sendKey`.
+   * If no mapping is present, a debug log entry is emitted and the function
+   * returns false.
+   *
+   * @param key Logical `Key` enum to send.
+   * @param down true for key press, false for key release.
+   * @return true on success, false when mapping is missing or send fails.
+   */
   bool sendKeyByKey(Key key, bool down) {
     auto it = keyMap.find(key);
     if (it == keyMap.end()) {
@@ -501,6 +617,17 @@ struct Sender::Impl {
     return sendKey(it->second, down);
   }
 
+  /**
+   * @internal
+   * @brief Type a single Unicode codepoint using layout-derived keycodes.
+   *
+   * Looks up the provided codepoint in `charToKeycode`, optionally holds
+   * shift if the character requires it, emits press/release for the resolved
+   * evdev keycode, and synchronizes the event stream.
+   *
+   * @param cp Unicode codepoint (UTF-32).
+   * @return true on success, false when no mapping exists.
+   */
   bool typeCodepoint(char32_t cp) {
     auto it = charToKeycode.find(cp);
     if (it == charToKeycode.end()) {
@@ -530,6 +657,14 @@ struct Sender::Impl {
     return true;
   }
 
+  /**
+   * @internal
+   * @brief Sleep for the configured key delay interval.
+   *
+   * Sleeps for `keyDelayUs` microseconds when a non-zero delay is configured.
+   * This small helper centralizes the delay logic used by tap/combo and
+   * character injection helpers.
+   */
   void delay() {
     if (keyDelayUs > 0)
       std::this_thread::sleep_for(std::chrono::microseconds(keyDelayUs));

@@ -1,19 +1,20 @@
-// Windows implementation for OutputListener
-//
-// Listens to global keyboard events (using WH_KEYBOARD_LL) and invokes a
-// callback with the produced Unicode codepoint (if any), a mapped `Key` enum,
-// active modifiers, and whether the event was a key press or release.
-//
-// This is a best-effort, lightweight implementation focused on delivering the
-// produced character for printable keys (ASCII/BMP) and a physical-key mapping
-// (using the same layout-aware discovery logic used by InputBackend).
-//
-// Note: This file intentionally avoids noisy logging and complex international
-// edge cases (dead keys composition handling, complex IME behaviour, etc.).
-//
-// Permission requirements: WH_KEYBOARD_LL generally works without extra
-// privileges on Windows. The callback is invoked from the hook thread; don't
-// perform heavy work inside the callback.
+/**
+ * @file listener_windows.cpp
+ * @brief Windows (WH_KEYBOARD_LL) implementation of the Listener.
+ *
+ * Uses a low-level keyboard hook (WH_KEYBOARD_LL) to observe global keyboard
+ * activity, translate virtual keys and produced characters into logical
+ * `Key` values and Unicode codepoints where possible, and forward events to
+ * the public `Listener` callback. Callback invocations occur on the hook
+ * thread and therefore must be thread-safe and avoid long/blocking work.
+ *
+ * Notes:
+ *  - This implementation focuses on common printable characters and physical
+ *    key mappings and intentionally avoids complex IME/dead-key composition
+ *    behavior to remain lightweight and predictable.
+ *  - WH_KEYBOARD_LL typically does not require elevated privileges, but
+ *    behavior can vary across different Windows versions and configurations.
+ */
 
 #ifdef _WIN32
 
@@ -34,8 +35,19 @@ namespace typr::io {
 
 namespace {
 
-// Helper to test if a virtual-key should be treated as extended in some
-// contexts (kept consistent with InputBackend's behaviour).
+/**
+ * @internal
+ * @brief Test whether a virtual-key code should be treated as an \"extended\"
+ * key.
+ *
+ * Certain virtual-key codes are treated as extended keys on Windows (for
+ * example, some navigation and keypad keys). This helper centralizes that
+ * decision so both the Listener and other platform code can remain consistent.
+ *
+ * @param vk Virtual-key code to test.
+ * @return true if the key is considered an extended key and may require
+ *         special handling; false otherwise.
+ */
 bool isExtendedKeyForVK(WORD vk) {
   switch (vk) {
   case VK_INSERT:
@@ -62,19 +74,49 @@ bool isExtendedKeyForVK(WORD vk) {
   }
 }
 
-// Debugging helper for OutputListener. Controlled by env var
-// TYPR_OSK_DEBUG_BACKEND (set to '0' to disable). Defaults to enabled for
-// testing as requested.
+/**
+ * @internal
+ * @brief Check whether debug output is enabled for the listener backend.
+ *
+ * The behaviour follows the logging facility: it is influenced by the
+ * environment and the global log level (legacy `TYPR_OSK_DEBUG_BACKEND` or the
+ * newer `TYPR_IO_LOG_LEVEL` mechanism).
+ *
+ * @return true if debug-level logging is enabled for the process.
+ */
 static bool output_debug_enabled() { return ::typr::io::log::debugEnabled(); }
 
 } // namespace
 
-// PImpl for OutputListener
+/**
+ * @internal
+ * @brief Pimpl for `typr::io::Listener` (Windows / hook-based backend).
+ *
+ * This structure manages the platform-specific pieces required for the
+ * Windows listener: hook installation, the hook worker thread, VK -> Key
+ * discovery and state used to translate low-level events into logical keys
+ * and Unicode codepoints that are forwarded to the caller's callback.
+ *
+ * Instances are owned by the public `Listener` facade and are not intended
+ * to be manipulated directly by consumers.
+ */
 struct Listener::Impl {
   Impl() { initKeyMap(); }
   ~Impl() { stop(); }
 
-  // Start/stop
+  /**
+   * @internal
+   * @brief Start the Windows listener.
+   *
+   * Installs the low-level keyboard hook on a dedicated thread and stores the
+   * provided callback. This function waits briefly for the hook to be
+   * installed and returns whether the implementation reported readiness.
+   *
+   * @param cb Callback invoked for each observed key event. The callback may
+   *           be called from the hook thread and therefore must be thread-safe.
+   * @return true if the listener started successfully and the hook became
+   * ready.
+   */
   bool start(Callback cb) {
     if (running.load())
       return false;
@@ -103,6 +145,13 @@ struct Listener::Impl {
     return ok;
   }
 
+  /**
+   * @internal
+   * @brief Stop the listener and join the hook thread.
+   *
+   * Posts a WM_QUIT message to the hook thread to ensure it wakes and exits,
+   * then joins the worker thread. Safe to call from any thread.
+   */
   void stop() {
     if (!running.load())
       return;
@@ -120,10 +169,23 @@ struct Listener::Impl {
     TYPR_IO_LOG_INFO("Listener (Windows): stopped");
   }
 
+  /**
+   * @internal
+   * @brief Query whether the listener's worker thread is currently active.
+   * @return true if the implementation is running.
+   */
   bool isRunning() const { return running.load(); }
 
-  // Initialize a mapping from VK -> Key (reverse of InputBackend's layout map).
-  // This mirrors the layout-aware discovery used by InputBackend.
+  /**
+   * @internal
+   * @brief Discover and initialize the mapping from virtual-key (VK) codes
+   * to logical `Key` values.
+   *
+   * This procedure queries the active keyboard layout to map printable
+   * characters to logical keys, and inserts sensible fallbacks for common
+   * control, navigation and modifier keys so the listener can provide a
+   * consistent mapping across Windows systems.
+   */
   void initKeyMap() {
     vkToKey.clear();
 
@@ -290,7 +352,20 @@ private:
   // active instance via an atomic pointer. (Simple and practical for the app.)
   static std::atomic<Impl *> s_instance;
 
-  // Entry point for hook events
+  /**
+   * @internal
+   * @brief Low-level keyboard hook procedure (WH_KEYBOARD_LL).
+   *
+   * Entry point called by Windows for low-level keyboard events.
+   * Translates the parameters into a KBDLLHOOKSTRUCT and forwards the
+   * event to the single active Listener instance if present. Returns the
+   * result of CallNextHookEx when not handling the event.
+   *
+   * @param nCode Hook code.
+   * @param wParam Message (WM_KEYDOWN/WM_KEYUP/WM_SYSKEYDOWN/WM_SYSKEYUP).
+   * @param lParam Pointer to KBDLLHOOKSTRUCT describing the event.
+   * @return LRESULT Hook procedure result.
+   */
   static LRESULT CALLBACK lowLevelKeyboardProc(int nCode, WPARAM wParam,
                                                LPARAM lParam) {
     if (nCode < 0)
@@ -471,7 +546,15 @@ private:
         static_cast<unsigned>(mods));
   }
 
-  // Determine modifiers using GetKeyState
+  /**
+   * @internal
+   * @brief Derive the current modifier bitmask via Win32 `GetKeyState`.
+   *
+   * Tests Shift/Ctrl/Alt/Super and CapsLock state and returns a
+   * `typr::io::Modifier` bitmask representing the active modifiers.
+   *
+   * @return Modifier Active modifier bitmask.
+   */
   Modifier deriveModifiers() const {
     Modifier mods = Modifier::None;
     if (GetKeyState(VK_SHIFT) & 0x8000)
@@ -487,7 +570,18 @@ private:
     return mods;
   }
 
-  // Safely copy the callback and invoke it outside the lock.
+  /**
+   * @internal
+   * @brief Safely invoke the user-provided callback.
+   *
+   * Copies the stored callback under `cbMutex` and then invokes it outside
+   * the lock to avoid holding internal mutexes while calling user code.
+   *
+   * @param cp Unicode codepoint produced by the event (0 if none).
+   * @param k Logical Key for the event.
+   * @param mods Modifier bitmask at time of event.
+   * @param pressed True for key press, false for release.
+   */
   void invokeCallback(char32_t cp, Key k, Modifier mods, bool pressed) {
     Callback cbCopy;
     {
@@ -499,7 +593,16 @@ private:
     }
   }
 
-  // Thread main: install hook and run message loop until WM_QUIT posted.
+  /**
+   * @internal
+   * @brief Worker thread main that installs the low-level keyboard hook and
+   * processes messages until WM_QUIT is received.
+   *
+   * Installs the WH_KEYBOARD_LL hook, sets the ready flag on successful
+   * installation, and runs a standard Windows message loop dispatching
+   * messages to the hook. On shutdown it uninstalls the hook and clears
+   * shared instance state.
+   */
   void threadMain() {
     // Save thread id so stop() can post WM_QUIT
     threadId.store(GetCurrentThreadId());

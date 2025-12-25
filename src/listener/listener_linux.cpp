@@ -1,3 +1,13 @@
+/**
+ * @file listener_linux.cpp
+ * @brief Linux/libinput implementation for typr::io::Listener.
+ *
+ * Provides a libinput-based global keyboard event listener that translates
+ * low-level input events into logical keys and Unicode codepoints using
+ * xkbcommon. The implementation is responsible for device discovery,
+ * event translation, and invoking the public Listener callback on observed
+ * events. This file is only compiled on Linux targets.
+ */
 #if defined(__linux__)
 
 #include <typr-io/listener.hpp>
@@ -27,14 +37,45 @@ namespace typr::io {
 
 namespace {
 
-// libinput callbacks for opening/closing device nodes. This matches the
-// examples from libinput's documentation.
+/**
+ * @internal
+ * @brief libinput callbacks for opening/closing device nodes.
+ *
+ * These callbacks are invoked by libinput when it needs to open or close a
+ * device node. They mirror the interface expected by libinput and translate
+ * the returned file descriptor into the negative errno value expected by the
+ * library on failure.
+ *
+ * Note: the signatures match the libinput API and must remain compatible.
+ *
+ * @param path Device path to open (for `open_restricted`).
+ * @param flags Flags passed to open(2).
+ * @return On success `open_restricted` returns a file descriptor; on failure
+ *         it returns a negative errno value as required by libinput.
+ */
 static int open_restricted(const char *path, int flags, void *) {
   int fd = ::open(path, flags);
   return fd < 0 ? -errno : fd;
 }
+
+/**
+ * @internal
+ * @brief Close a file descriptor previously opened by `open_restricted`.
+ *
+ * This wraps the platform close operation so that libinput can abstract
+ * device open/close across backends.
+ *
+ * @param fd File descriptor to close.
+ */
 static void close_restricted(int fd, void *) { ::close(fd); }
 
+/**
+ * @internal
+ * @brief Interface structure provided to libinput to perform device open/close.
+ *
+ * This structure maps libinput's required callbacks to the local
+ * implementations above (`open_restricted` / `close_restricted`).
+ */
 static const struct libinput_interface kInterface = {
     .open_restricted = open_restricted,
     .close_restricted = close_restricted,
@@ -42,10 +83,33 @@ static const struct libinput_interface kInterface = {
 
 } // namespace
 
+/**
+ * @internal
+ * @brief PIMPL implementation for `typr::io::Listener`.
+ *
+ * This structure encapsulates the platform-specific state required to
+ * implement the Listener, including the worker thread that polls libinput,
+ * internal synchronization primitives and the callback forwarding bridge.
+ *
+ * These members and methods are internal implementation details and are not
+ * part of the public API; they may change without notice.
+ */
 struct Listener::Impl {
   Impl() = default;
   ~Impl() { stop(); }
 
+  /**
+   * @internal
+   * @brief Start the implementation worker thread and store the callback.
+   *
+   * The provided callback is stored under `cbMutex` to avoid races with the
+   * worker thread. This method starts a background thread which performs
+   * device discovery and event processing; it waits briefly for the worker to
+   * report readiness and returns whether initialization succeeded.
+   *
+   * @param cb Callback that will be invoked for each observed event.
+   * @return true on success and when the worker becomes ready.
+   */
   bool start(Callback cb) {
     std::lock_guard<std::mutex> lk(cbMutex);
     if (running.load())
@@ -70,6 +134,14 @@ struct Listener::Impl {
     return ok;
   }
 
+  /**
+   * @internal
+   * @brief Stop the worker thread and clear the stored callback.
+   *
+   * Safe to call from any thread. If a worker is running it will be asked to
+   * stop and joined; the callback pointer is cleared under `cbMutex` to prevent
+   * further invocations.
+   */
   void stop() {
     if (!running.load())
       return;
@@ -87,9 +159,25 @@ struct Listener::Impl {
     TYPR_IO_LOG_INFO("Listener (Linux/libinput): stopped");
   }
 
+  /**
+   * @internal
+   * @brief Query whether the implementation's worker thread is active.
+   * @return true when the worker thread is running.
+   */
   bool isRunning() const { return running.load(); }
 
 private:
+  /**
+   * @internal
+   * @brief Worker thread main loop.
+   *
+   * Initializes udev/libinput/xkb state, performs device enumeration, and
+   * enters the event loop. Events are translated into logical `Key` values and
+   * Unicode codepoints which are forwarded to the user-provided callback.
+   *
+   * This method runs on a dedicated background thread and must not be invoked
+   * directly by user code.
+   */
   void threadMain() {
     struct udev *udev = udev_new();
     if (!udev) {

@@ -1,13 +1,12 @@
 #pragma once
-
-// typr-io - core.hpp
-// Core types and utilities used by the typr-io Sender and Listener
-// Public API now lives under namespace `typr::io`.
-//
-// This header is intentionally minimal and stable: it exposes logical key
-// identifiers, modifiers, backend capability flags, and small helpers used
-// by both the sender (input injection) and listener (global monitoring)
-// subsystems.
+/**
+ * @file core.hpp
+ * @brief Core public types and utilities for typr::io.
+ *
+ * This header defines logical key identifiers, modifier flags, backend
+ * capability flags and small helper utilities used by both the `Sender`
+ * (input injection) and `Listener` (global monitoring) subsystems.
+ */
 
 #include <cstdint>
 #include <string>
@@ -46,9 +45,13 @@
 namespace typr {
 namespace io {
 
-// Logical key enum: stable numeric values so they can be serialized in
-// configuration files. This enum is layout-agnostic (it represents logical
-// keys, not platform scan codes).
+/**
+ * @enum Key
+ * @brief Logical key identifiers (layout-agnostic).
+ *
+ * Stable numeric values are chosen to allow serialization and round-tripping.
+ * These values represent logical keys, not platform-specific scan codes.
+ */
 enum class Key : uint16_t {
   Unknown = 0,
   // Letters
@@ -337,7 +340,12 @@ enum class Key : uint16_t {
   RFKill = 267,
 };
 
-// Modifier bitmask (use enum class for type safety but provide bit ops).
+/**
+ * @enum Modifier
+ * @brief Modifier bitmask flags (type-safe enum class).
+ *
+ * Use bitwise operators (provided below) to compose and test modifier masks.
+ */
 enum class Modifier : uint8_t {
   None = 0,
   Shift = 0x01,
@@ -348,6 +356,12 @@ enum class Modifier : uint8_t {
   NumLock = 0x20,
 };
 
+/**
+ * @brief Bitwise OR operator for Modifier flags.
+ * @param a First operand.
+ * @param b Second operand.
+ * @return Modifier Combined flags containing bits from both operands.
+ */
 inline Modifier operator|(Modifier a, Modifier b) {
   return static_cast<Modifier>(static_cast<uint8_t>(a) |
                                static_cast<uint8_t>(b));
@@ -364,11 +378,28 @@ inline Modifier &operator&=(Modifier &a, Modifier b) {
   a = a & b;
   return a;
 }
+/**
+ * @brief Check whether @p flag is present in @p state.
+ *
+ * A convenience helper that tests modifier bit flags in a type-safe way.
+ *
+ * @param state Modifier bitmask to inspect.
+ * @param flag Modifier flag to test for.
+ * @return true if @p flag is set in @p state.
+ */
 inline bool hasModifier(Modifier state, Modifier flag) {
   return (static_cast<uint8_t>(state) & static_cast<uint8_t>(flag)) != 0;
 }
 
 // Backend capabilities description - describes what a backend / sender can do.
+/**
+ * @struct Capabilities
+ * @brief Describes features supported or required by a Sender backend.
+ *
+ * Each boolean member indicates whether a backend supports a particular
+ * capability or requires a platform permission/feature. Inspect these via
+ * `Sender::capabilities()` before calling backend-specific helpers.
+ */
 struct Capabilities {
   bool canInjectKeys{false};  // can send physical key events
   bool canInjectText{false};  // can inject arbitrary Unicode text
@@ -380,6 +411,12 @@ struct Capabilities {
 };
 
 // Backend type / platform descriptor (which implementation is active)
+/**
+ * @enum BackendType
+ * @brief Backend/platform descriptor for the active sender implementation.
+ *
+ * Indicates which platform-specific backend is active for input injection.
+ */
 enum class BackendType : uint8_t {
   Unknown,
   Windows,
@@ -390,10 +427,24 @@ enum class BackendType : uint8_t {
 
 // Utility conversion helpers - implemented in a single translation unit.
 // These are exported so consumer code (or tests) can call them directly.
+/**
+ * @brief Convert a Key to its canonical textual name.
+ * @param key Logical key to convert.
+ * @return std::string Canonical name for the key (e.g., "A", "Enter").
+ */
 TYPR_IO_API std::string keyToString(Key key);
+/**
+ * @brief Parse a textual key name into a Key value.
+ * @param str Input string (case-insensitive; accepts common aliases).
+ * @return Key Parsed key value or Key::Unknown for unrecognized strings.
+ */
 TYPR_IO_API Key stringToKey(const std::string &str);
 
-/// Convenience access to the library version string (mirrors TYPR_IO_VERSION).
+/**
+ * @brief Convenience access to the library version string (mirrors
+ * TYPR_IO_VERSION).
+ * @return const char* Null-terminated version string (statically allocated).
+ */
 inline const char *libraryVersion() noexcept { return TYPR_IO_VERSION; }
 
 } // namespace io

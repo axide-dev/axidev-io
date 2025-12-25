@@ -1,21 +1,23 @@
-/*
- * typr-io - C API implementation (c_api.cpp)
+/**
+ * @file c_api.cpp
+ * @brief C API implementation for typr-io.
  *
- * Implements the C-compatible wrapper declared in include/typr-io/c_api.h.
+ * Implements the C-compatible wrapper declared in `include/typr-io/c_api.h`.
  *
- * Notes:
- *  - The implementation is intentionally defensive: it catches C++ exceptions
- *    and surfaces a process-wide last-error string retrievable via
- *    `typr_io_get_last_error`.
- *  - Listener callbacks may be invoked on internal threads; the wrapper
- *    forwards those calls to the user-provided C callback pointer.
+ * The implementation is intentionally defensive: C++ exceptions are caught
+ * and converted into a process-wide last-error string retrievable via
+ * `typr_io_get_last_error`.
+ *
+ * Listener callbacks may be invoked from background threads; the wrapper
+ * safely bridges those events into C callbacks while protecting callback
+ * state with a mutex.
  */
 
 #include <typr-io/c_api.h>
 
 #include <cstdlib>
 #include <cstring>
-#include <memory>
+
 #include <mutex>
 #include <new>
 #include <string>
@@ -26,11 +28,24 @@
 
 namespace {
 
-/* Internal wrappers used to hold C++ objects behind opaque pointers. */
+/**
+ * @brief Internal wrapper that owns a typr::io::Sender instance.
+ *
+ * SenderWrapper instances are heap-allocated and returned to C callers as
+ * opaque handles (`typr_io_sender_t`). They encapsulate the C++ `Sender`
+ * object used by the C API implementation.
+ */
 struct SenderWrapper {
   typr::io::Sender sender;
 };
 
+/**
+ * @brief Internal wrapper that contains a Listener and its C callback state.
+ *
+ * The `cb` and `user_data` fields are protected by `cb_mutex` so that both
+ * the C API entry points and the listener's internal event threads can safely
+ * access and update them.
+ */
 struct ListenerWrapper {
   typr::io::Listener listener;
   typr_io_listener_cb cb{nullptr};
@@ -38,22 +53,43 @@ struct ListenerWrapper {
   std::mutex cb_mutex; // protects cb & user_data
 };
 
-/* Simple global last-error storage (process-wide). Protected by mutex. */
+/**
+ * @brief Process-global last-error storage used by the C API implementation.
+ *
+ * The last error is protected by a mutex so it can be safely set and read
+ * from multiple threads. Callers can retrieve a heap-allocated copy via
+ * `typr_io_get_last_error`.
+ */
 static std::mutex g_last_error_mutex;
 static std::string g_last_error;
 
+/**
+ * @brief Set the process-wide last error message (thread-safe).
+ * @param s The error message to record (copied).
+ */
 static void set_last_error(const std::string &s) {
   std::lock_guard<std::mutex> lk(g_last_error_mutex);
   g_last_error = s;
 }
 
+/**
+ * @brief Clear the process-wide last error message (thread-safe).
+ */
 static void clear_last_error() {
   std::lock_guard<std::mutex> lk(g_last_error_mutex);
   g_last_error.clear();
 }
 
-/* Helper: allocate a C string on the heap (caller frees with
- * typr_io_free_string). Returns nullptr on allocation failure. */
+/**
+ * @brief Duplicate a std::string into a C-allocated null-terminated buffer.
+ *
+ * The returned buffer must be freed by the caller (for example via
+ * `typr_io_free_string` or `std::free`). Returns nullptr on allocation
+ * failure.
+ *
+ * @param s Source string to duplicate.
+ * @return char* Heap-allocated null-terminated copy or nullptr on OOM.
+ */
 static char *duplicate_c_string(const std::string &s) {
   size_t n = s.size();
   char *p = static_cast<char *>(std::malloc(n + 1));
@@ -487,6 +523,27 @@ TYPR_IO_API bool typr_io_listener_start(typr_io_listener_t listener,
       w->user_data = user_data;
     }
 
+    /**
+     * @internal
+     * @brief Bridge that forwards `typr::io::Listener` events to the C
+     * callback.
+     *
+     * Responsibilities:
+     *  - Acquire `w->cb_mutex` to safely copy the stored C callback pointer
+     *    and the associated `user_data` pointer so invocation can occur
+     *    without holding the lock.
+     *  - Convert/normalize types for the C ABI: `char32_t` -> `uint32_t`,
+     *    `typr::io::Key` -> `typr_io_key_t`, `typr::io::Modifier` ->
+     *    `typr_io_modifier_t`.
+     *  - Invoke the user-supplied C callback if present. Any exceptions thrown
+     *    by the C callback are caught and swallowed to prevent exceptions from
+     *    escaping into the C++ internals (unwinding across the C ABI is
+     * undefined).
+     *
+     * Notes:
+     *  - This lambda is invoked on the listener's internal thread. The C
+     *    callback must be thread-safe and avoid long/blocking operations.
+     */
     auto bridge = [w](char32_t codepoint, typr::io::Key key,
                       typr::io::Modifier mods, bool pressed) {
       // Forward event to C callback; protect access to cb & user_data.
