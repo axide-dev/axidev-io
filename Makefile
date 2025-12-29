@@ -1,12 +1,14 @@
 # Makefile - convenience tasks for local development
 #
 # Usage examples:
-#   make configure                  # configure in Debug mode (exports compile_commands.json)
+#   make configure                           # configure in Debug mode (exports compile_commands.json)
 #   make configure CMAKE_BUILD_TYPE=Release
-#   make build                      # build (after configure)
-#   make test                       # build and run tests
-#   make run-consumer RUN_ARGS="--help"
-#   make export-compile-commands    # copy compile_commands.json to repo root
+#   make build                               # build (after configure)
+#   make test                                # build and run tests
+#   make integration-test                    # run integration tests (interactive)
+#   make run-unit-tests                      # run unit tests binary directly
+#   make run-consumer RUN_ARGS="--help"      # run consumer with arguments
+#   make export-compile-commands             # copy compile_commands.json to repo root
 #   make clean
 #
 # You can pass additional CMake -D flags via CMAKE_ARGS:
@@ -29,8 +31,9 @@ EXE_EXT :=
 endif
 
 RUN_CONSUMER := $(BUILD_DIR)/typr_io_consumer$(EXE_EXT)
+RUN_UNIT_TESTS := $(BUILD_DIR)/tests/typr-io-unit-tests$(EXE_EXT)
 
-.PHONY: all configure configure-release build test run-consumer export-compile-commands clean help
+.PHONY: all configure configure-release build test integration-test run-unit-tests run-consumer export-compile-commands clean help
 
 all: build
 
@@ -48,6 +51,22 @@ build:
 test: build
 	@echo "Running tests..."
 	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure
+
+integration-test:
+	@echo "Running integration tests (interactive)..."
+	$(CMAKE) -S . -B $(BUILD_DIR) -DTYPR_IO_BUILD_TESTS=ON -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+	$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS)
+	TYPR_IO_RUN_INTEGRATION_TESTS=1 TYPR_IO_INTERACTIVE=1 $(CTEST) --test-dir $(BUILD_DIR) -R typr-io-integration-tests -C Debug --output-on-failure -V
+
+run-unit-tests: build
+	@echo "Running unit tests binary..."
+	@if [ -x "$(RUN_UNIT_TESTS)" ]; then \
+		"$(RUN_UNIT_TESTS)"; \
+	else \
+		echo "Unit tests binary not found: $(RUN_UNIT_TESTS)"; \
+		echo "Did you run 'make build'?"; \
+		exit 1; \
+	fi
 
 # Run the in-tree consumer (make sure you configured with TYPR_IO_BUILD_TEST_CONSUMER=ON)
 # Example: make run-consumer RUN_ARGS="--tap A"
@@ -77,6 +96,8 @@ help:
 	@echo "  configure-release         Configure with Release build type."
 	@echo "  build                     Build the project."
 	@echo "  test                      Build and run tests (ctest)."
+	@echo "  integration-test          Configure, build, and run integration tests (interactive)."
+	@echo "  run-unit-tests            Run unit tests binary directly (must build first)."
 	@echo "  run-consumer              Run the in-tree consumer (use RUN_ARGS to pass args)."
 	@echo "  export-compile-commands   Copy build/compile_commands.json to repository root."
 	@echo "  clean                     Remove build dir and compile_commands.json."
