@@ -51,6 +51,11 @@ target_link_libraries(axidev-io-unit-tests
 # Ensure modern C++ standard (project uses C++20)
 target_compile_features(axidev-io-unit-tests PRIVATE cxx_std_20)
 
+# Fix MinGW libwinpthread bug on Windows (GCC 15.2.0 incompatibility)
+if(WIN32)
+    target_link_options(axidev-io-unit-tests PRIVATE -static-libwinpthread -static-libgcc -static-libstdc++)
+endif()
+
 # Register with CTest
 enable_testing()
 include(GoogleTest)
@@ -73,6 +78,11 @@ if(AXIDEV_IO_BUILD_INTEGRATION_TESTS)
 
     # Ensure consistent language standard
     target_compile_features(axidev-io-integration-tests PRIVATE cxx_std_20)
+
+    # Fix MinGW libwinpthread bug on Windows (GCC 15.2.0 incompatibility)
+    if(WIN32)
+        target_link_options(axidev-io-integration-tests PRIVATE -static-libwinpthread)
+    endif()
 
     gtest_discover_tests(axidev-io-integration-tests)
     # Mark the test with a label so runners can select it explicitly if desired
