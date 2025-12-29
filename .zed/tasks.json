@@ -1,44 +1,36 @@
 [
   {
     "label": "CMake: configure (Debug)",
-    "command": "cmake",
+    "command": "make",
     "args": [
-      "-S",
-      ".",
-      "-B",
-      "build",
-      "-DCMAKE_BUILD_TYPE=Debug",
-      "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+      "configure",
+      "CMAKE_BUILD_TYPE=Debug",
     ],
   },
   {
     "label": "CMake: configure (Release)",
-    "command": "cmake",
+    "command": "make",
     "args": [
-      "-S",
-      ".",
-      "-B",
-      "build",
-      "-DCMAKE_BUILD_TYPE=Release",
-      "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+      "configure-release",
     ],
   },
   {
     "label": "CMake: build",
-    "command": "cmake",
-    "args": ["--build", "build", "--parallel"],
+    "command": "make",
+    "args": [
+      "build",
+    ],
   },
   {
     "label": "CTest: run tests",
-    "command": "ctest",
-    "args": ["--test-dir", "build", "--output-on-failure"],
+    "command": "make",
+    "args": ["test"],
   },
   {
     "label": "Run integration test (interactive)",
-    "command": "sh",
+    "command": "make",
     "args": [
-      "-lc",
-      "cmake -S . -B build -DTYPR_IO_BUILD_TESTS=ON -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel && ctest --test-dir build -R typr-io-integration-tests -C Debug --output-on-failure -V",
+      "integration-test",
     ],
     "env": {
       "TYPR_IO_RUN_INTEGRATION_TESTS": "1",
@@ -47,27 +39,31 @@
   },
   {
     "label": "Run consumer (help)",
-    "command": "./build/typr_io_consumer",
-    "args": ["--help"],
+    "command": "make",
+    "args": [
+      "run-consumer",
+      "RUN_ARGS=--help",
+    ],
   },
   {
     "label": "Run unit tests (binary)",
-    "command": "./build/tests/typr-io-unit-tests",
-    "args": [],
+    "command": "make",
+    "args": [
+      "run-unit-tests",
+    ],
   },
   {
     "label": "Export compile_commands.json",
-    "command": "cmake",
+    "command": "make",
     "args": [
-      "-E",
-      "copy_if_different",
-      "build/compile_commands.json",
-      "compile_commands.json",
+      "export-compile-commands",
     ],
   },
   {
     "label": "Clean",
-    "command": "sh",
-    "args": ["-lc", "rm -rf build compile_commands.json"],
+    "command": "make",
+    "args": [
+      "clean",
+    ],
   },
 ]
