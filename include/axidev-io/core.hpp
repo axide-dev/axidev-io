@@ -10,15 +10,6 @@
  * include `<axidev-io/keyboard/common.hpp>` instead.
  */
 
-#include <cstdint>
-
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <chrono>
-#include <thread>
-#endif
-
 #ifndef AXIDEV_IO_VERSION
 // Default version; CMake can override these by defining AXIDEV_IO_VERSION_* via
 // -D flags if desired.
@@ -59,24 +50,6 @@ namespace io {
  * @return const char* Null-terminated version string (statically allocated).
  */
 inline const char *libraryVersion() noexcept { return AXIDEV_IO_VERSION; }
-
-/**
- * @brief Portable sleep function that avoids MinGW nanosleep64 dependency.
- *
- * On Windows (including MinGW builds), uses the native Sleep() API.
- * On other platforms, uses std::this_thread::sleep_for().
- *
- * @param ms Duration to sleep in milliseconds.
- */
-inline void sleepMs(uint32_t ms) noexcept {
-#ifdef _WIN32
-  // Use Windows native Sleep to avoid MinGW nanosleep64 runtime dependency
-  Sleep(static_cast<unsigned long>(ms));
-#else
-  // On non-Windows platforms, use standard C++ sleep
-  std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-#endif
-}
 
 } // namespace io
 } // namespace axidev

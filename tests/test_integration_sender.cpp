@@ -7,13 +7,15 @@
  */
 
 #include <algorithm>
-#include <catch2/catch_all.hpp>
-#include <future>
-#include <iostream>
-#include <string>
 #include <axidev-io/core.hpp>
 #include <axidev-io/keyboard/sender.hpp>
 #include <axidev-io/log.hpp>
+#include <catch2/catch_all.hpp>
+#include <chrono>
+#include <future>
+#include <iostream>
+#include <string>
+#include <thread>
 
 using namespace axidev::io::keyboard;
 using namespace std::chrono_literals;
@@ -42,7 +44,7 @@ TEST_CASE("Sender Integration Suite", "[integration]") {
               << std::endl;
 
     auto task = std::async(std::launch::async, [&sender]() {
-      axidev::io::sleepMs(500);
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
       AXIDEV_IO_LOG_DEBUG("Integration test: sending taps Z W Num1 Enter");
       // Testing Z and W helps identify AZERTY vs QWERTY confusion.
       // Testing Num1 checks if we produce '1' or the shifted symbol.
@@ -76,7 +78,7 @@ TEST_CASE("Sender Integration Suite", "[integration]") {
               << std::endl;
 
     auto task = std::async(std::launch::async, [&sender]() {
-      axidev::io::sleepMs(500);
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
       AXIDEV_IO_LOG_DEBUG("Integration test: holding shift and sending HELLO");
 
       sender.holdModifier(Modifier::Shift);
@@ -110,14 +112,15 @@ TEST_CASE("Sender Integration Suite", "[integration]") {
     std::cout << "[RUNNING] Testing key repeat (Holding 'X')..." << std::endl;
 
     auto task = std::async(std::launch::async, [&sender]() {
-      axidev::io::sleepMs(500);
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
       AXIDEV_IO_LOG_DEBUG("Integration test: keyDown(Key::X)");
 
       sender.keyDown(Key::X);
-      axidev::io::sleepMs(1500); // Hold long enough for OS repeat
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(1500)); // Hold long enough for OS repeat
       sender.keyUp(Key::X);
 
-      axidev::io::sleepMs(100);
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       sender.tap(Key::Enter);
       return true;
     });

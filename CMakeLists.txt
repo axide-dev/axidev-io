@@ -82,7 +82,7 @@ if(APPLE)
         "-framework CoreGraphics"
     )
 elseif(WIN32)
-    target_link_libraries(axidev_io PUBLIC user32)
+    target_link_libraries(axidev_io PUBLIC user32 kernel32)
 elseif(UNIX)
     target_include_directories(axidev_io PRIVATE
         ${LIBINPUT_INCLUDE_DIRS}

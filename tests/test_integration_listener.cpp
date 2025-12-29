@@ -13,10 +13,12 @@
 #include <axidev-io/keyboard/listener.hpp>
 #include <axidev-io/log.hpp>
 
+#include <chrono>
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
 #include <string>
+#include <thread>
 
 using namespace axidev::io::keyboard;
 using namespace std::chrono_literals;
@@ -130,7 +132,7 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
       std::unique_lock<std::mutex> lk(mtx);
       cv.wait_for(lk, 2s, [&] { return saw_enter; });
     }
-    axidev::io::sleepMs(100);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     listener.stop();
 
@@ -209,7 +211,7 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
       std::unique_lock<std::mutex> lk(mtx);
       cv.wait_for(lk, 2s, [&] { return saw_enter; });
     }
-    axidev::io::sleepMs(100);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     listener.stop();
 
@@ -286,7 +288,7 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
       std::unique_lock<std::mutex> lk(mtx);
       cv.wait_for(lk, 2s, [&] { return saw_enter; });
     }
-    axidev::io::sleepMs(100);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     listener.stop();
 
