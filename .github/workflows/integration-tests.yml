@@ -328,70 +328,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies (Windows)
-        shell: pwsh
+      - name: Install MinGW-w64
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x86_64
+
+      - name: Configure & Build
+        shell: bash
         run: |
-          # On GitHub Windows runners CMake is often preinstalled; avoid blindly
-          # re-installing to prevent MSI conflicts (e.g., exit code 1603).
-          if (Get-Command cmake -ErrorAction SilentlyContinue) {
-            Write-Host "CMake already installed: $(cmake --version)"
-            exit 0
-          }
-
-          $maxAttempts = 3
-          $attempt = 0
-          $installed = $false
-
-          while (-not $installed -and $attempt -lt $maxAttempts) {
-            $attempt++
-            Write-Host "Attempt #${attempt}: Installing CMake via Chocolatey..."
-            choco install -y cmake --install-arguments '"/l*v C:\cmake.install_msi_install.log"' --no-progress
-
-            if ($LASTEXITCODE -ne 0) {
-              Write-Host "choco install exited with code $LASTEXITCODE; trying choco upgrade as fallback..."
-              choco upgrade -y cmake --install-arguments '"/l*v C:\cmake.install_msi_install.log"' --no-progress
-            }
-
-            if (Get-Command cmake -ErrorAction SilentlyContinue) {
-              Write-Host "CMake installed: $(cmake --version)"
-              $installed = $true
-              break
-            }
-
-            Write-Host "Install attempt #${attempt} failed; sleeping before retry..."
-            Start-Sleep -Seconds (5 * $attempt)
-          }
-
-          if (-not $installed) {
-            Write-Host "CMake installation failed after $maxAttempts attempts. Showing tail of MSI log (if present):"
-            if (Test-Path 'C:\cmake.install_msi_install.log') {
-              Get-Content -Path 'C:\cmake.install_msi_install.log' -ErrorAction SilentlyContinue | Select-Object -Last 200 | ForEach-Object { Write-Host $_ }
-            } else {
-              Write-Host "MSI log not present."
-            }
-            Exit 1
-          }
-
-      - name: Clean stale build directory (Windows)
-        shell: pwsh
-        run: |
-          $path = 'build'
-          if (Test-Path -LiteralPath $path) {
-            try {
-              Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop -Verbose
-            } catch {
-              Write-Host "Warning: failed to remove '$path': $($_.Exception.Message)"
-              # Intentionally don't rethrow so the workflow step succeeds even if removal fails
-            }
-          } else {
-            Write-Host "No build directory to remove"
-          }
-
-      - name: Configure (CMake, Windows)
-        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DTYPR_IO_BUILD_TESTS=ON -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON
-
-      - name: Build (CMake)
-        run: cmake --build build --config Release --parallel
+          cmake -S . -B build \
+            -G "Unix Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DTYPR_IO_BUILD_TESTS=ON \
+            -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON
+          cmake --build build --config Release --parallel
 
       - name: Find integration test binary (Windows)
         id: find-integration-binary
@@ -447,70 +399,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies (Windows)
-        shell: pwsh
+      - name: Install MinGW-w64
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x86_64
+
+      - name: Configure & Build
+        shell: bash
         run: |
-          # On GitHub Windows runners CMake is often preinstalled; avoid blindly
-          # re-installing to prevent MSI conflicts (e.g., exit code 1603).
-          if (Get-Command cmake -ErrorAction SilentlyContinue) {
-            Write-Host "CMake already installed: $(cmake --version)"
-            exit 0
-          }
-
-          $maxAttempts = 3
-          $attempt = 0
-          $installed = $false
-
-          while (-not $installed -and $attempt -lt $maxAttempts) {
-            $attempt++
-            Write-Host "Attempt #${attempt}: Installing CMake via Chocolatey..."
-            choco install -y cmake --install-arguments '"/l*v C:\cmake.install_msi_install.log"' --no-progress
-
-            if ($LASTEXITCODE -ne 0) {
-              Write-Host "choco install exited with code $LASTEXITCODE; trying choco upgrade as fallback..."
-              choco upgrade -y cmake --install-arguments '"/l*v C:\cmake.install_msi_install.log"' --no-progress
-            }
-
-            if (Get-Command cmake -ErrorAction SilentlyContinue) {
-              Write-Host "CMake installed: $(cmake --version)"
-              $installed = $true
-              break
-            }
-
-            Write-Host "Install attempt #${attempt} failed; sleeping before retry..."
-            Start-Sleep -Seconds (5 * $attempt)
-          }
-
-          if (-not $installed) {
-            Write-Host "CMake installation failed after $maxAttempts attempts. Showing tail of MSI log (if present):"
-            if (Test-Path 'C:\cmake.install_msi_install.log') {
-              Get-Content -Path 'C:\cmake.install_msi_install.log' -ErrorAction SilentlyContinue | Select-Object -Last 200 | ForEach-Object { Write-Host $_ }
-            } else {
-              Write-Host "MSI log not present."
-            }
-            Exit 1
-          }
-
-      - name: Clean stale build directory (Windows)
-        shell: pwsh
-        run: |
-          $path = 'build'
-          if (Test-Path -LiteralPath $path) {
-            try {
-              Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop -Verbose
-            } catch {
-              Write-Host "Warning: failed to remove '$path': $($_.Exception.Message)"
-              # Intentionally don't rethrow so the workflow step succeeds even if removal fails
-            }
-          } else {
-            Write-Host "No build directory to remove"
-          }
-
-      - name: Configure (CMake, Windows ARM64)
-        run: cmake -S . -B build -G "Visual Studio 17 2022" -A ARM64 -DTYPR_IO_BUILD_TESTS=ON -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON
-
-      - name: Build (CMake)
-        run: cmake --build build --config Release --parallel
+          cmake -S . -B build \
+            -G "Unix Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DTYPR_IO_BUILD_TESTS=ON \
+            -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON
+          cmake --build build --config Release --parallel
 
       - name: Find integration test binary (Windows)
         id: find-integration-binary
