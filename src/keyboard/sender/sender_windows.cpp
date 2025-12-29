@@ -11,6 +11,7 @@
 #include <Windows.h>
 #include <typr-io/keyboard/sender.hpp>
 #include <typr-io/log.hpp>
+#include <unordered_map>
 
 namespace typr::io::keyboard {
 

@@ -21,6 +21,7 @@
 #include <atomic>
 #include <cstdlib>
 #include <mutex>
+#include <thread>
 #include <typr-io/log.hpp>
 
 namespace typr::io::keyboard {
