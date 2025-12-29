@@ -39,9 +39,18 @@ elseif(WIN32)
     )
 elseif(UNIX)
     find_package(PkgConfig REQUIRED)
+
+    # Request static libraries from pkg-config
+    set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH ON)
+
     pkg_check_modules(LIBINPUT REQUIRED libinput)
     pkg_check_modules(LIBUDEV REQUIRED libudev)
     pkg_check_modules(XKBCOMMON REQUIRED xkbcommon)
+
+    # Get static library paths
+    pkg_check_modules(LIBINPUT_STATIC REQUIRED --static libinput)
+    pkg_check_modules(LIBUDEV_STATIC REQUIRED --static libudev)
+    pkg_check_modules(XKBCOMMON_STATIC REQUIRED --static xkbcommon)
 
     list(APPEND AXIDEV_SOURCES
         src/keyboard/sender/sender_uinput.cpp
@@ -84,14 +93,14 @@ elseif(WIN32)
     target_link_libraries(axidev_io PUBLIC user32 kernel32)
 elseif(UNIX)
     target_include_directories(axidev_io PRIVATE
-        ${LIBINPUT_INCLUDE_DIRS}
-        ${XKBCOMMON_INCLUDE_DIRS}
-        ${LIBUDEV_INCLUDE_DIRS}
+        ${LIBINPUT_STATIC_INCLUDE_DIRS}
+        ${XKBCOMMON_STATIC_INCLUDE_DIRS}
+        ${LIBUDEV_STATIC_INCLUDE_DIRS}
     )
     target_link_libraries(axidev_io PRIVATE
-        ${LIBINPUT_LIBRARIES}
-        ${XKBCOMMON_LIBRARIES}
-        ${LIBUDEV_LIBRARIES}
+        ${LIBINPUT_STATIC_LDFLAGS}
+        ${XKBCOMMON_STATIC_LDFLAGS}
+        ${LIBUDEV_STATIC_LDFLAGS}
     )
 endif()
 
