@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 project(typr-io
     VERSION 0.3.0
     DESCRIPTION "Cross-platform layout-aware input/output library"
-    LANGUAGES CXX
+    LANGUAGES CXX C
 )
 
 option(TYPR_IO_BUILD_SHARED "Build typr-io as a shared library" OFF)
@@ -162,6 +162,7 @@ if(TYPR_IO_BUILD_EXAMPLES)
 
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/example_c.c")
         add_executable(typr-io-example-c examples/example_c.c)
+        set_source_files_properties(examples/example_c.c PROPERTIES LANGUAGE C)
         target_link_libraries(typr-io-example-c PRIVATE typr::io)
         install(TARGETS typr-io-example-c RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
     endif()

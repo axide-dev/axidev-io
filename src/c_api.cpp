@@ -17,6 +17,7 @@
 
 #include <typr-io/c_api.h>
 
+#include <cstdarg>
 #include <cstdlib>
 #include <cstring>
 
@@ -28,6 +29,7 @@
 #include <typr-io/keyboard/common.hpp>
 #include <typr-io/keyboard/listener.hpp>
 #include <typr-io/keyboard/sender.hpp>
+#include <typr-io/log.hpp>
 
 namespace {
 
@@ -726,6 +728,66 @@ TYPR_IO_API void typr_io_free_string(char *s) {
   std::free(s);
 }
 
+/* ---------------- Logging implementation ---------------- */
+
+TYPR_IO_API void typr_io_log_set_level(typr_io_log_level_t level) {
+  try {
+    clear_last_error();
+    typr::io::log::setLevel(static_cast<typr::io::log::Level>(level));
+  } catch (const std::exception &e) {
+    set_last_error(e.what());
+  } catch (...) {
+    set_last_error("Unknown exception in typr_io_log_set_level");
+  }
+}
+
+TYPR_IO_API typr_io_log_level_t typr_io_log_get_level(void) {
+  try {
+    clear_last_error();
+    typr::io::log::Level lvl = typr::io::log::getLevel();
+    return static_cast<typr_io_log_level_t>(lvl);
+  } catch (const std::exception &e) {
+    set_last_error(e.what());
+    return TYPR_IO_LOG_LEVEL_INFO;
+  } catch (...) {
+    set_last_error("Unknown exception in typr_io_log_get_level");
+    return TYPR_IO_LOG_LEVEL_INFO;
+  }
+}
+
+TYPR_IO_API bool typr_io_log_is_enabled(typr_io_log_level_t level) {
+  try {
+    clear_last_error();
+    return typr::io::log::isEnabled(static_cast<typr::io::log::Level>(level));
+  } catch (const std::exception &e) {
+    set_last_error(e.what());
+    return false;
+  } catch (...) {
+    set_last_error("Unknown exception in typr_io_log_is_enabled");
+    return false;
+  }
+}
+
+TYPR_IO_API void typr_io_log_message(typr_io_log_level_t level,
+                                     const char *file, int line,
+                                     const char *fmt, ...) {
+  if (!file || !fmt) {
+    return;
+  }
+  va_list ap;
+  va_start(ap, fmt);
+  try {
+    clear_last_error();
+    typr::io::log::vlog(static_cast<typr::io::log::Level>(level), file, line,
+                        fmt, ap);
+  } catch (const std::exception &e) {
+    set_last_error(e.what());
+  } catch (...) {
+    set_last_error("Unknown exception in typr_io_log_message");
+  }
+  va_end(ap);
+}
+
 #ifdef __cplusplus
-} /* extern \"C\" */
+} /* extern "C" */
 #endif

@@ -438,6 +438,76 @@ TYPR_IO_API void typr_io_clear_last_error(void);
  */
 TYPR_IO_API void typr_io_free_string(char *s);
 
+/** @name Logging
+ * @brief Functions to control and use the internal logging system.
+ *
+ * The library includes a lightweight header-only logging utility. These
+ * functions allow C API users to control logging behavior at runtime.
+ * @{
+ */
+
+/**
+ * @brief Log level enumeration for the library's logging facility.
+ *
+ * Levels are ordered from most verbose (Debug) to least (Error).
+ */
+enum {
+  TYPR_IO_LOG_LEVEL_DEBUG = 0, /**< Debug level (most verbose) */
+  TYPR_IO_LOG_LEVEL_INFO = 1,  /**< Info level */
+  TYPR_IO_LOG_LEVEL_WARN = 2,  /**< Warning level */
+  TYPR_IO_LOG_LEVEL_ERROR = 3, /**< Error level (least verbose) */
+};
+
+/**
+ * @typedef typr_io_log_level_t
+ * @brief Type for log level values.
+ */
+typedef uint8_t typr_io_log_level_t;
+
+/**
+ * @brief Set the global logging level.
+ *
+ * Controls which log messages are emitted by the library. Messages at or above
+ * the specified level will be displayed; lower-priority messages are
+ * suppressed.
+ *
+ * @param level Log level to set (one of TYPR_IO_LOG_LEVEL_*).
+ */
+TYPR_IO_API void typr_io_log_set_level(typr_io_log_level_t level);
+
+/**
+ * @brief Get the current global logging level.
+ * @return typr_io_log_level_t The current log level (one of
+ * TYPR_IO_LOG_LEVEL_*).
+ */
+TYPR_IO_API typr_io_log_level_t typr_io_log_get_level(void);
+
+/**
+ * @brief Check whether messages at a specific level are currently enabled.
+ * @param level Log level to test (one of TYPR_IO_LOG_LEVEL_*).
+ * @return true if messages at this level will be emitted; false otherwise.
+ */
+TYPR_IO_API bool typr_io_log_is_enabled(typr_io_log_level_t level);
+
+/**
+ * @brief Emit a log message (internal use; consider using macros instead).
+ *
+ * This function is thread-safe and suitable for direct use, but C consumers
+ * typically use the helper macros `TYPR_IO_LOG_DEBUG`, `TYPR_IO_LOG_INFO`,
+ * `TYPR_IO_LOG_WARN`, or `TYPR_IO_LOG_ERROR` instead.
+ *
+ * @param level Log level for the message.
+ * @param file Source file name (typically `__FILE__`).
+ * @param line Source line number (typically `__LINE__`).
+ * @param fmt Printf-style format string.
+ * @param ... Variadic arguments for the format string.
+ */
+TYPR_IO_API void typr_io_log_message(typr_io_log_level_t level,
+                                     const char *file, int line,
+                                     const char *fmt, ...);
+
+/** @} */ /* end of Logging group */
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

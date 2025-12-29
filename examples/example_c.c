@@ -3,6 +3,7 @@
  *
  * Minimal C example demonstrating the typr-io C API (c_api.h).
  *
+ * - Demonstrates logging control and message emission
  * - Creates a Sender and prints its capabilities
  * - Attempts to tap a logical key (A) and type a short UTF-8 string
  * - Creates a Listener and prints observed key events for a short period
@@ -58,6 +59,35 @@ int main(void) {
   const char *ver = typr_io_library_version();
   printf("typr-io C API example (library version: %s)\n",
          ver ? ver : "(unknown)");
+
+  /* Logging demonstration */
+  printf("\n--- Logging API Demo ---\n");
+  printf("Current log level: %u\n", (unsigned)typr_io_log_get_level());
+  printf("Debug enabled: %s\n",
+         typr_io_log_is_enabled(TYPR_IO_LOG_LEVEL_DEBUG) ? "yes" : "no");
+  printf("Info enabled: %s\n",
+         typr_io_log_is_enabled(TYPR_IO_LOG_LEVEL_INFO) ? "yes" : "no");
+
+  printf("Emitting sample log messages:\n");
+  typr_io_log_message(TYPR_IO_LOG_LEVEL_DEBUG, __FILE__, __LINE__,
+                      "Debug message with value: %d", 42);
+  typr_io_log_message(TYPR_IO_LOG_LEVEL_INFO, __FILE__, __LINE__,
+                      "Info message: %s", "example");
+  typr_io_log_message(TYPR_IO_LOG_LEVEL_WARN, __FILE__, __LINE__,
+                      "Warning message");
+
+  /* Change log level to suppress debug/info messages */
+  printf("\nSetting log level to WARN...\n");
+  typr_io_log_set_level(TYPR_IO_LOG_LEVEL_WARN);
+  typr_io_log_message(TYPR_IO_LOG_LEVEL_DEBUG, __FILE__, __LINE__,
+                      "This debug message should NOT appear");
+  typr_io_log_message(TYPR_IO_LOG_LEVEL_WARN, __FILE__, __LINE__,
+                      "This warning SHOULD appear");
+
+  /* Reset to debug for testing */
+  typr_io_log_set_level(TYPR_IO_LOG_LEVEL_DEBUG);
+
+  printf("\n--- Keyboard Sender/Listener Demo ---\n");
 
   typr_io_keyboard_sender_t sender = typr_io_keyboard_sender_create();
   if (!sender) {
