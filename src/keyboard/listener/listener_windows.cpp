@@ -13,20 +13,15 @@
  *       behavior to remain lightweight and predictable.
  */
 
-#ifdef _WIN32
 
 #include <typr-io/keyboard/listener.hpp>
 
+#ifdef _WIN32
 #include <Windows.h>
 #include <atomic>
-#include <chrono>
-#include <cstdio>
 #include <cstdlib>
 #include <mutex>
-#include <thread>
 #include <typr-io/log.hpp>
-#include <unordered_map>
-#include <vector>
 
 namespace typr::io::keyboard {
 
@@ -135,7 +130,7 @@ struct Listener::Impl {
         return false;
       if (ready.load())
         return true;
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      Sleep(5);
     }
     bool ok = ready.load();
     TYPR_IO_LOG_DEBUG("Listener (Windows): start result=%u",
