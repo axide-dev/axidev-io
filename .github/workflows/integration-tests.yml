@@ -29,416 +29,72 @@ permissions:
 jobs:
   integration-ubuntu-x64:
     name: Integration tests on ubuntu-latest (x86_64)
-    runs-on: ubuntu-latest
-    env:
-      AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
-      AXIDEV_IO_AUTO_CONFIRM: "1"
-      AXIDEV_IO_INTERACTIVE: "1"
-      DISPLAY: ":99"
-      OS_NAME: ubuntu-latest
-      ARCH: x64
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install dependencies (Linux)
-        run: |
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            build-essential cmake pkg-config libinput-dev libxkbcommon-dev libudev-dev libx11-dev libxi-dev libxtst-dev \
-            libxrandr-dev libxcursor-dev libxinerama-dev xvfb
-          # Try to enable uinput device (sender backend may require it).
-          sudo modprobe uinput || true
-          sudo chmod 666 /dev/uinput || true
-
-      - name: Start Xvfb (Linux)
-        run: |
-          # Start Xvfb in the background so GUI-related injection can run.
-          Xvfb :99 -screen 0 1024x768x24 & sleep 2
-
-      - name: Clean stale build directory (Unix)
-        run: rm -rf build
-
-      - name: Configure (CMake, Linux)
-        run: cmake -S . -B build -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build (CMake)
-        run: cmake --build build --config Release --parallel
-
-      - name: Find integration test binary (Unix)
-        id: find-integration-binary
-        run: |
-          # Find the built integration test executable and copy it to the workspace root so
-          # the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f -name 'axidev-io-integration-tests*' -print -quit || true)
-          if [ -n "$found" ]; then
-            bname=$(basename "$found")
-            cp "$found" "$bname"
-            echo "path=$bname" >> $GITHUB_OUTPUT
-          else
-            echo "path=" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload integration test binary
-        if: steps.find-integration-binary.outputs.path != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-binary-${{ env.OS_NAME }}-${{ env.ARCH }}
-          path: ${{ steps.find-integration-binary.outputs.path }}
-
-      - name: Find test-consumer binary (Unix)
-        id: find-consumer-binary
-        run: |
-          # Find the built test consumer executable and copy it to the workspace root
-          # so the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f \( -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) -print -quit || true)
-          if [ -n "$found" ]; then
-            bname=$(basename "$found")
-            cp "$found" "$bname"
-            echo "path=$bname" >> $GITHUB_OUTPUT
-          else
-            echo "path=" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload test-consumer binary
-        if: steps.find-consumer-binary.outputs.path != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-consumer-binary-${{ env.OS_NAME }}-${{ env.ARCH }}
-          path: ${{ steps.find-consumer-binary.outputs.path }}
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      os: ubuntu-latest
+      arch: x64
+      build-type: Release
+      build-tests: true
+      build-integration-tests: true
+      enable-xvfb: true
+      artifact-name-prefix: ""
 
   integration-ubuntu-arm64:
     name: Integration tests on ubuntu-24.04-arm (arm64)
-    runs-on: ubuntu-24.04-arm
-    env:
-      AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
-      AXIDEV_IO_AUTO_CONFIRM: "1"
-      AXIDEV_IO_INTERACTIVE: "1"
-      DISPLAY: ":99"
-      OS_NAME: ubuntu-24.04-arm
-      ARCH: arm64
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install dependencies (Linux)
-        run: |
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            build-essential cmake pkg-config libinput-dev libxkbcommon-dev libudev-dev libx11-dev libxi-dev libxtst-dev \
-            libxrandr-dev libxcursor-dev libxinerama-dev xvfb
-          # Try to enable uinput device (sender backend may require it).
-          sudo modprobe uinput || true
-          sudo chmod 666 /dev/uinput || true
-
-      - name: Start Xvfb (Linux)
-        run: |
-          # Start Xvfb in the background so GUI-related injection can run.
-          Xvfb :99 -screen 0 1024x768x24 & sleep 2
-
-      - name: Clean stale build directory (Unix)
-        run: rm -rf build
-
-      - name: Configure (CMake, Linux / arm64)
-        # On an arm64 runner this config will build a native arm64 binary.
-        run: cmake -S . -B build -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build (CMake)
-        run: cmake --build build --config Release --parallel
-
-      - name: Find integration test binary (Unix)
-        id: find-integration-binary
-        run: |
-          # Find the built integration test executable and copy it to the workspace root so
-          # the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f -name 'axidev-io-integration-tests*' -print -quit || true)
-          if [ -n "$found" ]; then
-            bname=$(basename "$found")
-            cp "$found" "$bname"
-            echo "path=$bname" >> $GITHUB_OUTPUT
-          else
-            echo "path=" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload integration test binary
-        if: steps.find-integration-binary.outputs.path != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-binary-${{ env.OS_NAME }}-${{ env.ARCH }}
-          path: ${{ steps.find-integration-binary.outputs.path }}
-
-      - name: Find test-consumer binary (Unix)
-        id: find-consumer-binary
-        run: |
-          # Find the built test consumer executable and copy it to the workspace root
-          # so the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f \( -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) -print -quit || true)
-          if [ -n "$found" ]; then
-            bname=$(basename "$found")
-            cp "$found" "$bname"
-            echo "path=$bname" >> $GITHUB_OUTPUT
-          else
-            echo "path=" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload test-consumer binary
-        if: steps.find-consumer-binary.outputs.path != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-consumer-binary-${{ env.OS_NAME }}-${{ env.ARCH }}
-          path: ${{ steps.find-consumer-binary.outputs.path }}
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      os: ubuntu-24.04-arm
+      arch: arm64
+      build-type: Release
+      build-tests: true
+      build-integration-tests: true
+      enable-xvfb: true
+      artifact-name-prefix: ""
 
   # integration-macos-x64:
   #   name: Integration tests on macos-latest (x86_64)
-  #   runs-on: macos-latest
-  #   env:
-  #     AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
-  #     AXIDEV_IO_AUTO_CONFIRM: "1"
-  #     AXIDEV_IO_INTERACTIVE: "1"
-  #     DISPLAY: ":99"
-  #     OS_NAME: macos-latest
-  #     ARCH: x64
-
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
-
-  #     - name: Install dependencies (macOS)
-  #       run: |
-  #         brew update
-  #         brew install cmake
-
-  #     - name: Clean stale build directory (Unix)
-  #       run: rm -rf build
-
-  #     - name: Configure (CMake, macOS / x86_64)
-  #       run: cmake -S . -B build -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=x86_64
-
-  #     - name: Build (CMake)
-  #       run: cmake --build build --config Release --parallel
-
-  #     - name: Find integration test binary (Unix)
-  #       id: find-integration-binary
-  #       run: |
-  #         # Find the built integration test executable and copy it to the workspace root so
-  #         # the uploaded artifact has a flat path (avoids nested directories like build/...).
-  #         found=$(find build -type f -name 'axidev-io-integration-tests*' -print -quit || true)
-  #         if [ -n "$found" ]; then
-  #           bname=$(basename "$found")
-  #           cp "$found" "$bname"
-  #           echo "path=$bname" >> $GITHUB_OUTPUT
-  #         else
-  #           echo "path=" >> $GITHUB_OUTPUT
-  #         fi
-
-  #     - name: Upload integration test binary
-  #       if: steps.find-integration-binary.outputs.path != ''
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: integration-test-binary-${{ env.OS_NAME }}-${{ env.ARCH }}
-  #         path: ${{ steps.find-integration-binary.outputs.path }}
+  #   uses: ./.github/workflows/build-reusable.yml
+  #   with:
+  #     os: macos-latest
+  #     arch: x86_64
+  #     build-type: Release
+  #     build-tests: true
+  #     build-integration-tests: true
+  #     artifact-name-prefix: ""
 
   integration-macos-arm64:
     name: Integration tests on macos-latest (arm64)
-    runs-on: macos-latest
-    env:
-      AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
-      AXIDEV_IO_AUTO_CONFIRM: "1"
-      AXIDEV_IO_INTERACTIVE: "1"
-      DISPLAY: ":99"
-      OS_NAME: macos-latest
-      ARCH: arm64
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install dependencies (macOS)
-        run: |
-          brew update
-          brew install cmake
-
-      - name: Clean stale build directory (Unix)
-        run: rm -rf build
-
-      - name: Configure (CMake, macOS / arm64)
-        # Prefer building for arm64 explicitly. On Apple runners this should
-        # produce an arm64 binary; on other macOS hosts CMake/Xcode may
-        # cross-compile if supported.
-        run: cmake -S . -B build -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
-
-      - name: Build (CMake)
-        run: cmake --build build --config Release --parallel
-
-      - name: Find integration test binary (Unix)
-        id: find-integration-binary
-        run: |
-          # Find the built integration test executable and copy it to the workspace root so
-          # the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f -name 'axidev-io-integration-tests*' -print -quit || true)
-          if [ -n "$found" ]; then
-            bname=$(basename "$found")
-            cp "$found" "$bname"
-            echo "path=$bname" >> $GITHUB_OUTPUT
-          else
-            echo "path=" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload integration test binary
-        if: steps.find-integration-binary.outputs.path != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-binary-${{ env.OS_NAME }}-${{ env.ARCH }}
-          path: ${{ steps.find-integration-binary.outputs.path }}
-
-      - name: Find test-consumer binary (Unix)
-        id: find-consumer-binary
-        run: |
-          # Find the built test consumer executable and copy it to the workspace root
-          # so the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f \( -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) -print -quit || true)
-          if [ -n "$found" ]; then
-            bname=$(basename "$found")
-            cp "$found" "$bname"
-            echo "path=$bname" >> $GITHUB_OUTPUT
-          else
-            echo "path=" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload test-consumer binary
-        if: steps.find-consumer-binary.outputs.path != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-consumer-binary-${{ env.OS_NAME }}-${{ env.ARCH }}
-          path: ${{ steps.find-consumer-binary.outputs.path }}
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      os: macos-latest
+      arch: arm64
+      build-type: Release
+      build-tests: true
+      build-integration-tests: true
+      artifact-name-prefix: ""
 
   integration-windows-x64:
     name: Integration tests on windows-latest (x86_64)
-    runs-on: windows-latest
-    env:
-      AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
-      AXIDEV_IO_AUTO_CONFIRM: "1"
-      AXIDEV_IO_INTERACTIVE: "1"
-      OS_NAME: windows-latest
-      ARCH: x64
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install MinGW-w64
-        uses: egor-tensin/setup-mingw@v2
-        with:
-          platform: x64
-          static: 0
-          version: 13.2.0
-
-      - name: Configure & Build
-        shell: bash
-        run: |
-          cmake -S . -B build \
-            -G "Unix Makefiles" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc \
-            -DCMAKE_CXX_COMPILER=g++ \
-            -DAXIDEV_IO_BUILD_TESTS=ON \
-            -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON
-          cmake --build build --config Release --parallel
-
-      - name: Find integration test binary (Windows)
-        id: find-integration-binary
-        shell: pwsh
-        run: |
-          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'axidev-io-integration-tests*.exe' } | Select-Object -First 1
-          if ($found) {
-            # Copy to workspace root so the uploaded artifact has a flat path
-            Copy-Item -Path $found.FullName -Destination $found.Name
-            Write-Output "path=$($found.Name)" >> $env:GITHUB_OUTPUT
-          } else {
-            Write-Output "path=" >> $env:GITHUB_OUTPUT
-          }
-
-      - name: Upload integration test binary
-        if: steps.find-integration-binary.outputs.path != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-binary-${{ env.OS_NAME }}-${{ env.ARCH }}
-          path: ${{ steps.find-integration-binary.outputs.path }}
-
-      - name: Find test-consumer binary (Windows)
-        id: find-consumer-binary
-        shell: pwsh
-        run: |
-          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'axidev_io_consumer*.exe' -or $_.Name -like 'axidev-io-test-consumer*.exe' } | Select-Object -First 1
-          if ($found) {
-            # Copy to workspace root so the uploaded artifact has a flat path
-            Copy-Item -Path $found.FullName -Destination $found.Name
-            Write-Output "path=$($found.Name)" >> $env:GITHUB_OUTPUT
-          } else {
-            Write-Output "path=" >> $env:GITHUB_OUTPUT
-          }
-
-      - name: Upload test-consumer binary
-        if: steps.find-consumer-binary.outputs.path != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-consumer-binary-${{ env.OS_NAME }}-${{ env.ARCH }}
-          path: ${{ steps.find-consumer-binary.outputs.path }}
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      os: windows-latest
+      arch: x64
+      build-type: Release
+      build-tests: true
+      build-integration-tests: true
+      artifact-name-prefix: ""
 
   integration-windows-arm64:
     name: Integration tests on windows-11-arm (arm64)
-    runs-on: windows-11-arm
-    env:
-      AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
-      AXIDEV_IO_AUTO_CONFIRM: "1"
-      AXIDEV_IO_INTERACTIVE: "1"
-      OS_NAME: windows-11-arm
-      ARCH: arm64
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install MinGW-w64
-        uses: egor-tensin/setup-mingw@v2
-        with:
-          platform: x64
-          static: 0
-          version: 13.2.0
-
-      - name: Configure & Build
-        shell: bash
-        run: |
-          cmake -S . -B build \
-            -G "Unix Makefiles" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc \
-            -DCMAKE_CXX_COMPILER=g++ \
-            -DAXIDEV_IO_BUILD_TESTS=ON \
-            -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON
-          cmake --build build --config Release --parallel
-
-      - name: Find integration test binary (Windows)
-        id: find-integration-binary
-        shell: pwsh
-        run: |
-          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'axidev-io-integration-tests*.exe' } | Select-Object -First 1
-          if ($found) {
-            # Copy to workspace root so the uploaded artifact has a flat path
-            Copy-Item -Path $found.FullName -Destination $found.Name
-            Write-Output "path=$($found.Name)" >> $env:GITHUB_OUTPUT
-          } else {
-            Write-Output "path=" >> $env:GITHUB_OUTPUT
-          }
-
-      - name: Upload integration test binary
-        if: steps.find-integration-binary.outputs.path != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-binary-${{ env.OS_NAME }}-${{ env.ARCH }}
-          path: ${{ steps.find-integration-binary.outputs.path }}
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      os: windows-11-arm
+      arch: arm64
+      build-type: Release
+      build-tests: true
+      build-integration-tests: true
+      mingw-version: "12.2.0"
+      artifact-name-prefix: ""
 
   release:
     name: Create integration test release
@@ -465,53 +121,52 @@ jobs:
 
       - name: Prepare release assets
         run: |
-          set -e
           mkdir -p release-assets
-          shopt -s globstar || true
-          for d in artifacts/*; do
-            if [ -d "$d" ]; then
-              for f in "$d"/**/axidev-io-integration-tests*; do
-                if [ -f "$f" ]; then
-                  os=$(basename "$d" | sed 's/^integration-test-binary-//')
-                  name="axidev-io-integration-tests-${os}"
-                  # Extract extension from the basename only so dots in directory names
-                  # (e.g. "ubuntu-24.04") do not become part of the extension/path.
-                  bname=$(basename "$f")
-                  ext="${bname##*.}"
-                  if [ "$ext" = "$bname" ]; then
-                    # No extension
-                    cp "$f" "release-assets/${name}"
-                  else
-                    cp "$f" "release-assets/${name}.${ext}"
-                  fi
+          # Find all integration test binaries and test-consumer binaries
+          find artifacts -type f \( -name 'axidev-io-integration-tests*' -o -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) ! -name '*.o' ! -name '*.obj' -exec cp {} release-assets/ \;
+          # Rename binaries to include OS and architecture from their artifact directory names
+          cd release-assets
+          for file in axidev-io-integration-tests*; do
+            if [ -f "$file" ]; then
+              # Try to find the original artifact directory name
+              artifact_dir=$(find ../artifacts -name "$file" -printf '%h\n' | head -1)
+              if [ -n "$artifact_dir" ]; then
+                os_arch=$(basename "$artifact_dir" | sed 's/integration-test-binary-//' | sed 's/test-consumer-binary-//')
+                ext="${file##*.}"
+                if [ "$ext" = "$file" ]; then ext=""; else ext=".$ext"; fi
+                base="${file%.*}"
+                if [ -n "$ext" ]; then
+                  new_name="${base}-${os_arch}${ext}"
+                else
+                  new_name="${file}-${os_arch}"
                 fi
-              done
-
-              # Also include test-consumer binaries (uploaded as test-consumer-binary-*)
-              # The uploaded artifact contains the consumer binary (e.g., axidev_io_consumer or axidev-io-test-consumer),
-              # so look for those filenames inside the downloaded artifact directory.
-              for f in "$d"/**/axidev_io_consumer* "$d"/**/axidev-io-test-consumer*; do
-                if [ -f "$f" ]; then
-                  os=$(basename "$d" | sed 's/^test-consumer-binary-//')
-                  name="axidev-io-test-consumer-${os}"
-                  bname=$(basename "$f")
-                  ext="${bname##*.}"
-                  if [ "$ext" = "$bname" ]; then
-                    cp "$f" "release-assets/${name}"
-                  else
-                    cp "$f" "release-assets/${name}.${ext}"
-                  fi
-                fi
-              done
+                mv "$file" "$new_name" 2>/dev/null || true
+              fi
             fi
           done
-          echo "Prepared release assets:"
-          ls -la release-assets || true
+          for file in axidev_io_consumer* axidev-io-test-consumer*; do
+            if [ -f "$file" ]; then
+              artifact_dir=$(find ../artifacts -name "$file" -printf '%h\n' | head -1)
+              if [ -n "$artifact_dir" ]; then
+                os_arch=$(basename "$artifact_dir" | sed 's/integration-test-binary-//' | sed 's/test-consumer-binary-//')
+                ext="${file##*.}"
+                if [ "$ext" = "$file" ]; then ext=""; else ext=".$ext"; fi
+                base="${file%.*}"
+                if [ -n "$ext" ]; then
+                  new_name="${base}-${os_arch}${ext}"
+                else
+                  new_name="${file}-${os_arch}"
+                fi
+                mv "$file" "$new_name" 2>/dev/null || true
+              fi
+            fi
+          done
+          cd ..
 
       - name: Check for release assets
         id: check-assets
         run: |
-          if [ -n "$(ls -A release-assets 2>/dev/null || true)" ]; then
+          if [ -n "$(find release-assets -type f 2>/dev/null)" ]; then
             echo "has_assets=true" >> $GITHUB_OUTPUT
           else
             echo "has_assets=false" >> $GITHUB_OUTPUT
@@ -522,45 +177,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
-          UTC1_DATE=$(python3 -c "from datetime import datetime, timedelta; t=datetime.utcnow()+timedelta(hours=1); print(t.strftime('%Y-%m-%d'))")
-          UTC1_HM_LABEL=$(python3 -c "from datetime import datetime, timedelta; t=datetime.utcnow()+timedelta(hours=1); print(t.strftime('%H:%M'))")
-          UTC1_HM_TAG=$(python3 -c "from datetime import datetime, timedelta; t=datetime.utcnow()+timedelta(hours=1); print(t.strftime('%H%M'))")
-          RELEASE_NAME="${UTC1_DATE} ${UTC1_HM_LABEL} integration tests"
-          TAG="integration-tests-${UTC1_DATE}-${UTC1_HM_TAG}"
-          BODY="Integration test binaries produced by workflow run ${GITHUB_RUN_ID}."
-          echo "Creating release ${RELEASE_NAME} (tag ${TAG})"
-          resp=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" \
-            -d "{\"tag_name\":\"$TAG\",\"name\":\"$RELEASE_NAME\",\"body\":\"$BODY\",\"draft\":false,\"prerelease\":false}" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases")
-          release_id=$(echo "$resp" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('id') or '')")
-          upload_url=$(echo "$resp" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('upload_url') or '')")
-          if [ -z "$release_id" ]; then
-            echo "Release creation failed or already exists; fetching existing release by tag..."
-            resp=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/$TAG")
-            release_id=$(echo "$resp" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('id') or '')")
-            upload_url=$(echo "$resp" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('upload_url') or '')")
-          fi
-          if [ -z "$upload_url" ]; then
-            echo "Failed to determine upload URL for release"
-            echo "$resp"
-            exit 1
-          fi
-          # Trim the template suffix from upload_url if present (e.g. "{?name,label}")
-          upload_url="${upload_url%\{*}"
-          # Upload assets (delete any existing duplicate assets first)
-          assets=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/$release_id/assets")
-          for file in release-assets/*; do
-            if [ -f "$file" ]; then
-              name=$(basename "$file")
-              # Delete existing asset with same name, if present
-              asset_id=$(echo "$assets" | python3 -c "import sys, json; a=json.load(sys.stdin); import sys; name=sys.argv[1]; print(next((x.get('id') for x in a if x.get('name')==name), ''))" "$name")
-              if [ -n "$asset_id" ] && [ "$asset_id" != "None" ]; then
-                echo "Deleting existing asset $name (id $asset_id)"
-                curl -s -X DELETE -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id"
-              fi
-              echo "Uploading $name"
-              curl --fail -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" --data-binary @"$file" "${upload_url}?name=${name}"
-            fi
-          done
-          echo "Release ${RELEASE_NAME} ready."
+          TAG="integration-tests-$(date +%Y%m%d-%H%M%S)"
+          gh release create "$TAG" release-assets/* --title "Integration Test Binaries - $TAG" --notes "Manually triggered integration test binaries for various platforms." --prerelease || \
+          gh release upload "$TAG" release-assets/* --clobber

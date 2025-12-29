@@ -1,0 +1,284 @@
+name: Reusable Build Workflow
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+        description: "GitHub runner to use (e.g., ubuntu-latest, macos-latest, windows-latest, ubuntu-24.04-arm, windows-11-arm)"
+      arch:
+        required: true
+        type: string
+        description: "Target architecture (e.g., x64, arm64)"
+      build-type:
+        required: false
+        type: string
+        default: "Release"
+        description: "CMake build type (Debug, Release, RelWithDebInfo)"
+      build-tests:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to build tests"
+      build-integration-tests:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to build integration tests"
+      run-tests:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to run tests with ctest"
+      package-output:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to package the build output"
+      artifact-name-prefix:
+        required: false
+        type: string
+        default: ""
+        description: "Prefix for artifact names"
+      enable-xvfb:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to start Xvfb for GUI tests (Linux only)"
+      cmake-generator:
+        required: false
+        type: string
+        default: ""
+        description: "CMake generator to use (e.g., 'Unix Makefiles')"
+      mingw-version:
+        required: false
+        type: string
+        default: "13.2.0"
+        description: "MinGW version for Windows builds"
+
+jobs:
+  build:
+    name: Build ${{ inputs.arch }} on ${{ inputs.os }}
+    runs-on: ${{ inputs.os }}
+    env:
+      AXIDEV_IO_RUN_INTEGRATION_TESTS: ${{ inputs.build-integration-tests && '1' || '0' }}
+      AXIDEV_IO_AUTO_CONFIRM: ${{ inputs.build-integration-tests && '1' || '0' }}
+      AXIDEV_IO_INTERACTIVE: ${{ inputs.build-integration-tests && '1' || '0' }}
+      DISPLAY: ${{ inputs.enable-xvfb && ':99' || '' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ inputs.package-output && 0 || 1 }}
+
+      # Linux dependencies
+      - name: Install dependencies (Linux)
+        if: startsWith(inputs.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            build-essential cmake pkg-config \
+            libinput-dev libxkbcommon-dev libudev-dev \
+            libx11-dev libxi-dev libxtst-dev \
+            libxrandr-dev libxcursor-dev libxinerama-dev
+          if [ "${{ inputs.enable-xvfb }}" = "true" ]; then
+            sudo apt-get install -y xvfb
+            sudo modprobe uinput || true
+            sudo chmod 666 /dev/uinput || true
+          fi
+
+      # macOS dependencies
+      - name: Install dependencies (macOS)
+        if: startsWith(inputs.os, 'macos')
+        run: |
+          brew update
+          brew install cmake
+
+      # Windows MinGW setup
+      - name: Install MinGW-w64 (Windows)
+        if: startsWith(inputs.os, 'windows')
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: ${{ inputs.arch }}
+          static: 0
+          version: ${{ inputs.mingw-version }}
+
+      # Start Xvfb for GUI tests on Linux
+      - name: Start Xvfb (Linux)
+        if: startsWith(inputs.os, 'ubuntu') && inputs.enable-xvfb
+        run: |
+          Xvfb :99 -screen 0 1024x768x24 & sleep 2
+
+      # Clean build directory
+      - name: Clean stale build directory
+        shell: bash
+        run: rm -rf build
+
+      # Configure CMake
+      - name: Configure (CMake)
+        shell: bash
+        run: |
+          CMAKE_ARGS="-S . -B build -DCMAKE_BUILD_TYPE=${{ inputs.build-type }}"
+
+          # Add test flags if requested
+          if [ "${{ inputs.build-tests }}" = "true" ]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DAXIDEV_IO_BUILD_TESTS=ON"
+          fi
+
+          if [ "${{ inputs.build-integration-tests }}" = "true" ]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON"
+          fi
+
+          # Architecture-specific flags for macOS
+          if [[ "${{ inputs.os }}" == macos* ]]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_OSX_ARCHITECTURES=${{ inputs.arch }}"
+          fi
+
+          # Generator and compiler for Windows
+          if [[ "${{ inputs.os }}" == windows* ]]; then
+            CMAKE_ARGS="$CMAKE_ARGS -G \"Unix Makefiles\" -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++"
+          fi
+
+          # Custom generator if specified
+          if [ -n "${{ inputs.cmake-generator }}" ]; then
+            CMAKE_ARGS="$CMAKE_ARGS -G \"${{ inputs.cmake-generator }}\""
+          fi
+
+          eval cmake $CMAKE_ARGS
+
+      # Build
+      - name: Build (CMake)
+        run: cmake --build build --config ${{ inputs.build-type }} --parallel
+
+      # Run tests with ctest
+      - name: Run tests (ctest)
+        if: inputs.run-tests
+        env:
+          CTEST_OUTPUT_ON_FAILURE: 1
+        run: ctest --test-dir build --output-on-failure -C ${{ inputs.build-type }}
+
+      # Install for packaging
+      - name: Install
+        if: inputs.package-output
+        run: cmake --install build --prefix dist --config ${{ inputs.build-type }}
+
+      # Package for release (Unix)
+      - name: Package (Unix)
+        if: inputs.package-output && !startsWith(inputs.os, 'windows')
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version || '' }}
+        run: |
+          TAG="${INPUT_VERSION:-${GITHUB_REF#refs/tags/}}"
+          mkdir -p packages
+          OS_NAME="${{ inputs.os }}"
+          if [[ "$OS_NAME" == ubuntu* ]]; then
+            OS_SIMPLE="linux"
+          elif [[ "$OS_NAME" == macos* ]]; then
+            OS_SIMPLE="macos"
+          fi
+          tar -C dist -czf "packages/axidev-io-${TAG}-${OS_SIMPLE}-${{ inputs.arch }}.tar.gz" .
+
+      # Package for release (Windows)
+      - name: Package (Windows)
+        if: inputs.package-output && startsWith(inputs.os, 'windows')
+        shell: pwsh
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version || '' }}
+        run: |
+          $tag = if ($env:INPUT_VERSION) { $env:INPUT_VERSION } else { $env:GITHUB_REF -replace '^refs/tags/', '' }
+          New-Item -ItemType Directory -Path packages -Force | Out-Null
+          Compress-Archive -Path "dist\*" -DestinationPath "packages/axidev-io-$tag-windows-${{ inputs.arch }}.zip" -Force
+
+      # Upload release packages
+      - name: Upload release package
+        if: inputs.package-output
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name-prefix }}release-package-${{ inputs.os }}-${{ inputs.arch }}
+          path: |
+            packages/*.tar.gz
+            packages/*.zip
+
+      # Find and upload integration test binary (Unix)
+      - name: Find integration test binary (Unix)
+        if: inputs.build-integration-tests && !startsWith(inputs.os, 'windows')
+        id: find-integration-binary-unix
+        shell: bash
+        run: |
+          found=$(find build -type f -name 'axidev-io-integration-tests*' -print -quit || true)
+          if [ -n "$found" ]; then
+            bname=$(basename "$found")
+            cp "$found" "$bname"
+            echo "path=$bname" >> $GITHUB_OUTPUT
+          else
+            echo "path=" >> $GITHUB_OUTPUT
+          fi
+
+      # Find and upload integration test binary (Windows)
+      - name: Find integration test binary (Windows)
+        if: inputs.build-integration-tests && startsWith(inputs.os, 'windows')
+        id: find-integration-binary-windows
+        shell: pwsh
+        run: |
+          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'axidev-io-integration-tests*.exe' } | Select-Object -First 1
+          if ($found) {
+            Copy-Item $found.FullName -Destination $found.Name
+            echo "path=$($found.Name)" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "path=" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Upload integration test binary
+        if: inputs.build-integration-tests && ((steps.find-integration-binary-unix.outputs.path || '') != '' || (steps.find-integration-binary-windows.outputs.path || '') != '')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name-prefix }}integration-test-binary-${{ inputs.os }}-${{ inputs.arch }}
+          path: |
+            axidev-io-integration-tests*
+            !axidev-io-integration-tests*.o
+            !axidev-io-integration-tests*.obj
+
+      # Find and upload test-consumer binary (Unix)
+      - name: Find test-consumer binary (Unix)
+        if: inputs.build-integration-tests && !startsWith(inputs.os, 'windows')
+        id: find-consumer-binary-unix
+        shell: bash
+        run: |
+          found=$(find build -type f \( -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) -print -quit || true)
+          if [ -n "$found" ]; then
+            bname=$(basename "$found")
+            cp "$found" "$bname"
+            echo "path=$bname" >> $GITHUB_OUTPUT
+          else
+            echo "path=" >> $GITHUB_OUTPUT
+          fi
+
+      # Find and upload test-consumer binary (Windows)
+      - name: Find test-consumer binary (Windows)
+        if: inputs.build-integration-tests && startsWith(inputs.os, 'windows')
+        id: find-consumer-binary-windows
+        shell: pwsh
+        run: |
+          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'axidev_io_consumer*.exe' -or $_.Name -like 'axidev-io-test-consumer*.exe' } | Select-Object -First 1
+          if ($found) {
+            Copy-Item $found.FullName -Destination $found.Name
+            echo "path=$($found.Name)" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "path=" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Upload test-consumer binary
+        if: inputs.build-integration-tests && ((steps.find-consumer-binary-unix.outputs.path || '') != '' || (steps.find-consumer-binary-windows.outputs.path || '') != '')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name-prefix }}test-consumer-binary-${{ inputs.os }}-${{ inputs.arch }}
+          path: |
+            axidev_io_consumer*
+            axidev-io-test-consumer*
+            !axidev_io_consumer*.o
+            !axidev_io_consumer*.obj
+            !axidev-io-test-consumer*.o
+            !axidev-io-test-consumer*.obj
