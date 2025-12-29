@@ -2,7 +2,7 @@
 // Comprehensive unit tests for key/string utilities, modifiers, and
 // capabilities.
 //
-// These tests use Catch2 (v3+) and exercise:
+// These tests use Google Test and exercise:
 //  - keyToString / stringToKey round-trip behavior and uniqueness of canonical
 //  names
 //  - alias/synonym lookups (e.g., \"esc\" -> Escape, \"kp1\" -> Numpad1)
@@ -13,7 +13,7 @@
 // To run these tests enable AXIDEV_IO_BUILD_TESTS=ON when configuring the
 // project.
 
-#include <catch2/catch_all.hpp>
+#include <gtest/gtest.h>
 
 #include <axidev-io/keyboard/common.hpp>
 #include <axidev-io/log.hpp>
@@ -34,7 +34,7 @@ static std::string toLowerCopy(const std::string &s) {
   return out;
 }
 
-TEST_CASE("keyToString / stringToKey roundtrip and uniqueness", "[key_utils]") {
+TEST(KeyUtilsTest, RoundtripAndUniqueness) {
   AXIDEV_IO_LOG_INFO("test_key_utils: roundtrip/uniqueness start");
   std::unordered_set<std::string> seen;
   int canonicalCount = 0;
@@ -65,16 +65,18 @@ TEST_CASE("keyToString / stringToKey roundtrip and uniqueness", "[key_utils]") {
     // mapping should resolve to Key::Unknown. For all other canonical
     // names, the round-trip should return the same Key value.
     if (name == "Unknown") {
-      REQUIRE(stringToKey(name) == Key::Unknown);
+      EXPECT_EQ(stringToKey(name), Key::Unknown);
     } else {
-      REQUIRE(stringToKey(name) == k);
+      EXPECT_EQ(stringToKey(name), k);
     }
 
     // Count & uniqueness of non-Unknown canonical names
     if (name != "Unknown") {
       ++canonicalCount;
       auto [it, inserted] = seen.emplace(name);
-      REQUIRE(inserted); // canonical names must be unique
+      EXPECT_TRUE(inserted)
+          << "Canonical name '" << name
+          << "' is duplicated"; // canonical names must be unique
 
       // Lowercased canonical should map back when unambiguous.
       // If multiple canonical names collapse to the same lowercased string
@@ -83,7 +85,7 @@ TEST_CASE("keyToString / stringToKey roundtrip and uniqueness", "[key_utils]") {
       // identical lowercased string).
       std::string lower = toLowerCopy(name);
       if (lowerCounts[lower] == 1) {
-        REQUIRE(stringToKey(lower) == k);
+        EXPECT_EQ(stringToKey(lower), k);
       } else {
         AXIDEV_IO_LOG_DEBUG(
             "Skipping lowercased roundtrip for ambiguous canonical name '%s'",
@@ -96,7 +98,7 @@ TEST_CASE("keyToString / stringToKey roundtrip and uniqueness", "[key_utils]") {
         return static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
       });
       if (upperCounts[upper] == 1) {
-        REQUIRE(stringToKey(upper) == k);
+        EXPECT_EQ(stringToKey(upper), k);
       } else {
         AXIDEV_IO_LOG_DEBUG(
             "Skipping uppercased roundtrip for ambiguous canonical name '%s'",
@@ -106,221 +108,220 @@ TEST_CASE("keyToString / stringToKey roundtrip and uniqueness", "[key_utils]") {
   }
 
   // Sanity: ensure we found a healthy number of canonical keys
-  REQUIRE(canonicalCount > 40);
+  EXPECT_GT(canonicalCount, 40);
 }
 
-TEST_CASE("Recognizes helpful aliases / synonyms", "[key_utils][aliases]") {
+TEST(KeyUtilsTest, AliasesSynonyms) {
   AXIDEV_IO_LOG_INFO("test_key_utils: aliases/synonyms start");
-  REQUIRE(stringToKey("esc") == Key::Escape);
-  REQUIRE(stringToKey("ESC") == Key::Escape);
-  REQUIRE(stringToKey("return") == Key::Enter);
-  REQUIRE(stringToKey("spacebar") == Key::Space);
-  REQUIRE(stringToKey("space") == Key::Space);
-  REQUIRE(stringToKey("ctrl") == Key::CtrlLeft);
-  REQUIRE(stringToKey("control") == Key::CtrlLeft);
-  REQUIRE(stringToKey("shift") == Key::ShiftLeft);
-  REQUIRE(stringToKey("alt") == Key::AltLeft);
-  REQUIRE(stringToKey("super") == Key::SuperLeft);
-  REQUIRE(stringToKey("meta") == Key::SuperLeft);
-  REQUIRE(stringToKey("win") == Key::SuperLeft);
+  EXPECT_EQ(stringToKey("esc"), Key::Escape);
+  EXPECT_EQ(stringToKey("ESC"), Key::Escape);
+  EXPECT_EQ(stringToKey("return"), Key::Enter);
+  EXPECT_EQ(stringToKey("spacebar"), Key::Space);
+  EXPECT_EQ(stringToKey("space"), Key::Space);
+  EXPECT_EQ(stringToKey("ctrl"), Key::CtrlLeft);
+  EXPECT_EQ(stringToKey("control"), Key::CtrlLeft);
+  EXPECT_EQ(stringToKey("shift"), Key::ShiftLeft);
+  EXPECT_EQ(stringToKey("alt"), Key::AltLeft);
+  EXPECT_EQ(stringToKey("super"), Key::SuperLeft);
+  EXPECT_EQ(stringToKey("meta"), Key::SuperLeft);
+  EXPECT_EQ(stringToKey("win"), Key::SuperLeft);
 
-  REQUIRE(stringToKey("num0") == Key::Num0);
-  REQUIRE(stringToKey("num1") == Key::Num1);
-  REQUIRE(stringToKey("num2") == Key::Num2);
+  EXPECT_EQ(stringToKey("num0"), Key::Num0);
+  EXPECT_EQ(stringToKey("num1"), Key::Num1);
+  EXPECT_EQ(stringToKey("num2"), Key::Num2);
 
-  REQUIRE(stringToKey("dash") == Key::Minus);
-  REQUIRE(stringToKey("hyphen") == Key::Minus);
-  REQUIRE(stringToKey("minus") == Key::Minus);
-  REQUIRE(stringToKey("-") == Key::Minus);
+  EXPECT_EQ(stringToKey("dash"), Key::Minus);
+  EXPECT_EQ(stringToKey("hyphen"), Key::Minus);
+  EXPECT_EQ(stringToKey("minus"), Key::Minus);
+  EXPECT_EQ(stringToKey("-"), Key::Minus);
 
-  REQUIRE(stringToKey("grave") == Key::Grave);
-  REQUIRE(stringToKey("`") == Key::Grave);
+  EXPECT_EQ(stringToKey("grave"), Key::Grave);
+  EXPECT_EQ(stringToKey("`"), Key::Grave);
 
-  REQUIRE(stringToKey("backslash") == Key::Backslash);
-  REQUIRE(stringToKey("\\") == Key::Backslash);
+  EXPECT_EQ(stringToKey("backslash"), Key::Backslash);
+  EXPECT_EQ(stringToKey("\\"), Key::Backslash);
 
-  REQUIRE(stringToKey("bracketleft") == Key::LeftBracket);
-  REQUIRE(stringToKey("bracketright") == Key::RightBracket);
+  EXPECT_EQ(stringToKey("bracketleft"), Key::LeftBracket);
+  EXPECT_EQ(stringToKey("bracketright"), Key::RightBracket);
 
-  REQUIRE(stringToKey("kp0") == Key::Numpad0);
-  REQUIRE(stringToKey("kp1") == Key::Numpad1);
-  REQUIRE(stringToKey("kp9") == Key::Numpad9);
-  REQUIRE(stringToKey("numpad1") == Key::Numpad1);
+  EXPECT_EQ(stringToKey("kp0"), Key::Numpad0);
+  EXPECT_EQ(stringToKey("kp1"), Key::Numpad1);
+  EXPECT_EQ(stringToKey("kp9"), Key::Numpad9);
+  EXPECT_EQ(stringToKey("numpad1"), Key::Numpad1);
 
-  REQUIRE(stringToKey("dot") == Key::Period);
-  REQUIRE(stringToKey("period") == Key::Period);
+  EXPECT_EQ(stringToKey("dot"), Key::Period);
+  EXPECT_EQ(stringToKey("period"), Key::Period);
 
   // Additional symbol aliases commonly encountered on US-style keyboard
   // layouts. The implementation maps these to named symbol keys (e.g.,
   // "@" -> Key::At) rather than their shifted numeric equivalents.
-  REQUIRE(stringToKey("@") == Key::At);
-  REQUIRE(stringToKey("hash") == Key::Hashtag);
-  REQUIRE(stringToKey("hashtag") == Key::Hashtag);
-  REQUIRE(stringToKey("pound") == Key::Hashtag);
-  REQUIRE(stringToKey("!") == Key::Exclamation);
-  REQUIRE(stringToKey("$") == Key::Dollar);
-  REQUIRE(stringToKey("percent") == Key::Percent);
-  REQUIRE(stringToKey("^") == Key::Caret);
-  REQUIRE(stringToKey("&") == Key::Ampersand);
-  REQUIRE(stringToKey("*") == Key::Asterisk);
-  REQUIRE(stringToKey("(") == Key::LeftParen);
-  REQUIRE(stringToKey(")") == Key::RightParen);
+  EXPECT_EQ(stringToKey("@"), Key::At);
+  EXPECT_EQ(stringToKey("hash"), Key::Hashtag);
+  EXPECT_EQ(stringToKey("hashtag"), Key::Hashtag);
+  EXPECT_EQ(stringToKey("pound"), Key::Hashtag);
+  EXPECT_EQ(stringToKey("!"), Key::Exclamation);
+  EXPECT_EQ(stringToKey("$"), Key::Dollar);
+  EXPECT_EQ(stringToKey("percent"), Key::Percent);
+  EXPECT_EQ(stringToKey("^"), Key::Caret);
+  EXPECT_EQ(stringToKey("&"), Key::Ampersand);
+  EXPECT_EQ(stringToKey("*"), Key::Asterisk);
+  EXPECT_EQ(stringToKey("("), Key::LeftParen);
+  EXPECT_EQ(stringToKey(")"), Key::RightParen);
 
-  REQUIRE(stringToKey("_") == Key::Minus);
-  REQUIRE(stringToKey("+") == Key::Equal);
-  REQUIRE(stringToKey("|") == Key::Backslash);
-  REQUIRE(stringToKey("~") == Key::Grave);
-  REQUIRE(stringToKey(":") == Key::Semicolon);
-  REQUIRE(stringToKey("\"") == Key::Apostrophe);
-  REQUIRE(stringToKey("<") == Key::Comma);
-  REQUIRE(stringToKey(">") == Key::Period);
-  REQUIRE(stringToKey("?") == Key::Slash);
+  EXPECT_EQ(stringToKey("_"), Key::Minus);
+  EXPECT_EQ(stringToKey("+"), Key::Equal);
+  EXPECT_EQ(stringToKey("|"), Key::Backslash);
+  EXPECT_EQ(stringToKey("~"), Key::Grave);
+  EXPECT_EQ(stringToKey(":"), Key::Semicolon);
+  EXPECT_EQ(stringToKey("\""), Key::Apostrophe);
+  EXPECT_EQ(stringToKey("<"), Key::Comma);
+  EXPECT_EQ(stringToKey(">"), Key::Period);
+  EXPECT_EQ(stringToKey("?"), Key::Slash);
 
   // Whitespace aliases
-  REQUIRE(stringToKey(" ") == Key::Space);
-  REQUIRE(stringToKey("\t") == Key::Tab);
+  EXPECT_EQ(stringToKey(" "), Key::Space);
+  EXPECT_EQ(stringToKey("\t"), Key::Tab);
 }
-TEST_CASE("Recognizes X11 / XF86 / KP alias names", "[key_utils][x11]") {
+TEST(KeyUtilsTest, X11XF86Aliases) {
   AXIDEV_IO_LOG_INFO("test_key_utils: x11 aliases start");
 
   // Modifier / control variants
-  REQUIRE(stringToKey("Control_L") == Key::CtrlLeft);
-  REQUIRE(stringToKey("Control_R") == Key::CtrlRight);
-  REQUIRE(stringToKey("Shift_L") == Key::ShiftLeft);
-  REQUIRE(stringToKey("Shift_R") == Key::ShiftRight);
-  REQUIRE(stringToKey("Alt_L") == Key::AltLeft);
-  REQUIRE(stringToKey("Meta_L") == Key::SuperLeft);
-  REQUIRE(stringToKey("ISO_Left_Tab") == Key::Tab);
-  REQUIRE(stringToKey("ISO_Level3_Shift") == Key::AltRight);
+  EXPECT_EQ(stringToKey("Control_L"), Key::CtrlLeft);
+  EXPECT_EQ(stringToKey("Control_R"), Key::CtrlRight);
+  EXPECT_EQ(stringToKey("Shift_L"), Key::ShiftLeft);
+  EXPECT_EQ(stringToKey("Shift_R"), Key::ShiftRight);
+  EXPECT_EQ(stringToKey("Alt_L"), Key::AltLeft);
+  EXPECT_EQ(stringToKey("Meta_L"), Key::SuperLeft);
+  EXPECT_EQ(stringToKey("ISO_Left_Tab"), Key::Tab);
+  EXPECT_EQ(stringToKey("ISO_Level3_Shift"), Key::AltRight);
 
   // X11 punctuation / named symbols
-  REQUIRE(stringToKey("quotedbl") == Key::Quote);
-  REQUIRE(stringToKey("parenleft") == Key::LeftParen);
-  REQUIRE(stringToKey("parenright") == Key::RightParen);
-  REQUIRE(stringToKey("equal") == Key::Equal);
-  REQUIRE(stringToKey("question") == Key::QuestionMark);
-  REQUIRE(stringToKey("exclam") == Key::Exclamation);
-  REQUIRE(stringToKey("section") == Key::Section);
-  REQUIRE(stringToKey("degree") == Key::Degree);
-  REQUIRE(stringToKey("sterling") == Key::Sterling);
-  REQUIRE(stringToKey("plusminus") == Key::PlusMinus);
+  EXPECT_EQ(stringToKey("quotedbl"), Key::Quote);
+  EXPECT_EQ(stringToKey("parenleft"), Key::LeftParen);
+  EXPECT_EQ(stringToKey("parenright"), Key::RightParen);
+  EXPECT_EQ(stringToKey("equal"), Key::Equal);
+  EXPECT_EQ(stringToKey("question"), Key::QuestionMark);
+  EXPECT_EQ(stringToKey("exclam"), Key::Exclamation);
+  EXPECT_EQ(stringToKey("section"), Key::Section);
+  EXPECT_EQ(stringToKey("degree"), Key::Degree);
+  EXPECT_EQ(stringToKey("sterling"), Key::Sterling);
+  EXPECT_EQ(stringToKey("plusminus"), Key::PlusMinus);
 
   // Accented/locale keys
-  REQUIRE(stringToKey("eacute") == Key::E);
-  REQUIRE(stringToKey("egrave") == Key::E);
-  REQUIRE(stringToKey("agrave") == Key::A);
-  REQUIRE(stringToKey("ugrave") == Key::U);
-  REQUIRE(stringToKey("ccedilla") == Key::C);
-  REQUIRE(stringToKey("oe") == Key::oe);
-  REQUIRE(stringToKey("OE") == Key::OE);
-  REQUIRE(stringToKey("mu") == Key::Mu);
+  EXPECT_EQ(stringToKey("eacute"), Key::E);
+  EXPECT_EQ(stringToKey("egrave"), Key::E);
+  EXPECT_EQ(stringToKey("agrave"), Key::A);
+  EXPECT_EQ(stringToKey("ugrave"), Key::U);
+  EXPECT_EQ(stringToKey("ccedilla"), Key::C);
+  EXPECT_EQ(stringToKey("oe"), Key::oe);
+  EXPECT_EQ(stringToKey("OE"), Key::OE);
+  EXPECT_EQ(stringToKey("mu"), Key::Mu);
 
   // Linefeed / control synonyms
-  REQUIRE(stringToKey("linefeed") == Key::Enter);
-  REQUIRE(stringToKey("prior") == Key::PageUp);
-  REQUIRE(stringToKey("next") == Key::PageDown);
+  EXPECT_EQ(stringToKey("linefeed"), Key::Enter);
+  EXPECT_EQ(stringToKey("prior"), Key::PageUp);
+  EXPECT_EQ(stringToKey("next"), Key::PageDown);
 
   // Numeric keypad / KP_* variants (underscore and non-underscore forms)
-  REQUIRE(stringToKey("KP_Multiply") == Key::NumpadMultiply);
-  REQUIRE(stringToKey("kp_multiply") == Key::NumpadMultiply);
-  REQUIRE(stringToKey("KP_Divide") == Key::NumpadDivide);
-  REQUIRE(stringToKey("KP_Enter") == Key::NumpadEnter);
-  REQUIRE(stringToKey("KP_Equal") == Key::NumpadEqual);
-  REQUIRE(stringToKey("KP_7") == Key::Numpad7);
-  REQUIRE(stringToKey("KP_Up") == Key::Numpad8);
-  REQUIRE(stringToKey("KP_Decimal") == Key::NumpadDecimal);
+  EXPECT_EQ(stringToKey("KP_Multiply"), Key::NumpadMultiply);
+  EXPECT_EQ(stringToKey("kp_multiply"), Key::NumpadMultiply);
+  EXPECT_EQ(stringToKey("KP_Divide"), Key::NumpadDivide);
+  EXPECT_EQ(stringToKey("KP_Enter"), Key::NumpadEnter);
+  EXPECT_EQ(stringToKey("KP_Equal"), Key::NumpadEqual);
+  EXPECT_EQ(stringToKey("KP_7"), Key::Numpad7);
+  EXPECT_EQ(stringToKey("KP_Up"), Key::Numpad8);
+  EXPECT_EQ(stringToKey("KP_Decimal"), Key::NumpadDecimal);
 
   // XF86 / multimedia / hardware keys
-  REQUIRE(stringToKey("XF86AudioMute") == Key::Mute);
-  REQUIRE(stringToKey("XF86AudioLowerVolume") == Key::VolumeDown);
-  REQUIRE(stringToKey("XF86AudioRaiseVolume") == Key::VolumeUp);
-  REQUIRE(stringToKey("XF86AudioPlay") == Key::MediaPlayPause);
-  REQUIRE(stringToKey("XF86AudioNext") == Key::MediaNext);
-  REQUIRE(stringToKey("XF86Eject") == Key::Eject);
-  REQUIRE(stringToKey("XF86MonBrightnessDown") == Key::BrightnessDown);
-  REQUIRE(stringToKey("XF86MonBrightnessUp") == Key::BrightnessUp);
-  REQUIRE(stringToKey("XF86Launch1") == Key::Launch1);
-  REQUIRE(stringToKey("XF86LaunchA") == Key::LaunchA);
-  REQUIRE(stringToKey("XF86KbdBrightnessDown") == Key::KbdBrightnessDown);
-  REQUIRE(stringToKey("XF86KbdBrightnessUp") == Key::KbdBrightnessUp);
+  EXPECT_EQ(stringToKey("XF86AudioMute"), Key::Mute);
+  EXPECT_EQ(stringToKey("XF86AudioLowerVolume"), Key::VolumeDown);
+  EXPECT_EQ(stringToKey("XF86AudioRaiseVolume"), Key::VolumeUp);
+  EXPECT_EQ(stringToKey("XF86AudioPlay"), Key::MediaPlayPause);
+  EXPECT_EQ(stringToKey("XF86AudioNext"), Key::MediaNext);
+  EXPECT_EQ(stringToKey("XF86Eject"), Key::Eject);
+  EXPECT_EQ(stringToKey("XF86MonBrightnessDown"), Key::BrightnessDown);
+  EXPECT_EQ(stringToKey("XF86MonBrightnessUp"), Key::BrightnessUp);
+  EXPECT_EQ(stringToKey("XF86Launch1"), Key::Launch1);
+  EXPECT_EQ(stringToKey("XF86LaunchA"), Key::LaunchA);
+  EXPECT_EQ(stringToKey("XF86KbdBrightnessDown"), Key::KbdBrightnessDown);
+  EXPECT_EQ(stringToKey("XF86KbdBrightnessUp"), Key::KbdBrightnessUp);
 
   // Ensure case-insensitivity / underscore handling is robust
-  REQUIRE(stringToKey("kp_multiply") == Key::NumpadMultiply);
-  REQUIRE(stringToKey("KP_Multiply") == stringToKey("kp_multiply"));
+  EXPECT_EQ(stringToKey("kp_multiply"), Key::NumpadMultiply);
+  EXPECT_EQ(stringToKey("KP_Multiply"), stringToKey("kp_multiply"));
 }
-TEST_CASE("Recognizes ASCII control inputs", "[key_utils][ascii]") {
+TEST(KeyUtilsTest, ASCIIControls) {
   AXIDEV_IO_LOG_INFO("test_key_utils: ascii controls start");
   // Control characters commonly observed in terminal / listener input.
-  REQUIRE(stringToKey("\x08") == Key::Backspace);
-  REQUIRE(stringToKey("\x03") == Key::AsciiETX);
-  REQUIRE(stringToKey("\x1B") == Key::Escape);
-  REQUIRE(stringToKey("\x1D") == Key::AsciiGS);
-  REQUIRE(stringToKey("\x1C") == Key::AsciiFS);
-  REQUIRE(stringToKey("\x1F") == Key::AsciiUS);
-  REQUIRE(stringToKey("\x1E") == Key::AsciiRS);
-  REQUIRE(stringToKey("\x10") == Key::AsciiDLE);
-  REQUIRE(stringToKey("\x05") == Key::AsciiENQ);
-  REQUIRE(stringToKey("\x01") == Key::AsciiSOH);
-  REQUIRE(stringToKey("\x0B") == Key::AsciiVT);
-  REQUIRE(stringToKey("\x0C") == Key::AsciiFF);
-  REQUIRE(stringToKey("\x04") == Key::AsciiEOT);
-  REQUIRE(stringToKey("\x7F") == Key::Delete);
+  EXPECT_EQ(stringToKey("\x08"), Key::Backspace);
+  EXPECT_EQ(stringToKey("\x03"), Key::AsciiETX);
+  EXPECT_EQ(stringToKey("\x1B"), Key::Escape);
+  EXPECT_EQ(stringToKey("\x1D"), Key::AsciiGS);
+  EXPECT_EQ(stringToKey("\x1C"), Key::AsciiFS);
+  EXPECT_EQ(stringToKey("\x1F"), Key::AsciiUS);
+  EXPECT_EQ(stringToKey("\x1E"), Key::AsciiRS);
+  EXPECT_EQ(stringToKey("\x10"), Key::AsciiDLE);
+  EXPECT_EQ(stringToKey("\x05"), Key::AsciiENQ);
+  EXPECT_EQ(stringToKey("\x01"), Key::AsciiSOH);
+  EXPECT_EQ(stringToKey("\x0B"), Key::AsciiVT);
+  EXPECT_EQ(stringToKey("\x0C"), Key::AsciiFF);
+  EXPECT_EQ(stringToKey("\x04"), Key::AsciiEOT);
+  EXPECT_EQ(stringToKey("\x7F"), Key::Delete);
   // Common newline/whitespace control mappings
-  REQUIRE(stringToKey("\n") == Key::Enter);
-  REQUIRE(stringToKey("\r") == Key::Enter);
-  REQUIRE(stringToKey("\t") == Key::Tab);
+  EXPECT_EQ(stringToKey("\n"), Key::Enter);
+  EXPECT_EQ(stringToKey("\r"), Key::Enter);
+  EXPECT_EQ(stringToKey("\t"), Key::Tab);
 }
-TEST_CASE("Handles invalid and edge-case inputs", "[key_utils][edge]") {
+TEST(KeyUtilsTest, InvalidEdgeCaseInputs) {
   AXIDEV_IO_LOG_INFO("test_key_utils: edge-case inputs start");
-  REQUIRE(stringToKey("NotAKey") == Key::Unknown);
-  REQUIRE(stringToKey("") == Key::Unknown);
+  EXPECT_EQ(stringToKey("NotAKey"), Key::Unknown);
+  EXPECT_EQ(stringToKey(""), Key::Unknown);
   // whitespace is NOT trimmed by design
-  REQUIRE(stringToKey(" Enter") == Key::Unknown);
-  REQUIRE(stringToKey("Enter ") == Key::Unknown);
+  EXPECT_EQ(stringToKey(" Enter"), Key::Unknown);
+  EXPECT_EQ(stringToKey("Enter "), Key::Unknown);
 }
 
-TEST_CASE("keyToString returns expected canonical values",
-          "[key_utils][canonical]") {
+TEST(KeyUtilsTest, CanonicalValues) {
   AXIDEV_IO_LOG_INFO("test_key_utils: canonical values start");
-  REQUIRE(keyToString(Key::A) == "A");
-  REQUIRE(keyToString(Key::Num1) == "1");
-  REQUIRE(keyToString(Key::F5) == "F5");
-  REQUIRE(keyToString(Key::Tab) == "Tab");
-  REQUIRE(keyToString(Key::Period) == ".");
-  REQUIRE(keyToString(Key::Backslash) == "\\");
-  REQUIRE(keyToString(Key::Minus) == "-");
+  EXPECT_EQ(keyToString(Key::A), "A");
+  EXPECT_EQ(keyToString(Key::Num1), "1");
+  EXPECT_EQ(keyToString(Key::F5), "F5");
+  EXPECT_EQ(keyToString(Key::Tab), "Tab");
+  EXPECT_EQ(keyToString(Key::Period), ".");
+  EXPECT_EQ(keyToString(Key::Backslash), "\\");
+  EXPECT_EQ(keyToString(Key::Minus), "-");
 }
 
-TEST_CASE("Modifier bit-ops and helpers", "[modifier]") {
+TEST(ModifierTest, BitOpsAndHelpers) {
   AXIDEV_IO_LOG_INFO("test_key_utils: modifier bit-ops start");
   Modifier m = Modifier::None;
-  REQUIRE(!hasModifier(m, Modifier::Shift));
+  EXPECT_FALSE(hasModifier(m, Modifier::Shift));
 
   m |= Modifier::Shift;
-  REQUIRE(hasModifier(m, Modifier::Shift));
+  EXPECT_TRUE(hasModifier(m, Modifier::Shift));
 
   m |= Modifier::Ctrl;
-  REQUIRE(hasModifier(m, Modifier::Shift));
-  REQUIRE(hasModifier(m, Modifier::Ctrl));
-  REQUIRE(!hasModifier(m, Modifier::Alt));
+  EXPECT_TRUE(hasModifier(m, Modifier::Shift));
+  EXPECT_TRUE(hasModifier(m, Modifier::Ctrl));
+  EXPECT_FALSE(hasModifier(m, Modifier::Alt));
 
   Modifier n = m & Modifier::Ctrl;
-  REQUIRE(hasModifier(n, Modifier::Ctrl));
-  REQUIRE((!hasModifier(n, Modifier::Shift) || (n == Modifier::Ctrl)));
+  EXPECT_TRUE(hasModifier(n, Modifier::Ctrl));
+  EXPECT_TRUE((!hasModifier(n, Modifier::Shift) || (n == Modifier::Ctrl)));
 
   m &= Modifier::Shift; // keep only Shift
-  REQUIRE(hasModifier(m, Modifier::Shift));
-  REQUIRE(!hasModifier(m, Modifier::Ctrl));
+  EXPECT_TRUE(hasModifier(m, Modifier::Shift));
+  EXPECT_FALSE(hasModifier(m, Modifier::Ctrl));
 }
 
-TEST_CASE("Capabilities defaults to false", "[capabilities]") {
+TEST(CapabilitiesTest, DefaultsToFalse) {
   AXIDEV_IO_LOG_INFO("test_key_utils: capabilities defaults start");
   Capabilities c;
-  REQUIRE(!c.canInjectKeys);
-  REQUIRE(!c.canInjectText);
-  REQUIRE(!c.canSimulateHID);
-  REQUIRE(!c.supportsKeyRepeat);
-  REQUIRE(!c.needsAccessibilityPerm);
-  REQUIRE(!c.needsInputMonitoringPerm);
-  REQUIRE(!c.needsUinputAccess);
+  EXPECT_FALSE(c.canInjectKeys);
+  EXPECT_FALSE(c.canInjectText);
+  EXPECT_FALSE(c.canSimulateHID);
+  EXPECT_FALSE(c.supportsKeyRepeat);
+  EXPECT_FALSE(c.needsAccessibilityPerm);
+  EXPECT_FALSE(c.needsInputMonitoringPerm);
+  EXPECT_FALSE(c.needsUinputAccess);
 }

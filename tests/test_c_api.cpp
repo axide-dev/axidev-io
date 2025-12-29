@@ -1,4 +1,4 @@
-#include <catch2/catch_test_macros.hpp>
+#include <gtest/gtest.h>
 
 #include <cstring>
 #include <string>
@@ -15,35 +15,35 @@ static void noop_listener_cb(uint32_t codepoint, axidev_io_keyboard_key_t key,
   (void)user_data;
 }
 
-TEST_CASE("axidev-io C API - key/string conversion", "[c_api]") {
+TEST(CApiTest, KeyStringConversion) {
   axidev_io_clear_last_error();
 
   const char *ver = axidev_io_library_version();
-  REQUIRE(ver != nullptr);
-  REQUIRE(std::strlen(ver) > 0);
+  ASSERT_NE(ver, nullptr);
+  EXPECT_GT(std::strlen(ver), 0u);
 
   axidev_io_keyboard_key_t k = axidev_io_keyboard_string_to_key("A");
-  REQUIRE(k != 0);
+  ASSERT_NE(k, 0u);
 
   char *s = axidev_io_keyboard_key_to_string(k);
-  REQUIRE(s != nullptr);
-  REQUIRE(std::string(s) == "A");
+  ASSERT_NE(s, nullptr);
+  EXPECT_EQ(std::string(s), "A");
   axidev_io_free_string(s);
 
   /* Unknown key */
   axidev_io_keyboard_key_t unk = axidev_io_keyboard_string_to_key("no-such-key");
-  REQUIRE(unk == 0);
+  EXPECT_EQ(unk, 0u);
   char *unk_s = axidev_io_keyboard_key_to_string(unk);
-  REQUIRE(unk_s != nullptr);
-  REQUIRE(std::string(unk_s) == "Unknown");
+  ASSERT_NE(unk_s, nullptr);
+  EXPECT_EQ(std::string(unk_s), "Unknown");
   axidev_io_free_string(unk_s);
 }
 
-TEST_CASE("axidev-io C API - sender creation and error handling", "[c_api]") {
+TEST(CApiTest, SenderCreationAndErrorHandling) {
   axidev_io_clear_last_error();
 
   axidev_io_keyboard_sender_t sender = axidev_io_keyboard_sender_create();
-  REQUIRE(sender != nullptr);
+  ASSERT_NE(sender, nullptr);
 
   axidev_io_keyboard_capabilities_t caps;
   axidev_io_keyboard_sender_get_capabilities(sender, &caps);
@@ -53,19 +53,19 @@ TEST_CASE("axidev-io C API - sender creation and error handling", "[c_api]") {
   /* Passing NULL sender should fail and set last error. */
   axidev_io_clear_last_error();
   bool ok = axidev_io_keyboard_sender_key_down(NULL, (axidev_io_keyboard_key_t)1);
-  REQUIRE(ok == false);
+  EXPECT_FALSE(ok);
   char *err = axidev_io_get_last_error();
-  REQUIRE(err != nullptr);
-  REQUIRE(std::string(err).find("sender") != std::string::npos);
+  ASSERT_NE(err, nullptr);
+  EXPECT_NE(std::string(err).find("sender"), std::string::npos);
   axidev_io_free_string(err);
   axidev_io_clear_last_error();
 
   /* Passing NULL text should fail and set last error. */
   ok = axidev_io_keyboard_sender_type_text_utf8(sender, NULL);
-  REQUIRE(ok == false);
+  EXPECT_FALSE(ok);
   err = axidev_io_get_last_error();
-  REQUIRE(err != nullptr);
-  REQUIRE(std::string(err).find("utf8_text") != std::string::npos);
+  ASSERT_NE(err, nullptr);
+  EXPECT_NE(std::string(err).find("utf8_text"), std::string::npos);
   axidev_io_free_string(err);
   axidev_io_clear_last_error();
 
@@ -79,19 +79,19 @@ TEST_CASE("axidev-io C API - sender creation and error handling", "[c_api]") {
   axidev_io_keyboard_sender_destroy(sender);
 }
 
-TEST_CASE("axidev-io C API - listener create/start/stop", "[c_api]") {
+TEST(CApiTest, ListenerCreateStartStop) {
   axidev_io_clear_last_error();
 
   axidev_io_keyboard_listener_t listener = axidev_io_keyboard_listener_create();
-  REQUIRE(listener != nullptr);
+  ASSERT_NE(listener, nullptr);
 
   /* Starting with a NULL callback should fail and set an error about callback.
    */
   bool ok = axidev_io_keyboard_listener_start(listener, NULL, NULL);
-  REQUIRE(ok == false);
+  EXPECT_FALSE(ok);
   char *err = axidev_io_get_last_error();
-  REQUIRE(err != nullptr);
-  REQUIRE(std::string(err).find("callback") != std::string::npos);
+  ASSERT_NE(err, nullptr);
+  EXPECT_NE(std::string(err).find("callback"), std::string::npos);
   axidev_io_free_string(err);
   axidev_io_clear_last_error();
 
@@ -99,9 +99,9 @@ TEST_CASE("axidev-io C API - listener create/start/stop", "[c_api]") {
      permissions. The call must be safe. If it succeeds, stop the listener. */
   ok = axidev_io_keyboard_listener_start(listener, noop_listener_cb, NULL);
   if (ok) {
-    REQUIRE(axidev_io_keyboard_listener_is_listening(listener) == true);
+    EXPECT_TRUE(axidev_io_keyboard_listener_is_listening(listener));
     axidev_io_keyboard_listener_stop(listener);
-    REQUIRE(axidev_io_keyboard_listener_is_listening(listener) == false);
+    EXPECT_FALSE(axidev_io_keyboard_listener_is_listening(listener));
   } else {
     /* If it failed, retrieve and clear the error (platform dependent). */
     char *e = axidev_io_get_last_error();
