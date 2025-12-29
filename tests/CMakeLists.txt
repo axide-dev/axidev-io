@@ -59,7 +59,9 @@ endif()
 # Register with CTest
 enable_testing()
 include(GoogleTest)
-gtest_discover_tests(axidev-io-unit-tests)
+gtest_discover_tests(axidev-io-unit-tests
+    DISCOVERY_MODE POST_BUILD
+)
 # Label the unit test so runners can select it explicitly if desired
 set_property(TARGET axidev-io-unit-tests PROPERTY LABELS unit)
 
@@ -84,7 +86,9 @@ if(AXIDEV_IO_BUILD_INTEGRATION_TESTS)
         target_link_options(axidev-io-integration-tests PRIVATE -lpthread -static-libgcc -static-libstdc++)
     endif()
 
-    gtest_discover_tests(axidev-io-integration-tests)
+    gtest_discover_tests(axidev-io-integration-tests
+        DISCOVERY_MODE POST_BUILD
+    )
     # Mark the test with a label so runners can select it explicitly if desired
     set_property(TARGET axidev-io-integration-tests PROPERTY LABELS integration)
 endif()
