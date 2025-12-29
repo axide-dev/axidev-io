@@ -81,7 +81,7 @@ if(AXIDEV_IO_BUILD_INTEGRATION_TESTS)
 
     # Fix MinGW libwinpthread bug on Windows (GCC 15.2.0 incompatibility)
     if(WIN32)
-        target_link_options(axidev-io-integration-tests PRIVATE -static-libwinpthread)
+        target_link_options(axidev-io-integration-tests PRIVATE -lpthread -static-libgcc -static-libstdc++)
     endif()
 
     gtest_discover_tests(axidev-io-integration-tests)
