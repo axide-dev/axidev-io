@@ -30,12 +30,12 @@
  * Example:
  *
  * @code{.cpp}
- * #include <typr-io/keyboard/listener.hpp>
+ * #include <axidev-io/keyboard/listener.hpp>
  *
  * int main() {
- *   typr::io::keyboard::Listener l;
- *   bool ok = l.start([](char32_t cp, typr::io::keyboard::Key k,
- *                        typr::io::keyboard::Modifier m, bool pressed) {
+ *   axidev::io::keyboard::Listener l;
+ *   bool ok = l.start([](char32_t cp, axidev::io::keyboard::Key k,
+ *                        axidev::io::keyboard::Modifier m, bool pressed) {
  *     // handle event
  *   });
  *   if (!ok) {
@@ -50,9 +50,9 @@
 #include <functional>
 #include <memory>
 
-#include <typr-io/keyboard/common.hpp>
+#include <axidev-io/keyboard/common.hpp>
 
-namespace typr {
+namespace axidev {
 namespace io {
 namespace keyboard {
 
@@ -65,7 +65,7 @@ namespace keyboard {
  * end listening. Callbacks may be invoked on an internal background thread,
  * therefore they must be thread-safe.
  */
-class TYPR_IO_API Listener {
+class AXIDEV_IO_API Listener {
 public:
   /**
    * @brief Callback invoked for each observed key event.
@@ -124,4 +124,4 @@ private:
 
 } // namespace keyboard
 } // namespace io
-} // namespace typr
+} // namespace axidev

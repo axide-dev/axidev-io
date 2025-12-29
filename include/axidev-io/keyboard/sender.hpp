@@ -4,18 +4,18 @@
  * @file keyboard/sender.hpp
  * @brief Keyboard input injection API (cross-platform).
  *
- * This header declares the `typr::io::keyboard::Sender` class that provides
+ * This header declares the `axidev::io::keyboard::Sender` class that provides
  * layout-aware physical key injection and text injection where supported by the
  * platform.
  *
  * @par Usage:
  * @code{.cpp}
- * #include <typr-io/keyboard/sender.hpp>
+ * #include <axidev-io/keyboard/sender.hpp>
  *
  * int main() {
- *   typr::io::keyboard::Sender sender;
+ *   axidev::io::keyboard::Sender sender;
  *   if (sender.capabilities().canInjectKeys) {
- *     sender.tap(typr::io::keyboard::Key::A);
+ *     sender.tap(axidev::io::keyboard::Key::A);
  *   }
  *   return 0;
  * }
@@ -26,9 +26,9 @@
 #include <memory>
 #include <string>
 
-#include <typr-io/keyboard/common.hpp>
+#include <axidev-io/keyboard/common.hpp>
 
-namespace typr {
+namespace axidev {
 namespace io {
 namespace keyboard {
 
@@ -39,7 +39,7 @@ namespace keyboard {
  * Provides a compact, cross-platform API to inject keys and text. The
  * implementation is platform-specific and hidden in the pimpl (`Impl`) type.
  */
-class TYPR_IO_API Sender {
+class AXIDEV_IO_API Sender {
 public:
   /**
    * @brief Construct a new Sender instance.
@@ -182,4 +182,4 @@ private:
 
 } // namespace keyboard
 } // namespace io
-} // namespace typr
+} // namespace axidev

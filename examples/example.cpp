@@ -1,12 +1,12 @@
 /*
- * Simple example for typr-io showing basic usage.
+ * Simple example for axidev-io showing basic usage.
  *
  * Build with:
- *   cmake -DTYPR_IO_BUILD_EXAMPLES=ON ..
+ *   cmake -DAXIDEV_IO_BUILD_EXAMPLES=ON ..
  *   cmake --build .
  *
  * Run:
- *   ./typr-io-example --help
+ *   ./axidev-io-example --help
  *
  * Note: Some functionality (global listening, text injection) may require
  * platform permissions (Accessibility / Input Monitoring on macOS, /dev/uinput
@@ -18,22 +18,22 @@
 #include <string>
 #include <thread>
 
-#include <typr-io/keyboard/listener.hpp>
-#include <typr-io/keyboard/sender.hpp>
-#include <typr-io/log.hpp>
+#include <axidev-io/keyboard/listener.hpp>
+#include <axidev-io/keyboard/sender.hpp>
+#include <axidev-io/log.hpp>
 
 int main(int argc, char **argv) {
   using namespace std::chrono_literals;
 
-  typr::io::keyboard::Sender sender;
+  axidev::io::keyboard::Sender sender;
   auto caps = sender.capabilities();
-  TYPR_IO_LOG_INFO(
+  AXIDEV_IO_LOG_INFO(
       "example: sender constructed; type=%d canInjectKeys=%d canInjectText=%d",
       static_cast<int>(sender.type()), static_cast<int>(caps.canInjectKeys),
       static_cast<int>(caps.canInjectText));
 
-  std::cout << "typr-io example\n";
-  TYPR_IO_LOG_INFO("example: startup argc=%d", argc);
+  std::cout << "axidev-io example\n";
+  AXIDEV_IO_LOG_INFO("example: startup argc=%d", argc);
   std::cout << "  sender type (raw): " << static_cast<int>(sender.type())
             << "\n";
   std::cout << "  capabilities:\n";
@@ -69,14 +69,14 @@ int main(int argc, char **argv) {
         return 1;
       }
       std::string text = argv[++i];
-      TYPR_IO_LOG_INFO("example: attempting to type: \"%s\"", text.c_str());
+      AXIDEV_IO_LOG_INFO("example: attempting to type: \"%s\"", text.c_str());
       if (!caps.canInjectText) {
         std::cerr << "Backend cannot inject arbitrary text on this "
                      "platform/back-end\n";
       } else {
         std::cout << "Attempting to type: \"" << text << "\"\n";
         bool ok = sender.typeText(text);
-        TYPR_IO_LOG_INFO("example: typeText result=%u",
+        AXIDEV_IO_LOG_INFO("example: typeText result=%u",
                          static_cast<unsigned>(ok));
         std::cout << (ok ? "-> Success\n" : "-> Failed\n");
       }
@@ -87,8 +87,8 @@ int main(int argc, char **argv) {
         return 1;
       }
       std::string keyName = argv[++i];
-      typr::io::keyboard::Key k = typr::io::keyboard::stringToKey(keyName);
-      if (k == typr::io::keyboard::Key::Unknown) {
+      axidev::io::keyboard::Key k = axidev::io::keyboard::stringToKey(keyName);
+      if (k == axidev::io::keyboard::Key::Unknown) {
         std::cerr << "Unknown key: " << keyName << "\n";
         continue;
       }
@@ -96,11 +96,11 @@ int main(int argc, char **argv) {
         std::cerr << "Sender cannot inject physical keys on this platform\n";
         continue;
       }
-      std::cout << "Tapping key: " << typr::io::keyboard::keyToString(k) << "\n";
-      TYPR_IO_LOG_INFO("example: tapping key=%s (%s)", keyName.c_str(),
-                       typr::io::keyboard::keyToString(k).c_str());
+      std::cout << "Tapping key: " << axidev::io::keyboard::keyToString(k) << "\n";
+      AXIDEV_IO_LOG_INFO("example: tapping key=%s (%s)", keyName.c_str(),
+                       axidev::io::keyboard::keyToString(k).c_str());
       bool ok = sender.tap(k);
-      TYPR_IO_LOG_INFO("example: tap result=%u", static_cast<unsigned>(ok));
+      AXIDEV_IO_LOG_INFO("example: tap result=%u", static_cast<unsigned>(ok));
       std::cout << (ok ? "-> Success\n" : "-> Failed\n");
 
     } else if (arg == "--listen") {
@@ -109,31 +109,31 @@ int main(int argc, char **argv) {
         return 1;
       }
       int seconds = std::stoi(argv[++i]);
-      TYPR_IO_LOG_INFO("example: starting listener for %d seconds", seconds);
-      typr::io::keyboard::Listener listener;
-      bool started = listener.start([](char32_t codepoint, typr::io::keyboard::Key key,
-                                       typr::io::keyboard::Modifier mods, bool pressed) {
+      AXIDEV_IO_LOG_INFO("example: starting listener for %d seconds", seconds);
+      axidev::io::keyboard::Listener listener;
+      bool started = listener.start([](char32_t codepoint, axidev::io::keyboard::Key key,
+                                       axidev::io::keyboard::Modifier mods, bool pressed) {
         std::cout << (pressed ? "[press]  " : "[release] ")
-                  << "Key=" << typr::io::keyboard::keyToString(key)
+                  << "Key=" << axidev::io::keyboard::keyToString(key)
                   << " CP=" << static_cast<unsigned>(codepoint) << " Mods=0x"
                   << std::hex << static_cast<int>(static_cast<uint8_t>(mods))
                   << std::dec << "\n";
-        TYPR_IO_LOG_DEBUG("example: listener %s key=%s cp=%u mods=0x%02x",
+        AXIDEV_IO_LOG_DEBUG("example: listener %s key=%s cp=%u mods=0x%02x",
                           pressed ? "press" : "release",
-                          typr::io::keyboard::keyToString(key).c_str(),
+                          axidev::io::keyboard::keyToString(key).c_str(),
                           static_cast<unsigned>(codepoint),
                           static_cast<int>(static_cast<uint8_t>(mods)));
       });
       if (!started) {
-        TYPR_IO_LOG_ERROR("example: listener failed to start");
+        AXIDEV_IO_LOG_ERROR("example: listener failed to start");
         std::cerr
             << "Listener failed to start (permissions / platform support?)\n";
       } else {
-        TYPR_IO_LOG_INFO("example: listener started");
+        AXIDEV_IO_LOG_INFO("example: listener started");
         std::cout << "Listening for " << seconds << " seconds...\n";
         std::this_thread::sleep_for(std::chrono::seconds(seconds));
         listener.stop();
-        TYPR_IO_LOG_INFO("example: listener stopped");
+        AXIDEV_IO_LOG_INFO("example: listener stopped");
         std::cout << "Stopped listening\n";
       }
 

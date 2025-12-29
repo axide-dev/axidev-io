@@ -1,6 +1,6 @@
 /**
  * @file keyboard/sender/sender_windows.cpp
- * @brief Windows implementation of typr::io::keyboard::Sender.
+ * @brief Windows implementation of axidev::io::keyboard::Sender.
  *
  * Implements keyboard input injection using Win32 APIs (SendInput / keybd
  * events). The implementation is layout-aware and discovers virtual-key
@@ -9,11 +9,11 @@
 
 #ifdef _WIN32
 #include <Windows.h>
-#include <typr-io/keyboard/sender.hpp>
-#include <typr-io/log.hpp>
+#include <axidev-io/keyboard/sender.hpp>
+#include <axidev-io/log.hpp>
 #include <unordered_map>
 
-namespace typr::io::keyboard {
+namespace axidev::io::keyboard {
 
 namespace {
 
@@ -76,7 +76,7 @@ struct Sender::Impl {
 
   Impl() : layout(GetKeyboardLayout(0)) {
     initKeyMap();
-    TYPR_IO_LOG_INFO("Sender (Windows): Impl created; ready=%u",
+    AXIDEV_IO_LOG_INFO("Sender (Windows): Impl created; ready=%u",
                      static_cast<unsigned>(ready));
   }
 
@@ -238,7 +238,7 @@ struct Sender::Impl {
     setIfMissing(Key::Comma, VK_OEM_COMMA);
     setIfMissing(Key::Period, VK_OEM_PERIOD);
     setIfMissing(Key::Slash, VK_OEM_2);
-    TYPR_IO_LOG_DEBUG("Sender (Windows): initKeyMap populated %zu entries",
+    AXIDEV_IO_LOG_DEBUG("Sender (Windows): initKeyMap populated %zu entries",
                       keyMap.size());
   }
 
@@ -278,7 +278,7 @@ struct Sender::Impl {
   bool sendKey(Key key, bool down) {
     WORD vk = winVkFor(key);
     if (vk == 0) {
-      TYPR_IO_LOG_DEBUG("Sender (Windows): no mapping for key=%s",
+      AXIDEV_IO_LOG_DEBUG("Sender (Windows): no mapping for key=%s",
                         keyToString(key).c_str());
       return false;
     }
@@ -298,10 +298,10 @@ struct Sender::Impl {
 
     BOOL ok = SendInput(1, &input, sizeof(INPUT)) > 0;
     if (!ok) {
-      TYPR_IO_LOG_ERROR("Sender (Windows): SendInput failed for vk=%u key=%s",
+      AXIDEV_IO_LOG_ERROR("Sender (Windows): SendInput failed for vk=%u key=%s",
                         static_cast<unsigned>(vk), keyToString(key).c_str());
     } else {
-      TYPR_IO_LOG_DEBUG("Sender (Windows): sendKey vk=%u key=%s down=%u",
+      AXIDEV_IO_LOG_DEBUG("Sender (Windows): sendKey vk=%u key=%s down=%u",
                         static_cast<unsigned>(vk), keyToString(key).c_str(),
                         static_cast<unsigned>(down));
     }
@@ -322,7 +322,7 @@ struct Sender::Impl {
    * @return true on success; false if an error occurred while sending input.
    */
   bool typeUnicode(const std::u32string &text) {
-    TYPR_IO_LOG_DEBUG("Sender::typeUnicode called with %zu codepoints",
+    AXIDEV_IO_LOG_DEBUG("Sender::typeUnicode called with %zu codepoints",
                       text.size());
     if (text.empty())
       return true;
@@ -376,21 +376,21 @@ struct Sender::Impl {
   }
 };
 
-TYPR_IO_API Sender::Sender() : m_impl(std::make_unique<Impl>()) {
-  TYPR_IO_LOG_INFO("Sender (Windows): constructed, ready=%u",
+AXIDEV_IO_API Sender::Sender() : m_impl(std::make_unique<Impl>()) {
+  AXIDEV_IO_LOG_INFO("Sender (Windows): constructed, ready=%u",
                    static_cast<unsigned>(isReady()));
 }
-TYPR_IO_API Sender::~Sender() = default;
-TYPR_IO_API Sender::Sender(Sender &&) noexcept = default;
-TYPR_IO_API Sender &Sender::operator=(Sender &&) noexcept = default;
+AXIDEV_IO_API Sender::~Sender() = default;
+AXIDEV_IO_API Sender::Sender(Sender &&) noexcept = default;
+AXIDEV_IO_API Sender &Sender::operator=(Sender &&) noexcept = default;
 
-TYPR_IO_API BackendType Sender::type() const {
-  TYPR_IO_LOG_DEBUG("Sender::type() -> Windows");
+AXIDEV_IO_API BackendType Sender::type() const {
+  AXIDEV_IO_LOG_DEBUG("Sender::type() -> Windows");
   return BackendType::Windows;
 }
 
-TYPR_IO_API Capabilities Sender::capabilities() const {
-  TYPR_IO_LOG_DEBUG("Sender::capabilities (Windows) called");
+AXIDEV_IO_API Capabilities Sender::capabilities() const {
+  AXIDEV_IO_LOG_DEBUG("Sender::capabilities (Windows) called");
   return {
       .canInjectKeys = m_impl->ready,
       .canInjectText = m_impl->ready,
@@ -403,11 +403,11 @@ TYPR_IO_API Capabilities Sender::capabilities() const {
   };
 }
 
-TYPR_IO_API bool Sender::isReady() const { return m_impl->ready; }
-TYPR_IO_API bool Sender::requestPermissions() { return true; }
+AXIDEV_IO_API bool Sender::isReady() const { return m_impl->ready; }
+AXIDEV_IO_API bool Sender::requestPermissions() { return true; }
 
-TYPR_IO_API bool Sender::keyDown(Key key) {
-  TYPR_IO_LOG_DEBUG("Sender::keyDown %s", keyToString(key).c_str());
+AXIDEV_IO_API bool Sender::keyDown(Key key) {
+  AXIDEV_IO_LOG_DEBUG("Sender::keyDown %s", keyToString(key).c_str());
   // Update modifier state when a modifier key is pressed
   switch (key) {
   case Key::ShiftLeft:
@@ -432,8 +432,8 @@ TYPR_IO_API bool Sender::keyDown(Key key) {
   return m_impl->sendKey(key, true);
 }
 
-TYPR_IO_API bool Sender::keyUp(Key key) {
-  TYPR_IO_LOG_DEBUG("Sender::keyUp %s", keyToString(key).c_str());
+AXIDEV_IO_API bool Sender::keyUp(Key key) {
+  AXIDEV_IO_LOG_DEBUG("Sender::keyUp %s", keyToString(key).c_str());
   bool result = m_impl->sendKey(key, false);
   // Update modifier state when a modifier key is released
   switch (key) {
@@ -467,19 +467,19 @@ TYPR_IO_API bool Sender::keyUp(Key key) {
   return result;
 }
 
-TYPR_IO_API bool Sender::tap(Key key) {
-  TYPR_IO_LOG_DEBUG("Sender::tap %s", keyToString(key).c_str());
+AXIDEV_IO_API bool Sender::tap(Key key) {
+  AXIDEV_IO_LOG_DEBUG("Sender::tap %s", keyToString(key).c_str());
   if (!keyDown(key))
     return false;
   m_impl->delay();
   return keyUp(key);
 }
 
-TYPR_IO_API Modifier Sender::activeModifiers() const {
+AXIDEV_IO_API Modifier Sender::activeModifiers() const {
   return m_impl->currentMods;
 }
 
-TYPR_IO_API bool Sender::holdModifier(Modifier mod) {
+AXIDEV_IO_API bool Sender::holdModifier(Modifier mod) {
   bool allModifiersPressed = true;
   if (hasModifier(mod, Modifier::Shift)) {
     allModifiersPressed &= keyDown(Key::ShiftLeft);
@@ -496,7 +496,7 @@ TYPR_IO_API bool Sender::holdModifier(Modifier mod) {
   return allModifiersPressed;
 }
 
-TYPR_IO_API bool Sender::releaseModifier(Modifier mod) {
+AXIDEV_IO_API bool Sender::releaseModifier(Modifier mod) {
   bool allModifiersReleased = true;
   if (hasModifier(mod, Modifier::Shift)) {
     allModifiersReleased &= keyUp(Key::ShiftLeft);
@@ -513,12 +513,12 @@ TYPR_IO_API bool Sender::releaseModifier(Modifier mod) {
   return allModifiersReleased;
 }
 
-TYPR_IO_API bool Sender::releaseAllModifiers() {
+AXIDEV_IO_API bool Sender::releaseAllModifiers() {
   return releaseModifier(Modifier::Shift | Modifier::Ctrl | Modifier::Alt |
                          Modifier::Super);
 }
 
-TYPR_IO_API bool Sender::combo(Modifier mods, Key key) {
+AXIDEV_IO_API bool Sender::combo(Modifier mods, Key key) {
   if (!holdModifier(mods))
     return false;
   m_impl->delay();
@@ -528,13 +528,13 @@ TYPR_IO_API bool Sender::combo(Modifier mods, Key key) {
   return ok;
 }
 
-TYPR_IO_API bool Sender::typeText(const std::u32string &text) {
-  TYPR_IO_LOG_DEBUG("Sender::typeText (utf32) called with %zu codepoints",
+AXIDEV_IO_API bool Sender::typeText(const std::u32string &text) {
+  AXIDEV_IO_LOG_DEBUG("Sender::typeText (utf32) called with %zu codepoints",
                     text.size());
   return m_impl->typeUnicode(text);
 }
 
-TYPR_IO_API bool Sender::typeText(const std::string &utf8Text) {
+AXIDEV_IO_API bool Sender::typeText(const std::string &utf8Text) {
   // Convert UTF-8 to UTF-32
   std::u32string utf32;
   size_t i = 0;
@@ -576,18 +576,18 @@ TYPR_IO_API bool Sender::typeText(const std::string &utf8Text) {
   return typeText(utf32);
 }
 
-TYPR_IO_API bool Sender::typeCharacter(char32_t codepoint) {
+AXIDEV_IO_API bool Sender::typeCharacter(char32_t codepoint) {
   return typeText(std::u32string(1, codepoint));
 }
 
-TYPR_IO_API void Sender::flush() {
+AXIDEV_IO_API void Sender::flush() {
   // Windows SendInput is synchronous, nothing to flush
 }
 
-TYPR_IO_API void Sender::setKeyDelay(uint32_t delayUs) {
+AXIDEV_IO_API void Sender::setKeyDelay(uint32_t delayUs) {
   m_impl->keyDelayUs = delayUs;
 }
 
-} // namespace typr::io::keyboard
+} // namespace axidev::io::keyboard
 
 #endif // _WIN32

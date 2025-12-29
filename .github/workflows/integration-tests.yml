@@ -1,22 +1,22 @@
 name: Integration tests (manual)
 
 # Manual workflow to run the integration tests. Integration tests are built
-# and executed from a dedicated test executable (`typr-io-integration-tests`)
+# and executed from a dedicated test executable (`axidev-io-integration-tests`)
 # and are no longer bundled into the lightweight unit test binary. The
 # integration executable is produced when CMake is configured with:
 #
-#   -DTYPR_IO_BUILD_TESTS=ON -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON
+#   -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON
 #
 # Integration tests are often interactive and may require GUI/device
 # permissions. The workflow exposes a few environment variables useful for
 # CI or local runs:
 #
-# - TYPR_IO_RUN_INTEGRATION_TESTS=1  : historically used to enable integration tests
-# - TYPR_IO_AUTO_CONFIRM=1           : auto-confirm prompts (non-interactive)
-# - TYPR_IO_INTERACTIVE=(true|yes|1) : enable interactive prompts
+# - AXIDEV_IO_RUN_INTEGRATION_TESTS=1  : historically used to enable integration tests
+# - AXIDEV_IO_AUTO_CONFIRM=1           : auto-confirm prompts (non-interactive)
+# - AXIDEV_IO_INTERACTIVE=(true|yes|1) : enable interactive prompts
 #
-# By default this workflow sets `TYPR_IO_RUN_INTEGRATION_TESTS=1`,
-# `TYPR_IO_AUTO_CONFIRM=1` and `TYPR_IO_INTERACTIVE=1` so the integration
+# By default this workflow sets `AXIDEV_IO_RUN_INTEGRATION_TESTS=1`,
+# `AXIDEV_IO_AUTO_CONFIRM=1` and `AXIDEV_IO_INTERACTIVE=1` so the integration
 # binaries are built in an interactive-friendly mode. The workflow is intended
 # to only build the binaries so they can be run/tested outside of CI.
 on:
@@ -31,9 +31,9 @@ jobs:
     name: Integration tests on ubuntu-latest (x86_64)
     runs-on: ubuntu-latest
     env:
-      TYPR_IO_RUN_INTEGRATION_TESTS: "1"
-      TYPR_IO_AUTO_CONFIRM: "1"
-      TYPR_IO_INTERACTIVE: "1"
+      AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
+      AXIDEV_IO_AUTO_CONFIRM: "1"
+      AXIDEV_IO_INTERACTIVE: "1"
       DISPLAY: ":99"
       OS_NAME: ubuntu-latest
       ARCH: x64
@@ -61,7 +61,7 @@ jobs:
         run: rm -rf build
 
       - name: Configure (CMake, Linux)
-        run: cmake -S . -B build -DTYPR_IO_BUILD_TESTS=ON -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release
 
       - name: Build (CMake)
         run: cmake --build build --config Release --parallel
@@ -71,7 +71,7 @@ jobs:
         run: |
           # Find the built integration test executable and copy it to the workspace root so
           # the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f -name 'typr-io-integration-tests*' -print -quit || true)
+          found=$(find build -type f -name 'axidev-io-integration-tests*' -print -quit || true)
           if [ -n "$found" ]; then
             bname=$(basename "$found")
             cp "$found" "$bname"
@@ -92,7 +92,7 @@ jobs:
         run: |
           # Find the built test consumer executable and copy it to the workspace root
           # so the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f \( -name 'typr_io_consumer*' -o -name 'typr-io-test-consumer*' \) -print -quit || true)
+          found=$(find build -type f \( -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) -print -quit || true)
           if [ -n "$found" ]; then
             bname=$(basename "$found")
             cp "$found" "$bname"
@@ -112,9 +112,9 @@ jobs:
     name: Integration tests on ubuntu-24.04-arm (arm64)
     runs-on: ubuntu-24.04-arm
     env:
-      TYPR_IO_RUN_INTEGRATION_TESTS: "1"
-      TYPR_IO_AUTO_CONFIRM: "1"
-      TYPR_IO_INTERACTIVE: "1"
+      AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
+      AXIDEV_IO_AUTO_CONFIRM: "1"
+      AXIDEV_IO_INTERACTIVE: "1"
       DISPLAY: ":99"
       OS_NAME: ubuntu-24.04-arm
       ARCH: arm64
@@ -143,7 +143,7 @@ jobs:
 
       - name: Configure (CMake, Linux / arm64)
         # On an arm64 runner this config will build a native arm64 binary.
-        run: cmake -S . -B build -DTYPR_IO_BUILD_TESTS=ON -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release
 
       - name: Build (CMake)
         run: cmake --build build --config Release --parallel
@@ -153,7 +153,7 @@ jobs:
         run: |
           # Find the built integration test executable and copy it to the workspace root so
           # the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f -name 'typr-io-integration-tests*' -print -quit || true)
+          found=$(find build -type f -name 'axidev-io-integration-tests*' -print -quit || true)
           if [ -n "$found" ]; then
             bname=$(basename "$found")
             cp "$found" "$bname"
@@ -174,7 +174,7 @@ jobs:
         run: |
           # Find the built test consumer executable and copy it to the workspace root
           # so the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f \( -name 'typr_io_consumer*' -o -name 'typr-io-test-consumer*' \) -print -quit || true)
+          found=$(find build -type f \( -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) -print -quit || true)
           if [ -n "$found" ]; then
             bname=$(basename "$found")
             cp "$found" "$bname"
@@ -194,9 +194,9 @@ jobs:
   #   name: Integration tests on macos-latest (x86_64)
   #   runs-on: macos-latest
   #   env:
-  #     TYPR_IO_RUN_INTEGRATION_TESTS: "1"
-  #     TYPR_IO_AUTO_CONFIRM: "1"
-  #     TYPR_IO_INTERACTIVE: "1"
+  #     AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
+  #     AXIDEV_IO_AUTO_CONFIRM: "1"
+  #     AXIDEV_IO_INTERACTIVE: "1"
   #     DISPLAY: ":99"
   #     OS_NAME: macos-latest
   #     ARCH: x64
@@ -214,7 +214,7 @@ jobs:
   #       run: rm -rf build
 
   #     - name: Configure (CMake, macOS / x86_64)
-  #       run: cmake -S . -B build -DTYPR_IO_BUILD_TESTS=ON -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=x86_64
+  #       run: cmake -S . -B build -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=x86_64
 
   #     - name: Build (CMake)
   #       run: cmake --build build --config Release --parallel
@@ -224,7 +224,7 @@ jobs:
   #       run: |
   #         # Find the built integration test executable and copy it to the workspace root so
   #         # the uploaded artifact has a flat path (avoids nested directories like build/...).
-  #         found=$(find build -type f -name 'typr-io-integration-tests*' -print -quit || true)
+  #         found=$(find build -type f -name 'axidev-io-integration-tests*' -print -quit || true)
   #         if [ -n "$found" ]; then
   #           bname=$(basename "$found")
   #           cp "$found" "$bname"
@@ -244,9 +244,9 @@ jobs:
     name: Integration tests on macos-latest (arm64)
     runs-on: macos-latest
     env:
-      TYPR_IO_RUN_INTEGRATION_TESTS: "1"
-      TYPR_IO_AUTO_CONFIRM: "1"
-      TYPR_IO_INTERACTIVE: "1"
+      AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
+      AXIDEV_IO_AUTO_CONFIRM: "1"
+      AXIDEV_IO_INTERACTIVE: "1"
       DISPLAY: ":99"
       OS_NAME: macos-latest
       ARCH: arm64
@@ -267,7 +267,7 @@ jobs:
         # Prefer building for arm64 explicitly. On Apple runners this should
         # produce an arm64 binary; on other macOS hosts CMake/Xcode may
         # cross-compile if supported.
-        run: cmake -S . -B build -DTYPR_IO_BUILD_TESTS=ON -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
+        run: cmake -S . -B build -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
 
       - name: Build (CMake)
         run: cmake --build build --config Release --parallel
@@ -277,7 +277,7 @@ jobs:
         run: |
           # Find the built integration test executable and copy it to the workspace root so
           # the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f -name 'typr-io-integration-tests*' -print -quit || true)
+          found=$(find build -type f -name 'axidev-io-integration-tests*' -print -quit || true)
           if [ -n "$found" ]; then
             bname=$(basename "$found")
             cp "$found" "$bname"
@@ -298,7 +298,7 @@ jobs:
         run: |
           # Find the built test consumer executable and copy it to the workspace root
           # so the uploaded artifact has a flat path (avoids nested directories like build/...).
-          found=$(find build -type f \( -name 'typr_io_consumer*' -o -name 'typr-io-test-consumer*' \) -print -quit || true)
+          found=$(find build -type f \( -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) -print -quit || true)
           if [ -n "$found" ]; then
             bname=$(basename "$found")
             cp "$found" "$bname"
@@ -318,9 +318,9 @@ jobs:
     name: Integration tests on windows-latest (x86_64)
     runs-on: windows-latest
     env:
-      TYPR_IO_RUN_INTEGRATION_TESTS: "1"
-      TYPR_IO_AUTO_CONFIRM: "1"
-      TYPR_IO_INTERACTIVE: "1"
+      AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
+      AXIDEV_IO_AUTO_CONFIRM: "1"
+      AXIDEV_IO_INTERACTIVE: "1"
       OS_NAME: windows-latest
       ARCH: x64
 
@@ -342,15 +342,15 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_COMPILER=gcc \
             -DCMAKE_CXX_COMPILER=g++ \
-            -DTYPR_IO_BUILD_TESTS=ON \
-            -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON
+            -DAXIDEV_IO_BUILD_TESTS=ON \
+            -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON
           cmake --build build --config Release --parallel
 
       - name: Find integration test binary (Windows)
         id: find-integration-binary
         shell: pwsh
         run: |
-          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'typr-io-integration-tests*.exe' } | Select-Object -First 1
+          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'axidev-io-integration-tests*.exe' } | Select-Object -First 1
           if ($found) {
             # Copy to workspace root so the uploaded artifact has a flat path
             Copy-Item -Path $found.FullName -Destination $found.Name
@@ -370,7 +370,7 @@ jobs:
         id: find-consumer-binary
         shell: pwsh
         run: |
-          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'typr_io_consumer*.exe' -or $_.Name -like 'typr-io-test-consumer*.exe' } | Select-Object -First 1
+          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'axidev_io_consumer*.exe' -or $_.Name -like 'axidev-io-test-consumer*.exe' } | Select-Object -First 1
           if ($found) {
             # Copy to workspace root so the uploaded artifact has a flat path
             Copy-Item -Path $found.FullName -Destination $found.Name
@@ -390,9 +390,9 @@ jobs:
     name: Integration tests on windows-11-arm (arm64)
     runs-on: windows-11-arm
     env:
-      TYPR_IO_RUN_INTEGRATION_TESTS: "1"
-      TYPR_IO_AUTO_CONFIRM: "1"
-      TYPR_IO_INTERACTIVE: "1"
+      AXIDEV_IO_RUN_INTEGRATION_TESTS: "1"
+      AXIDEV_IO_AUTO_CONFIRM: "1"
+      AXIDEV_IO_INTERACTIVE: "1"
       OS_NAME: windows-11-arm
       ARCH: arm64
 
@@ -414,15 +414,15 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_COMPILER=gcc \
             -DCMAKE_CXX_COMPILER=g++ \
-            -DTYPR_IO_BUILD_TESTS=ON \
-            -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON
+            -DAXIDEV_IO_BUILD_TESTS=ON \
+            -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON
           cmake --build build --config Release --parallel
 
       - name: Find integration test binary (Windows)
         id: find-integration-binary
         shell: pwsh
         run: |
-          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'typr-io-integration-tests*.exe' } | Select-Object -First 1
+          $found = Get-ChildItem -Path build -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'axidev-io-integration-tests*.exe' } | Select-Object -First 1
           if ($found) {
             # Copy to workspace root so the uploaded artifact has a flat path
             Copy-Item -Path $found.FullName -Destination $found.Name
@@ -468,10 +468,10 @@ jobs:
           shopt -s globstar || true
           for d in artifacts/*; do
             if [ -d "$d" ]; then
-              for f in "$d"/**/typr-io-integration-tests*; do
+              for f in "$d"/**/axidev-io-integration-tests*; do
                 if [ -f "$f" ]; then
                   os=$(basename "$d" | sed 's/^integration-test-binary-//')
-                  name="typr-io-integration-tests-${os}"
+                  name="axidev-io-integration-tests-${os}"
                   # Extract extension from the basename only so dots in directory names
                   # (e.g. "ubuntu-24.04") do not become part of the extension/path.
                   bname=$(basename "$f")
@@ -486,12 +486,12 @@ jobs:
               done
 
               # Also include test-consumer binaries (uploaded as test-consumer-binary-*)
-              # The uploaded artifact contains the consumer binary (e.g., typr_io_consumer or typr-io-test-consumer),
+              # The uploaded artifact contains the consumer binary (e.g., axidev_io_consumer or axidev-io-test-consumer),
               # so look for those filenames inside the downloaded artifact directory.
-              for f in "$d"/**/typr_io_consumer* "$d"/**/typr-io-test-consumer*; do
+              for f in "$d"/**/axidev_io_consumer* "$d"/**/axidev-io-test-consumer*; do
                 if [ -f "$f" ]; then
                   os=$(basename "$d" | sed 's/^test-consumer-binary-//')
-                  name="typr-io-test-consumer-${os}"
+                  name="axidev-io-test-consumer-${os}"
                   bname=$(basename "$f")
                   ext="${bname##*.}"
                   if [ "$ext" = "$bname" ]; then

@@ -2,7 +2,7 @@
 
 This `docs/` directory contains targeted documentation for two primary audiences:
 
-- **Consumers** — people who want to use `typr-io` in their applications (quickstart, examples, API usage, runtime caveats).
+- **Consumers** — people who want to use `axidev-io` in their applications (quickstart, examples, API usage, runtime caveats).
 - **Developers** — contributors and maintainers who need build instructions, architecture notes, testing guidance, and contribution guidelines.
 
 If you're not sure where to start, pick the audience that best matches your intent.
@@ -14,7 +14,7 @@ If you're not sure where to start, pick the audience that best matches your inte
 - Main project README: `README.md` — Platform-specific behaviour and overview.
 - Examples: `examples/` — Example programs demonstrating typical usage.
 - Test consumer: `test_consumer/` — Lightweight test harness used by CI and local checks.
-- Public API headers: `include/typr-io/` (e.g., `include/typr-io/core.hpp`, `include/typr-io/keyboard/common.hpp`, `include/typr-io/keyboard/sender.hpp`, `include/typr-io/keyboard/listener.hpp`).
+- Public API headers: `include/axidev-io/` (e.g., `include/axidev-io/core.hpp`, `include/axidev-io/keyboard/common.hpp`, `include/axidev-io/keyboard/sender.hpp`, `include/axidev-io/keyboard/listener.hpp`).
 
 ## Which doc should I read?
 
@@ -42,4 +42,4 @@ See `LICENSE` at the project root for license terms.
 
 ---
 
-Thanks for helping make `typr-io` easier to use — contributions to both code and documentation are very welcome!
+Thanks for helping make `axidev-io` easier to use — contributions to both code and documentation are very welcome!

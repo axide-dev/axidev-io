@@ -1,6 +1,6 @@
 /**
  * @file test_integration_listener.cpp
- * @brief Integration tests for typr-io Listener.
+ * @brief Integration tests for axidev-io Listener.
  *
  * These tests exercise the real OS backend by observing real keyboard events
  * while the user types into STDIN. Keep this terminal focused while the
@@ -9,16 +9,16 @@
  */
 
 #include <catch2/catch_all.hpp>
-#include <typr-io/core.hpp>
-#include <typr-io/keyboard/listener.hpp>
-#include <typr-io/log.hpp>
+#include <axidev-io/core.hpp>
+#include <axidev-io/keyboard/listener.hpp>
+#include <axidev-io/log.hpp>
 
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
 #include <string>
 
-using namespace typr::io::keyboard;
+using namespace axidev::io::keyboard;
 using namespace std::chrono_literals;
 
 static void appendUtf8(std::string &out, char32_t cp) {
@@ -53,7 +53,7 @@ static void popLastUtf8Char(std::string &s) {
 }
 
 TEST_CASE("Listener Integration Suite", "[integration]") {
-  TYPR_IO_LOG_INFO("Listener Integration Suite: starting integration tests");
+  AXIDEV_IO_LOG_INFO("Listener Integration Suite: starting integration tests");
 
   std::cout
       << "\n====================================================\n"
@@ -69,8 +69,8 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
   std::getline(std::cin, start_buffer);
 
   SECTION("Exact Match: typed input is observed (explicit string)") {
-    TYPR_IO_LOG_INFO("Integration test: Listener Exact Match");
-    const std::string expected = "typr-listener-test-123";
+    AXIDEV_IO_LOG_INFO("Integration test: Listener Exact Match");
+    const std::string expected = "axidev-listener-test-123";
     std::cout
         << "[RUNNING] Type the following exact string into this terminal\n"
         << "and press [ENTER]:\n\n"
@@ -89,28 +89,28 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
       // Collect characters on key release (pressed == false) to better match
       // the character delivered to the terminal/STDIN on most platforms.
       if (pressed) {
-        TYPR_IO_LOG_DEBUG("Listener test cb: ignoring press event key=%s cp=%u",
+        AXIDEV_IO_LOG_DEBUG("Listener test cb: ignoring press event key=%s cp=%u",
                           keyToString(key).c_str(), static_cast<unsigned>(cp));
         return;
       }
       std::lock_guard<std::mutex> lk(mtx);
       if (cp != 0) {
         appendUtf8(observed, cp);
-        TYPR_IO_LOG_DEBUG(
+        AXIDEV_IO_LOG_DEBUG(
             "Listener test cb: appended cp=%u key=%s observed='%s'",
             static_cast<unsigned>(cp), keyToString(key).c_str(),
             observed.c_str());
       } else if (key == Key::Backspace) {
         popLastUtf8Char(observed);
-        TYPR_IO_LOG_DEBUG("Listener test cb: backspace - observed='%s'",
+        AXIDEV_IO_LOG_DEBUG("Listener test cb: backspace - observed='%s'",
                           observed.c_str());
       } else if (key == Key::Enter) {
         saw_enter = true;
-        TYPR_IO_LOG_DEBUG("Listener test cb: enter - observed='%s'",
+        AXIDEV_IO_LOG_DEBUG("Listener test cb: enter - observed='%s'",
                           observed.c_str());
         cv.notify_one();
       } else {
-        TYPR_IO_LOG_DEBUG(
+        AXIDEV_IO_LOG_DEBUG(
             "Listener test cb: non-printable key=%s cp=0 observed='%s'",
             keyToString(key).c_str(), observed.c_str());
       }
@@ -118,7 +118,7 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
 
     bool ok = listener.start(cb);
     if (!ok) {
-      TYPR_IO_LOG_INFO("Listener could not start - skipping integration test");
+      AXIDEV_IO_LOG_INFO("Listener could not start - skipping integration test");
       SKIP("Listener not available on this platform or permission denied.");
     }
 
@@ -130,13 +130,13 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
       std::unique_lock<std::mutex> lk(mtx);
       cv.wait_for(lk, 2s, [&] { return saw_enter; });
     }
-    typr::io::sleepMs(100);
+    axidev::io::sleepMs(100);
 
     listener.stop();
 
     {
       std::lock_guard<std::mutex> lk(mtx);
-      TYPR_IO_LOG_INFO(
+      AXIDEV_IO_LOG_INFO(
           "Integration test: expected='%s' typed='%s' observed='%s'",
           expected.c_str(), typed.c_str(), observed.c_str());
       INFO("Expected: " << expected);
@@ -148,7 +148,7 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
   }
 
   SECTION("Backspace Handling: follow edit sequence and verify final string") {
-    TYPR_IO_LOG_INFO("Integration test: Listener Backspace Handling");
+    AXIDEV_IO_LOG_INFO("Integration test: Listener Backspace Handling");
     const std::string expected = "abd";
     std::cout << "[RUNNING] Please perform the following sequence:\n"
               << "  1) Type 'abc'\n"
@@ -169,28 +169,28 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
     auto cb = [&](char32_t cp, Key key, Modifier /*mods*/, bool pressed) {
       // Use key release events to observe characters and edits.
       if (pressed) {
-        TYPR_IO_LOG_DEBUG("Listener test cb: ignoring press event key=%s cp=%u",
+        AXIDEV_IO_LOG_DEBUG("Listener test cb: ignoring press event key=%s cp=%u",
                           keyToString(key).c_str(), static_cast<unsigned>(cp));
         return;
       }
       std::lock_guard<std::mutex> lk(mtx);
       if (cp != 0) {
         appendUtf8(observed, cp);
-        TYPR_IO_LOG_DEBUG(
+        AXIDEV_IO_LOG_DEBUG(
             "Listener test cb: appended cp=%u key=%s observed='%s'",
             static_cast<unsigned>(cp), keyToString(key).c_str(),
             observed.c_str());
       } else if (key == Key::Backspace) {
         popLastUtf8Char(observed);
-        TYPR_IO_LOG_DEBUG("Listener test cb: backspace - observed='%s'",
+        AXIDEV_IO_LOG_DEBUG("Listener test cb: backspace - observed='%s'",
                           observed.c_str());
       } else if (key == Key::Enter) {
         saw_enter = true;
-        TYPR_IO_LOG_DEBUG("Listener test cb: enter - observed='%s'",
+        AXIDEV_IO_LOG_DEBUG("Listener test cb: enter - observed='%s'",
                           observed.c_str());
         cv.notify_one();
       } else {
-        TYPR_IO_LOG_DEBUG(
+        AXIDEV_IO_LOG_DEBUG(
             "Listener test cb: non-printable key=%s cp=0 observed='%s'",
             keyToString(key).c_str(), observed.c_str());
       }
@@ -198,7 +198,7 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
 
     bool ok = listener.start(cb);
     if (!ok) {
-      TYPR_IO_LOG_INFO("Listener could not start - skipping backspace test");
+      AXIDEV_IO_LOG_INFO("Listener could not start - skipping backspace test");
       SKIP("Listener not available on this platform or permission denied.");
     }
 
@@ -209,13 +209,13 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
       std::unique_lock<std::mutex> lk(mtx);
       cv.wait_for(lk, 2s, [&] { return saw_enter; });
     }
-    typr::io::sleepMs(100);
+    axidev::io::sleepMs(100);
 
     listener.stop();
 
     {
       std::lock_guard<std::mutex> lk(mtx);
-      TYPR_IO_LOG_INFO(
+      AXIDEV_IO_LOG_INFO(
           "Integration test: expected='%s' typed='%s' observed='%s'",
           expected.c_str(), typed.c_str(), observed.c_str());
       INFO("Expected: " << expected);
@@ -227,7 +227,7 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
   }
 
   SECTION("Modifiers & Shift State: uppercase input (explicit)") {
-    TYPR_IO_LOG_INFO("Integration test: Listener Modifiers & Shift State");
+    AXIDEV_IO_LOG_INFO("Integration test: Listener Modifiers & Shift State");
     const std::string expected = "HELLO";
     std::cout << "[RUNNING] Type the following exact string using SHIFT for "
                  "uppercase\n"
@@ -246,28 +246,28 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
       // Prefer release events for observed characters to avoid mismatches
       // between low-level hook timing and terminal input.
       if (pressed) {
-        TYPR_IO_LOG_DEBUG("Listener test cb: ignoring press event key=%s cp=%u",
+        AXIDEV_IO_LOG_DEBUG("Listener test cb: ignoring press event key=%s cp=%u",
                           keyToString(key).c_str(), static_cast<unsigned>(cp));
         return;
       }
       std::lock_guard<std::mutex> lk(mtx);
       if (cp != 0) {
         appendUtf8(observed, cp);
-        TYPR_IO_LOG_DEBUG(
+        AXIDEV_IO_LOG_DEBUG(
             "Listener test cb: appended cp=%u key=%s observed='%s'",
             static_cast<unsigned>(cp), keyToString(key).c_str(),
             observed.c_str());
       } else if (key == Key::Backspace) {
         popLastUtf8Char(observed);
-        TYPR_IO_LOG_DEBUG("Listener test cb: backspace - observed='%s'",
+        AXIDEV_IO_LOG_DEBUG("Listener test cb: backspace - observed='%s'",
                           observed.c_str());
       } else if (key == Key::Enter) {
         saw_enter = true;
-        TYPR_IO_LOG_DEBUG("Listener test cb: enter - observed='%s'",
+        AXIDEV_IO_LOG_DEBUG("Listener test cb: enter - observed='%s'",
                           observed.c_str());
         cv.notify_one();
       } else {
-        TYPR_IO_LOG_DEBUG(
+        AXIDEV_IO_LOG_DEBUG(
             "Listener test cb: non-printable key=%s cp=0 observed='%s'",
             keyToString(key).c_str(), observed.c_str());
       }
@@ -275,7 +275,7 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
 
     bool ok = listener.start(cb);
     if (!ok) {
-      TYPR_IO_LOG_INFO("Listener could not start - skipping modifiers test");
+      AXIDEV_IO_LOG_INFO("Listener could not start - skipping modifiers test");
       SKIP("Listener not available on this platform or permission denied.");
     }
 
@@ -286,13 +286,13 @@ TEST_CASE("Listener Integration Suite", "[integration]") {
       std::unique_lock<std::mutex> lk(mtx);
       cv.wait_for(lk, 2s, [&] { return saw_enter; });
     }
-    typr::io::sleepMs(100);
+    axidev::io::sleepMs(100);
 
     listener.stop();
 
     {
       std::lock_guard<std::mutex> lk(mtx);
-      TYPR_IO_LOG_INFO(
+      AXIDEV_IO_LOG_INFO(
           "Integration test: expected='%s' typed='%s' observed='%s'",
           expected.c_str(), typed.c_str(), observed.c_str());
       INFO("Expected: " << expected);

@@ -1,19 +1,19 @@
 #pragma once
 /**
  * @file keyboard/common.hpp
- * @brief Core keyboard types and utilities for typr::io::keyboard.
+ * @brief Core keyboard types and utilities for axidev::io::keyboard.
  *
  * This header defines logical key identifiers, modifier flags, backend
  * capability flags and small helper utilities used by both the `Sender`
  * (input injection) and `Listener` (global monitoring) subsystems.
  */
 
-#include <typr-io/core.hpp>
+#include <axidev-io/core.hpp>
 
 #include <cstdint>
 #include <string>
 
-namespace typr {
+namespace axidev {
 namespace io {
 namespace keyboard {
 
@@ -406,14 +406,14 @@ enum class BackendType : uint8_t {
  * @param key Logical key to convert.
  * @return std::string Canonical name for the key (e.g., "A", "Enter").
  */
-TYPR_IO_API std::string keyToString(Key key);
+AXIDEV_IO_API std::string keyToString(Key key);
 /**
  * @brief Parse a textual key name into a Key value.
  * @param str Input string (case-insensitive; accepts common aliases).
  * @return Key Parsed key value or Key::Unknown for unrecognized strings.
  */
-TYPR_IO_API Key stringToKey(const std::string &str);
+AXIDEV_IO_API Key stringToKey(const std::string &str);
 
 } // namespace keyboard
 } // namespace io
-} // namespace typr
+} // namespace axidev

@@ -1,6 +1,6 @@
 /**
  * @file keyboard/listener/listener_macos.mm
- * @brief macOS implementation of typr::io::keyboard::Listener.
+ * @brief macOS implementation of axidev::io::keyboard::Listener.
  *
  * Uses Core Graphics event taps to monitor global keyboard events.
  * Requires Input Monitoring permission on macOS 10.15+.
@@ -8,7 +8,7 @@
 
 #ifdef __APPLE__
 
-#include <typr-io/keyboard/listener.hpp>
+#include <axidev-io/keyboard/listener.hpp>
 
 #include <ApplicationServices/ApplicationServices.h>
 #include <Carbon/Carbon.h>
@@ -20,10 +20,10 @@
 #include <cstdlib>
 #include <mutex>
 #include <thread>
-#include <typr-io/log.hpp>
+#include <axidev-io/log.hpp>
 #include <unordered_map>
 
-namespace typr::io::keyboard {
+namespace axidev::io::keyboard {
 
 namespace {
 
@@ -48,7 +48,7 @@ Modifier flagsToModifier(CGEventFlags flags) {
   return mods;
 }
 
-static bool output_debug_enabled() { return ::typr::io::log::debugEnabled(); }
+static bool output_debug_enabled() { return ::axidev::io::log::debugEnabled(); }
 
 } // namespace
 
@@ -65,7 +65,7 @@ struct Listener::Impl {
     std::lock_guard<std::mutex> lk(cbMutex);
     if (running.load())
       return false;
-    TYPR_IO_LOG_INFO("Listener (macOS): start requested");
+    AXIDEV_IO_LOG_INFO("Listener (macOS): start requested");
     callback = std::move(cb);
     running.store(true);
     ready.store(false);
@@ -80,7 +80,7 @@ struct Listener::Impl {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
     bool ok = ready.load();
-    TYPR_IO_LOG_DEBUG("Listener (macOS): start result=%u",
+    AXIDEV_IO_LOG_DEBUG("Listener (macOS): start result=%u",
                       static_cast<unsigned>(ok));
     return ok;
   }
@@ -88,7 +88,7 @@ struct Listener::Impl {
   void stop() {
     if (!running.load())
       return;
-    TYPR_IO_LOG_INFO("Listener (macOS): stop requested");
+    AXIDEV_IO_LOG_INFO("Listener (macOS): stop requested");
     running.store(false);
 
     // Stop the CFRunLoop (may be called from another thread)
@@ -114,7 +114,7 @@ struct Listener::Impl {
       std::lock_guard<std::mutex> lk(cbMutex);
       callback = nullptr;
     }
-    TYPR_IO_LOG_INFO("Listener (macOS): stopped");
+    AXIDEV_IO_LOG_INFO("Listener (macOS): stopped");
   }
 
   bool isRunning() const { return running.load(); }
@@ -135,7 +135,7 @@ private:
       // Failed to create event tap -> nothing we can do here
       running.store(false);
       ready.store(false);
-      TYPR_IO_LOG_ERROR("Listener (macOS): failed to create CGEventTap. Input "
+      AXIDEV_IO_LOG_ERROR("Listener (macOS): failed to create CGEventTap. Input "
                         "Monitoring permission may be missing.");
       return;
     }
@@ -150,7 +150,7 @@ private:
 
     // Signal successful initialization and optionally log
     ready.store(true);
-    TYPR_IO_LOG_INFO("Listener (macOS): event tap created and enabled");
+    AXIDEV_IO_LOG_INFO("Listener (macOS): event tap created and enabled");
 
     // Store the run loop so `stop` can stop it from another thread
     runLoop = CFRunLoopGetCurrent();
@@ -274,7 +274,7 @@ private:
             auto kIt = self->cgKeyToKey.find(keyCode);
             if (kIt != self->cgKeyToKey.end())
               kname = keyToString(kIt->second);
-            TYPR_IO_LOG_DEBUG(
+            AXIDEV_IO_LOG_DEBUG(
                 "Listener (macOS): ignoring duplicate release (same cp+mods) "
                 "for keycode=%u key=%s cp=%u mods=%u",
                 (unsigned)keyCode, kname.c_str(), (unsigned)codepoint,
@@ -299,7 +299,7 @@ private:
         if (cpIt != self->lastPressCp.end()) {
           codepoint = cpIt->second;
           if (output_debug_enabled()) {
-            TYPR_IO_LOG_DEBUG("Listener (macOS): using last-press cp=%u for "
+            AXIDEV_IO_LOG_DEBUG("Listener (macOS): using last-press cp=%u for "
                               "release keycode=%u",
                               static_cast<unsigned>(codepoint),
                               static_cast<unsigned>(keyCode));
@@ -327,7 +327,7 @@ private:
       auto kIt = self->cgKeyToKey.find(keyCode);
       if (kIt != self->cgKeyToKey.end())
         kname = keyToString(kIt->second);
-      TYPR_IO_LOG_DEBUG("Listener (macOS) %s: keycode=%u key=%s cp=%u mods=%u",
+      AXIDEV_IO_LOG_DEBUG("Listener (macOS) %s: keycode=%u key=%s cp=%u mods=%u",
                         pressed ? "press" : "release", (unsigned)keyCode,
                         kname.c_str(), (unsigned)codepoint, (unsigned)mods);
     }
@@ -344,7 +344,7 @@ private:
     TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
     if (currentKeyboard == nullptr) {
       // Fall back to using constants only
-      TYPR_IO_LOG_WARN("Listener (macOS): TISCopyCurrentKeyboardInputSource "
+      AXIDEV_IO_LOG_WARN("Listener (macOS): TISCopyCurrentKeyboardInputSource "
                        "failed, using fallbacks");
       fillFallbacks();
       return;
@@ -354,7 +354,7 @@ private:
         currentKeyboard, kTISPropertyUnicodeKeyLayoutData));
     if (layoutData == nullptr) {
       CFRelease(currentKeyboard);
-      TYPR_IO_LOG_WARN("Listener (macOS): keyboard layout data not available, "
+      AXIDEV_IO_LOG_WARN("Listener (macOS): keyboard layout data not available, "
                        "using fallbacks");
       fillFallbacks();
       return;
@@ -560,6 +560,6 @@ bool Listener::isListening() const {
   return m_impl ? m_impl->isRunning() : false;
 }
 
-} // namespace typr::io::keyboard
+} // namespace axidev::io::keyboard
 
 #endif // __APPLE__

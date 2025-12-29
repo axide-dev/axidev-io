@@ -33,8 +33,8 @@
       "integration-test",
     ],
     "env": {
-      "TYPR_IO_RUN_INTEGRATION_TESTS": "1",
-      "TYPR_IO_INTERACTIVE": "1",
+      "AXIDEV_IO_RUN_INTEGRATION_TESTS": "1",
+      "AXIDEV_IO_INTERACTIVE": "1",
     },
   },
   {

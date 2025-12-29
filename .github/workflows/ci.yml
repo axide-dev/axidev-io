@@ -2,7 +2,7 @@ name: CI
 
 # Build & test on push and pull-request for major platforms. This workflow
 # intentionally does not enable the interactive integration tests by default.
-# Integration tests are gated behind TYPR_IO_RUN_INTEGRATION_TESTS and should
+# Integration tests are gated behind AXIDEV_IO_RUN_INTEGRATION_TESTS and should
 # be executed via the manual `integration-tests` workflow when desired.
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
         run: rm -rf build
 
       - name: Configure (CMake)
-        run: cmake -S . -B build -DTYPR_IO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -DAXIDEV_IO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
 
       - name: Build (CMake)
         run: cmake --build build --config Release --parallel
@@ -57,7 +57,7 @@ jobs:
   #       run: rm -rf build
 
   #     - name: "Configure (CMake, target: arm64)"
-  #       run: cmake -S . -B build -DTYPR_IO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
+  #       run: cmake -S . -B build -DAXIDEV_IO_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
 
   #     - name: Build (CMake)
   #       run: cmake --build build --config Release --parallel
@@ -90,7 +90,7 @@ jobs:
   #           -DCMAKE_BUILD_TYPE=Release \
   #           -DCMAKE_C_COMPILER=gcc \
   #           -DCMAKE_CXX_COMPILER=g++ \
-  #           -DTYPR_IO_BUILD_TESTS=ON
+  #           -DAXIDEV_IO_BUILD_TESTS=ON
   #         cmake --build build --config Release --parallel
 
   #     - name: Run tests (ctest)

@@ -1,7 +1,7 @@
 {
   "version": 3,
   "vendor": {
-    "typr-io": {}
+    "axidev-io": {}
   },
   "configurePresets": [
     {
@@ -46,8 +46,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "TYPR_IO_BUILD_TESTS": "ON",
-        "TYPR_IO_BUILD_INTEGRATION_TESTS": "ON"
+        "AXIDEV_IO_BUILD_TESTS": "ON",
+        "AXIDEV_IO_BUILD_INTEGRATION_TESTS": "ON"
       }
     }
   ],
@@ -104,12 +104,12 @@
       },
       "filter": {
         "include": {
-          "name": "typr-io-integration-tests"
+          "name": "axidev-io-integration-tests"
         }
       },
       "environment": {
-        "TYPR_IO_RUN_INTEGRATION_TESTS": "1",
-        "TYPR_IO_INTERACTIVE": "1"
+        "AXIDEV_IO_RUN_INTEGRATION_TESTS": "1",
+        "AXIDEV_IO_INTERACTIVE": "1"
       }
     }
   ]

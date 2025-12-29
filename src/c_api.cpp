@@ -1,21 +1,21 @@
 /**
  * @file c_api.cpp
- * @brief C API implementation for typr-io keyboard functionality.
+ * @brief C API implementation for axidev-io keyboard functionality.
  *
- * Implements the C-compatible wrapper declared in `<typr-io/c_api.h>`.
- * Wraps `typr::io::keyboard::Sender` and `typr::io::keyboard::Listener`
+ * Implements the C-compatible wrapper declared in `<axidev-io/c_api.h>`.
+ * Wraps `axidev::io::keyboard::Sender` and `axidev::io::keyboard::Listener`
  * as opaque C handles.
  *
  * The implementation is intentionally defensive: C++ exceptions are caught
  * and converted into a process-wide last-error string retrievable via
- * `typr_io_get_last_error`.
+ * `axidev_io_get_last_error`.
  *
  * @note Listener callbacks may be invoked from background threads; the wrapper
  *       safely bridges those events into C callbacks while protecting callback
  *       state with a mutex.
  */
 
-#include <typr-io/c_api.h>
+#include <axidev-io/c_api.h>
 
 #include <cstdarg>
 #include <cstdlib>
@@ -25,23 +25,23 @@
 #include <new>
 #include <string>
 
-#include <typr-io/core.hpp>
-#include <typr-io/keyboard/common.hpp>
-#include <typr-io/keyboard/listener.hpp>
-#include <typr-io/keyboard/sender.hpp>
-#include <typr-io/log.hpp>
+#include <axidev-io/core.hpp>
+#include <axidev-io/keyboard/common.hpp>
+#include <axidev-io/keyboard/listener.hpp>
+#include <axidev-io/keyboard/sender.hpp>
+#include <axidev-io/log.hpp>
 
 namespace {
 
 /**
- * @brief Internal wrapper that owns a typr::io::keyboard::Sender instance.
+ * @brief Internal wrapper that owns a axidev::io::keyboard::Sender instance.
  *
  * SenderWrapper instances are heap-allocated and returned to C callers as
- * opaque handles (`typr_io_keyboard_sender_t`). They encapsulate the C++
+ * opaque handles (`axidev_io_keyboard_sender_t`). They encapsulate the C++
  * `Sender` object used by the C API implementation.
  */
 struct SenderWrapper {
-  typr::io::keyboard::Sender sender;
+  axidev::io::keyboard::Sender sender;
 };
 
 /**
@@ -52,8 +52,8 @@ struct SenderWrapper {
  * access and update them.
  */
 struct ListenerWrapper {
-  typr::io::keyboard::Listener listener;
-  typr_io_keyboard_listener_cb cb{nullptr};
+  axidev::io::keyboard::Listener listener;
+  axidev_io_keyboard_listener_cb cb{nullptr};
   void *user_data{nullptr};
   std::mutex cb_mutex; // protects cb & user_data
 };
@@ -63,7 +63,7 @@ struct ListenerWrapper {
  *
  * The last error is protected by a mutex so it can be safely set and read
  * from multiple threads. Callers can retrieve a heap-allocated copy via
- * `typr_io_get_last_error`.
+ * `axidev_io_get_last_error`.
  */
 static std::mutex g_last_error_mutex;
 static std::string g_last_error;
@@ -89,7 +89,7 @@ static void clear_last_error() {
  * @brief Duplicate a std::string into a C-allocated null-terminated buffer.
  *
  * The returned buffer must be freed by the caller (for example via
- * `typr_io_free_string` or `std::free`). Returns nullptr on allocation
+ * `axidev_io_free_string` or `std::free`). Returns nullptr on allocation
  * failure.
  *
  * @param s Source string to duplicate.
@@ -114,7 +114,7 @@ extern "C" {
 
 /* ---------------- Sender implementation ---------------- */
 
-TYPR_IO_API typr_io_keyboard_sender_t typr_io_keyboard_sender_create(void) {
+AXIDEV_IO_API axidev_io_keyboard_sender_t axidev_io_keyboard_sender_create(void) {
   try {
     clear_last_error();
     SenderWrapper *w = new (std::nothrow) SenderWrapper();
@@ -122,18 +122,18 @@ TYPR_IO_API typr_io_keyboard_sender_t typr_io_keyboard_sender_create(void) {
       set_last_error("Out of memory (sender)");
       return nullptr;
     }
-    return reinterpret_cast<typr_io_keyboard_sender_t>(w);
+    return reinterpret_cast<axidev_io_keyboard_sender_t>(w);
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return nullptr;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_sender_create");
+    set_last_error("Unknown exception in axidev_io_keyboard_sender_create");
     return nullptr;
   }
 }
 
-TYPR_IO_API void
-typr_io_keyboard_sender_destroy(typr_io_keyboard_sender_t sender) {
+AXIDEV_IO_API void
+axidev_io_keyboard_sender_destroy(axidev_io_keyboard_sender_t sender) {
   if (!sender) {
     return;
   }
@@ -144,12 +144,12 @@ typr_io_keyboard_sender_destroy(typr_io_keyboard_sender_t sender) {
   } catch (const std::exception &e) {
     set_last_error(e.what());
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_sender_destroy");
+    set_last_error("Unknown exception in axidev_io_keyboard_sender_destroy");
   }
 }
 
-TYPR_IO_API bool
-typr_io_keyboard_sender_is_ready(typr_io_keyboard_sender_t sender) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_sender_is_ready(axidev_io_keyboard_sender_t sender) {
   if (!sender) {
     set_last_error("sender is NULL");
     return false;
@@ -162,16 +162,16 @@ typr_io_keyboard_sender_is_ready(typr_io_keyboard_sender_t sender) {
     set_last_error(e.what());
     return false;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_sender_is_ready");
+    set_last_error("Unknown exception in axidev_io_keyboard_sender_is_ready");
     return false;
   }
 }
 
-TYPR_IO_API uint8_t
-typr_io_keyboard_sender_type(typr_io_keyboard_sender_t sender) {
+AXIDEV_IO_API uint8_t
+axidev_io_keyboard_sender_type(axidev_io_keyboard_sender_t sender) {
   if (!sender) {
     set_last_error("sender is NULL");
-    return static_cast<uint8_t>(typr::io::keyboard::BackendType::Unknown);
+    return static_cast<uint8_t>(axidev::io::keyboard::BackendType::Unknown);
   }
   try {
     clear_last_error();
@@ -179,16 +179,16 @@ typr_io_keyboard_sender_type(typr_io_keyboard_sender_t sender) {
     return static_cast<uint8_t>(w->sender.type());
   } catch (const std::exception &e) {
     set_last_error(e.what());
-    return static_cast<uint8_t>(typr::io::keyboard::BackendType::Unknown);
+    return static_cast<uint8_t>(axidev::io::keyboard::BackendType::Unknown);
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_sender_type");
-    return static_cast<uint8_t>(typr::io::keyboard::BackendType::Unknown);
+    set_last_error("Unknown exception in axidev_io_keyboard_sender_type");
+    return static_cast<uint8_t>(axidev::io::keyboard::BackendType::Unknown);
   }
 }
 
-TYPR_IO_API void typr_io_keyboard_sender_get_capabilities(
-    typr_io_keyboard_sender_t sender,
-    typr_io_keyboard_capabilities_t *out_capabilities) {
+AXIDEV_IO_API void axidev_io_keyboard_sender_get_capabilities(
+    axidev_io_keyboard_sender_t sender,
+    axidev_io_keyboard_capabilities_t *out_capabilities) {
   if (!out_capabilities) {
     set_last_error("out_capabilities is NULL");
     return;
@@ -203,7 +203,7 @@ TYPR_IO_API void typr_io_keyboard_sender_get_capabilities(
   try {
     clear_last_error();
     SenderWrapper *w = reinterpret_cast<SenderWrapper *>(sender);
-    typr::io::keyboard::Capabilities caps = w->sender.capabilities();
+    axidev::io::keyboard::Capabilities caps = w->sender.capabilities();
     out_capabilities->can_inject_keys = caps.canInjectKeys;
     out_capabilities->can_inject_text = caps.canInjectText;
     out_capabilities->can_simulate_hid = caps.canSimulateHID;
@@ -216,12 +216,12 @@ TYPR_IO_API void typr_io_keyboard_sender_get_capabilities(
     set_last_error(e.what());
   } catch (...) {
     set_last_error(
-        "Unknown exception in typr_io_keyboard_sender_get_capabilities");
+        "Unknown exception in axidev_io_keyboard_sender_get_capabilities");
   }
 }
 
-TYPR_IO_API bool
-typr_io_keyboard_sender_request_permissions(typr_io_keyboard_sender_t sender) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_sender_request_permissions(axidev_io_keyboard_sender_t sender) {
   if (!sender) {
     set_last_error("sender is NULL");
     return false;
@@ -235,14 +235,14 @@ typr_io_keyboard_sender_request_permissions(typr_io_keyboard_sender_t sender) {
     return false;
   } catch (...) {
     set_last_error(
-        "Unknown exception in typr_io_keyboard_sender_request_permissions");
+        "Unknown exception in axidev_io_keyboard_sender_request_permissions");
     return false;
   }
 }
 
-TYPR_IO_API bool
-typr_io_keyboard_sender_key_down(typr_io_keyboard_sender_t sender,
-                                 typr_io_keyboard_key_t key) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_sender_key_down(axidev_io_keyboard_sender_t sender,
+                                 axidev_io_keyboard_key_t key) {
   if (!sender) {
     set_last_error("sender is NULL");
     return false;
@@ -250,19 +250,19 @@ typr_io_keyboard_sender_key_down(typr_io_keyboard_sender_t sender,
   try {
     clear_last_error();
     SenderWrapper *w = reinterpret_cast<SenderWrapper *>(sender);
-    return w->sender.keyDown(static_cast<typr::io::keyboard::Key>(key));
+    return w->sender.keyDown(static_cast<axidev::io::keyboard::Key>(key));
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return false;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_sender_key_down");
+    set_last_error("Unknown exception in axidev_io_keyboard_sender_key_down");
     return false;
   }
 }
 
-TYPR_IO_API bool
-typr_io_keyboard_sender_key_up(typr_io_keyboard_sender_t sender,
-                               typr_io_keyboard_key_t key) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_sender_key_up(axidev_io_keyboard_sender_t sender,
+                               axidev_io_keyboard_key_t key) {
   if (!sender) {
     set_last_error("sender is NULL");
     return false;
@@ -270,18 +270,18 @@ typr_io_keyboard_sender_key_up(typr_io_keyboard_sender_t sender,
   try {
     clear_last_error();
     SenderWrapper *w = reinterpret_cast<SenderWrapper *>(sender);
-    return w->sender.keyUp(static_cast<typr::io::keyboard::Key>(key));
+    return w->sender.keyUp(static_cast<axidev::io::keyboard::Key>(key));
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return false;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_sender_key_up");
+    set_last_error("Unknown exception in axidev_io_keyboard_sender_key_up");
     return false;
   }
 }
 
-TYPR_IO_API bool typr_io_keyboard_sender_tap(typr_io_keyboard_sender_t sender,
-                                             typr_io_keyboard_key_t key) {
+AXIDEV_IO_API bool axidev_io_keyboard_sender_tap(axidev_io_keyboard_sender_t sender,
+                                             axidev_io_keyboard_key_t key) {
   if (!sender) {
     set_last_error("sender is NULL");
     return false;
@@ -289,18 +289,18 @@ TYPR_IO_API bool typr_io_keyboard_sender_tap(typr_io_keyboard_sender_t sender,
   try {
     clear_last_error();
     SenderWrapper *w = reinterpret_cast<SenderWrapper *>(sender);
-    return w->sender.tap(static_cast<typr::io::keyboard::Key>(key));
+    return w->sender.tap(static_cast<axidev::io::keyboard::Key>(key));
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return false;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_sender_tap");
+    set_last_error("Unknown exception in axidev_io_keyboard_sender_tap");
     return false;
   }
 }
 
-TYPR_IO_API typr_io_keyboard_modifier_t
-typr_io_keyboard_sender_active_modifiers(typr_io_keyboard_sender_t sender) {
+AXIDEV_IO_API axidev_io_keyboard_modifier_t
+axidev_io_keyboard_sender_active_modifiers(axidev_io_keyboard_sender_t sender) {
   if (!sender) {
     set_last_error("sender is NULL");
     return 0;
@@ -308,21 +308,21 @@ typr_io_keyboard_sender_active_modifiers(typr_io_keyboard_sender_t sender) {
   try {
     clear_last_error();
     SenderWrapper *w = reinterpret_cast<SenderWrapper *>(sender);
-    typr::io::keyboard::Modifier m = w->sender.activeModifiers();
-    return static_cast<typr_io_keyboard_modifier_t>(static_cast<uint8_t>(m));
+    axidev::io::keyboard::Modifier m = w->sender.activeModifiers();
+    return static_cast<axidev_io_keyboard_modifier_t>(static_cast<uint8_t>(m));
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return 0;
   } catch (...) {
     set_last_error(
-        "Unknown exception in typr_io_keyboard_sender_active_modifiers");
+        "Unknown exception in axidev_io_keyboard_sender_active_modifiers");
     return 0;
   }
 }
 
-TYPR_IO_API bool
-typr_io_keyboard_sender_hold_modifier(typr_io_keyboard_sender_t sender,
-                                      typr_io_keyboard_modifier_t mods) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_sender_hold_modifier(axidev_io_keyboard_sender_t sender,
+                                      axidev_io_keyboard_modifier_t mods) {
   if (!sender) {
     set_last_error("sender is NULL");
     return false;
@@ -331,20 +331,20 @@ typr_io_keyboard_sender_hold_modifier(typr_io_keyboard_sender_t sender,
     clear_last_error();
     SenderWrapper *w = reinterpret_cast<SenderWrapper *>(sender);
     return w->sender.holdModifier(
-        static_cast<typr::io::keyboard::Modifier>(mods));
+        static_cast<axidev::io::keyboard::Modifier>(mods));
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return false;
   } catch (...) {
     set_last_error(
-        "Unknown exception in typr_io_keyboard_sender_hold_modifier");
+        "Unknown exception in axidev_io_keyboard_sender_hold_modifier");
     return false;
   }
 }
 
-TYPR_IO_API bool
-typr_io_keyboard_sender_release_modifier(typr_io_keyboard_sender_t sender,
-                                         typr_io_keyboard_modifier_t mods) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_sender_release_modifier(axidev_io_keyboard_sender_t sender,
+                                         axidev_io_keyboard_modifier_t mods) {
   if (!sender) {
     set_last_error("sender is NULL");
     return false;
@@ -353,19 +353,19 @@ typr_io_keyboard_sender_release_modifier(typr_io_keyboard_sender_t sender,
     clear_last_error();
     SenderWrapper *w = reinterpret_cast<SenderWrapper *>(sender);
     return w->sender.releaseModifier(
-        static_cast<typr::io::keyboard::Modifier>(mods));
+        static_cast<axidev::io::keyboard::Modifier>(mods));
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return false;
   } catch (...) {
     set_last_error(
-        "Unknown exception in typr_io_keyboard_sender_release_modifier");
+        "Unknown exception in axidev_io_keyboard_sender_release_modifier");
     return false;
   }
 }
 
-TYPR_IO_API bool typr_io_keyboard_sender_release_all_modifiers(
-    typr_io_keyboard_sender_t sender) {
+AXIDEV_IO_API bool axidev_io_keyboard_sender_release_all_modifiers(
+    axidev_io_keyboard_sender_t sender) {
   if (!sender) {
     set_last_error("sender is NULL");
     return false;
@@ -379,14 +379,14 @@ TYPR_IO_API bool typr_io_keyboard_sender_release_all_modifiers(
     return false;
   } catch (...) {
     set_last_error(
-        "Unknown exception in typr_io_keyboard_sender_release_all_modifiers");
+        "Unknown exception in axidev_io_keyboard_sender_release_all_modifiers");
     return false;
   }
 }
 
-TYPR_IO_API bool typr_io_keyboard_sender_combo(typr_io_keyboard_sender_t sender,
-                                               typr_io_keyboard_modifier_t mods,
-                                               typr_io_keyboard_key_t key) {
+AXIDEV_IO_API bool axidev_io_keyboard_sender_combo(axidev_io_keyboard_sender_t sender,
+                                               axidev_io_keyboard_modifier_t mods,
+                                               axidev_io_keyboard_key_t key) {
   if (!sender) {
     set_last_error("sender is NULL");
     return false;
@@ -394,19 +394,19 @@ TYPR_IO_API bool typr_io_keyboard_sender_combo(typr_io_keyboard_sender_t sender,
   try {
     clear_last_error();
     SenderWrapper *w = reinterpret_cast<SenderWrapper *>(sender);
-    return w->sender.combo(static_cast<typr::io::keyboard::Modifier>(mods),
-                           static_cast<typr::io::keyboard::Key>(key));
+    return w->sender.combo(static_cast<axidev::io::keyboard::Modifier>(mods),
+                           static_cast<axidev::io::keyboard::Key>(key));
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return false;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_sender_combo");
+    set_last_error("Unknown exception in axidev_io_keyboard_sender_combo");
     return false;
   }
 }
 
-TYPR_IO_API bool
-typr_io_keyboard_sender_type_text_utf8(typr_io_keyboard_sender_t sender,
+AXIDEV_IO_API bool
+axidev_io_keyboard_sender_type_text_utf8(axidev_io_keyboard_sender_t sender,
                                        const char *utf8_text) {
   if (!sender) {
     set_last_error("sender is NULL");
@@ -425,13 +425,13 @@ typr_io_keyboard_sender_type_text_utf8(typr_io_keyboard_sender_t sender,
     return false;
   } catch (...) {
     set_last_error(
-        "Unknown exception in typr_io_keyboard_sender_type_text_utf8");
+        "Unknown exception in axidev_io_keyboard_sender_type_text_utf8");
     return false;
   }
 }
 
-TYPR_IO_API bool
-typr_io_keyboard_sender_type_character(typr_io_keyboard_sender_t sender,
+AXIDEV_IO_API bool
+axidev_io_keyboard_sender_type_character(axidev_io_keyboard_sender_t sender,
                                        uint32_t codepoint) {
   if (!sender) {
     set_last_error("sender is NULL");
@@ -446,13 +446,13 @@ typr_io_keyboard_sender_type_character(typr_io_keyboard_sender_t sender,
     return false;
   } catch (...) {
     set_last_error(
-        "Unknown exception in typr_io_keyboard_sender_type_character");
+        "Unknown exception in axidev_io_keyboard_sender_type_character");
     return false;
   }
 }
 
-TYPR_IO_API void
-typr_io_keyboard_sender_flush(typr_io_keyboard_sender_t sender) {
+AXIDEV_IO_API void
+axidev_io_keyboard_sender_flush(axidev_io_keyboard_sender_t sender) {
   if (!sender) {
     set_last_error("sender is NULL");
     return;
@@ -464,12 +464,12 @@ typr_io_keyboard_sender_flush(typr_io_keyboard_sender_t sender) {
   } catch (const std::exception &e) {
     set_last_error(e.what());
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_sender_flush");
+    set_last_error("Unknown exception in axidev_io_keyboard_sender_flush");
   }
 }
 
-TYPR_IO_API void
-typr_io_keyboard_sender_set_key_delay(typr_io_keyboard_sender_t sender,
+AXIDEV_IO_API void
+axidev_io_keyboard_sender_set_key_delay(axidev_io_keyboard_sender_t sender,
                                       uint32_t delay_us) {
   if (!sender) {
     set_last_error("sender is NULL");
@@ -483,13 +483,13 @@ typr_io_keyboard_sender_set_key_delay(typr_io_keyboard_sender_t sender,
     set_last_error(e.what());
   } catch (...) {
     set_last_error(
-        "Unknown exception in typr_io_keyboard_sender_set_key_delay");
+        "Unknown exception in axidev_io_keyboard_sender_set_key_delay");
   }
 }
 
 /* ---------------- Listener implementation ---------------- */
 
-TYPR_IO_API typr_io_keyboard_listener_t typr_io_keyboard_listener_create(void) {
+AXIDEV_IO_API axidev_io_keyboard_listener_t axidev_io_keyboard_listener_create(void) {
   try {
     clear_last_error();
     ListenerWrapper *w = new (std::nothrow) ListenerWrapper();
@@ -497,18 +497,18 @@ TYPR_IO_API typr_io_keyboard_listener_t typr_io_keyboard_listener_create(void) {
       set_last_error("Out of memory (listener)");
       return nullptr;
     }
-    return reinterpret_cast<typr_io_keyboard_listener_t>(w);
+    return reinterpret_cast<axidev_io_keyboard_listener_t>(w);
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return nullptr;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_listener_create");
+    set_last_error("Unknown exception in axidev_io_keyboard_listener_create");
     return nullptr;
   }
 }
 
-TYPR_IO_API void
-typr_io_keyboard_listener_destroy(typr_io_keyboard_listener_t listener) {
+AXIDEV_IO_API void
+axidev_io_keyboard_listener_destroy(axidev_io_keyboard_listener_t listener) {
   if (!listener) {
     return;
   }
@@ -526,13 +526,13 @@ typr_io_keyboard_listener_destroy(typr_io_keyboard_listener_t listener) {
   } catch (const std::exception &e) {
     set_last_error(e.what());
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_listener_destroy");
+    set_last_error("Unknown exception in axidev_io_keyboard_listener_destroy");
   }
 }
 
-TYPR_IO_API bool
-typr_io_keyboard_listener_start(typr_io_keyboard_listener_t listener,
-                                typr_io_keyboard_listener_cb cb,
+AXIDEV_IO_API bool
+axidev_io_keyboard_listener_start(axidev_io_keyboard_listener_t listener,
+                                axidev_io_keyboard_listener_cb cb,
                                 void *user_data) {
   if (!listener) {
     set_last_error("listener is NULL");
@@ -556,7 +556,7 @@ typr_io_keyboard_listener_start(typr_io_keyboard_listener_t listener,
 
     /**
      * @internal
-     * @brief Bridge that forwards `typr::io::keyboard::Listener` events to the
+     * @brief Bridge that forwards `axidev::io::keyboard::Listener` events to the
      * C callback.
      *
      * Responsibilities:
@@ -564,8 +564,8 @@ typr_io_keyboard_listener_start(typr_io_keyboard_listener_t listener,
      *    and the associated `user_data` pointer so invocation can occur
      *    without holding the lock.
      *  - Convert/normalize types for the C ABI: `char32_t` -> `uint32_t`,
-     *    `typr::io::keyboard::Key` -> `typr_io_keyboard_key_t`,
-     * `typr::io::keyboard::Modifier` -> `typr_io_modifier_t`.
+     *    `axidev::io::keyboard::Key` -> `axidev_io_keyboard_key_t`,
+     * `axidev::io::keyboard::Modifier` -> `axidev_io_modifier_t`.
      *  - Invoke the user-supplied C callback if present. Any exceptions thrown
      *    by the C callback are caught and swallowed to prevent exceptions from
      *    escaping into the C++ internals (unwinding across the C ABI is
@@ -575,10 +575,10 @@ typr_io_keyboard_listener_start(typr_io_keyboard_listener_t listener,
      *  - This lambda is invoked on the listener's internal thread. The C
      *    callback must be thread-safe and avoid long/blocking operations.
      */
-    auto bridge = [w](char32_t codepoint, typr::io::keyboard::Key key,
-                      typr::io::keyboard::Modifier mods, bool pressed) {
+    auto bridge = [w](char32_t codepoint, axidev::io::keyboard::Key key,
+                      axidev::io::keyboard::Modifier mods, bool pressed) {
       // Forward event to C callback; protect access to cb & user_data.
-      typr_io_keyboard_listener_cb local_cb = nullptr;
+      axidev_io_keyboard_listener_cb local_cb = nullptr;
       void *local_ud = nullptr;
       {
         std::lock_guard<std::mutex> lk(w->cb_mutex);
@@ -588,8 +588,8 @@ typr_io_keyboard_listener_start(typr_io_keyboard_listener_t listener,
       if (local_cb) {
         try {
           local_cb(static_cast<uint32_t>(codepoint),
-                   static_cast<typr_io_keyboard_key_t>(key),
-                   static_cast<typr_io_keyboard_modifier_t>(
+                   static_cast<axidev_io_keyboard_key_t>(key),
+                   static_cast<axidev_io_keyboard_modifier_t>(
                        static_cast<uint8_t>(mods)),
                    pressed, local_ud);
         } catch (...) {
@@ -612,13 +612,13 @@ typr_io_keyboard_listener_start(typr_io_keyboard_listener_t listener,
     set_last_error(e.what());
     return false;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_listener_start");
+    set_last_error("Unknown exception in axidev_io_keyboard_listener_start");
     return false;
   }
 }
 
-TYPR_IO_API void
-typr_io_keyboard_listener_stop(typr_io_keyboard_listener_t listener) {
+AXIDEV_IO_API void
+axidev_io_keyboard_listener_stop(axidev_io_keyboard_listener_t listener) {
   if (!listener) {
     set_last_error("listener is NULL");
     return;
@@ -634,12 +634,12 @@ typr_io_keyboard_listener_stop(typr_io_keyboard_listener_t listener) {
   } catch (const std::exception &e) {
     set_last_error(e.what());
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_listener_stop");
+    set_last_error("Unknown exception in axidev_io_keyboard_listener_stop");
   }
 }
 
-TYPR_IO_API bool
-typr_io_keyboard_listener_is_listening(typr_io_keyboard_listener_t listener) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_listener_is_listening(axidev_io_keyboard_listener_t listener) {
   if (!listener) {
     set_last_error("listener is NULL");
     return false;
@@ -653,65 +653,65 @@ typr_io_keyboard_listener_is_listening(typr_io_keyboard_listener_t listener) {
     return false;
   } catch (...) {
     set_last_error(
-        "Unknown exception in typr_io_keyboard_listener_is_listening");
+        "Unknown exception in axidev_io_keyboard_listener_is_listening");
     return false;
   }
 }
 
 /* ---------------- Utilities ---------------- */
 
-TYPR_IO_API char *typr_io_keyboard_key_to_string(typr_io_keyboard_key_t key) {
+AXIDEV_IO_API char *axidev_io_keyboard_key_to_string(axidev_io_keyboard_key_t key) {
   try {
     clear_last_error();
-    std::string s = typr::io::keyboard::keyToString(
-        static_cast<typr::io::keyboard::Key>(key));
+    std::string s = axidev::io::keyboard::keyToString(
+        static_cast<axidev::io::keyboard::Key>(key));
     return duplicate_c_string(s);
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return nullptr;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_key_to_string");
+    set_last_error("Unknown exception in axidev_io_keyboard_key_to_string");
     return nullptr;
   }
 }
 
-TYPR_IO_API typr_io_keyboard_key_t
-typr_io_keyboard_string_to_key(const char *name) {
+AXIDEV_IO_API axidev_io_keyboard_key_t
+axidev_io_keyboard_string_to_key(const char *name) {
   if (!name) {
     set_last_error("name is NULL");
-    return static_cast<typr_io_keyboard_key_t>(
-        typr::io::keyboard::Key::Unknown);
+    return static_cast<axidev_io_keyboard_key_t>(
+        axidev::io::keyboard::Key::Unknown);
   }
   try {
     clear_last_error();
-    typr::io::keyboard::Key k =
-        typr::io::keyboard::stringToKey(std::string(name));
-    return static_cast<typr_io_keyboard_key_t>(k);
+    axidev::io::keyboard::Key k =
+        axidev::io::keyboard::stringToKey(std::string(name));
+    return static_cast<axidev_io_keyboard_key_t>(k);
   } catch (const std::exception &e) {
     set_last_error(e.what());
-    return static_cast<typr_io_keyboard_key_t>(
-        typr::io::keyboard::Key::Unknown);
+    return static_cast<axidev_io_keyboard_key_t>(
+        axidev::io::keyboard::Key::Unknown);
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_keyboard_string_to_key");
-    return static_cast<typr_io_keyboard_key_t>(
-        typr::io::keyboard::Key::Unknown);
+    set_last_error("Unknown exception in axidev_io_keyboard_string_to_key");
+    return static_cast<axidev_io_keyboard_key_t>(
+        axidev::io::keyboard::Key::Unknown);
   }
 }
 
-TYPR_IO_API const char *typr_io_library_version(void) {
+AXIDEV_IO_API const char *axidev_io_library_version(void) {
   try {
     clear_last_error();
-    return typr::io::libraryVersion();
+    return axidev::io::libraryVersion();
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return nullptr;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_library_version");
+    set_last_error("Unknown exception in axidev_io_library_version");
     return nullptr;
   }
 }
 
-TYPR_IO_API char *typr_io_get_last_error(void) {
+AXIDEV_IO_API char *axidev_io_get_last_error(void) {
   std::lock_guard<std::mutex> lk(g_last_error_mutex);
   if (g_last_error.empty()) {
     return nullptr;
@@ -719,9 +719,9 @@ TYPR_IO_API char *typr_io_get_last_error(void) {
   return duplicate_c_string(g_last_error);
 }
 
-TYPR_IO_API void typr_io_clear_last_error(void) { clear_last_error(); }
+AXIDEV_IO_API void axidev_io_clear_last_error(void) { clear_last_error(); }
 
-TYPR_IO_API void typr_io_free_string(char *s) {
+AXIDEV_IO_API void axidev_io_free_string(char *s) {
   if (!s) {
     return;
   }
@@ -730,45 +730,45 @@ TYPR_IO_API void typr_io_free_string(char *s) {
 
 /* ---------------- Logging implementation ---------------- */
 
-TYPR_IO_API void typr_io_log_set_level(typr_io_log_level_t level) {
+AXIDEV_IO_API void axidev_io_log_set_level(axidev_io_log_level_t level) {
   try {
     clear_last_error();
-    typr::io::log::setLevel(static_cast<typr::io::log::Level>(level));
+    axidev::io::log::setLevel(static_cast<axidev::io::log::Level>(level));
   } catch (const std::exception &e) {
     set_last_error(e.what());
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_log_set_level");
+    set_last_error("Unknown exception in axidev_io_log_set_level");
   }
 }
 
-TYPR_IO_API typr_io_log_level_t typr_io_log_get_level(void) {
+AXIDEV_IO_API axidev_io_log_level_t axidev_io_log_get_level(void) {
   try {
     clear_last_error();
-    typr::io::log::Level lvl = typr::io::log::getLevel();
-    return static_cast<typr_io_log_level_t>(lvl);
+    axidev::io::log::Level lvl = axidev::io::log::getLevel();
+    return static_cast<axidev_io_log_level_t>(lvl);
   } catch (const std::exception &e) {
     set_last_error(e.what());
-    return TYPR_IO_LOG_LEVEL_INFO;
+    return AXIDEV_IO_LOG_LEVEL_INFO;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_log_get_level");
-    return TYPR_IO_LOG_LEVEL_INFO;
+    set_last_error("Unknown exception in axidev_io_log_get_level");
+    return AXIDEV_IO_LOG_LEVEL_INFO;
   }
 }
 
-TYPR_IO_API bool typr_io_log_is_enabled(typr_io_log_level_t level) {
+AXIDEV_IO_API bool axidev_io_log_is_enabled(axidev_io_log_level_t level) {
   try {
     clear_last_error();
-    return typr::io::log::isEnabled(static_cast<typr::io::log::Level>(level));
+    return axidev::io::log::isEnabled(static_cast<axidev::io::log::Level>(level));
   } catch (const std::exception &e) {
     set_last_error(e.what());
     return false;
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_log_is_enabled");
+    set_last_error("Unknown exception in axidev_io_log_is_enabled");
     return false;
   }
 }
 
-TYPR_IO_API void typr_io_log_message(typr_io_log_level_t level,
+AXIDEV_IO_API void axidev_io_log_message(axidev_io_log_level_t level,
                                      const char *file, int line,
                                      const char *fmt, ...) {
   if (!file || !fmt) {
@@ -778,12 +778,12 @@ TYPR_IO_API void typr_io_log_message(typr_io_log_level_t level,
   va_start(ap, fmt);
   try {
     clear_last_error();
-    typr::io::log::vlog(static_cast<typr::io::log::Level>(level), file, line,
+    axidev::io::log::vlog(static_cast<axidev::io::log::Level>(level), file, line,
                         fmt, ap);
   } catch (const std::exception &e) {
     set_last_error(e.what());
   } catch (...) {
-    set_last_error("Unknown exception in typr_io_log_message");
+    set_last_error("Unknown exception in axidev_io_log_message");
   }
   va_end(ap);
 }

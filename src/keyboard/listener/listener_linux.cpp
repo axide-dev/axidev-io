@@ -1,6 +1,6 @@
 /**
  * @file keyboard/listener/listener_linux.cpp
- * @brief Linux/libinput implementation of typr::io::keyboard::Listener.
+ * @brief Linux/libinput implementation of axidev::io::keyboard::Listener.
  *
  * Provides a libinput-based global keyboard event listener that translates
  * low-level input events into logical keys and Unicode codepoints using
@@ -9,8 +9,8 @@
  */
 #if defined(__linux__)
 
-#include <typr-io/keyboard/listener.hpp>
-#include <typr-io/log.hpp>
+#include <axidev-io/keyboard/listener.hpp>
+#include <axidev-io/log.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -32,7 +32,7 @@
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xkbcommon/xkbcommon.h>
 
-namespace typr::io::keyboard {
+namespace axidev::io::keyboard {
 
 namespace {
 
@@ -84,7 +84,7 @@ static const struct libinput_interface kInterface = {
 
 /**
  * @internal
- * @brief PIMPL implementation for `typr::io::keyboard::Listener`.
+ * @brief PIMPL implementation for `axidev::io::keyboard::Listener`.
  *
  * This structure encapsulates the platform-specific state required to
  * implement the Listener, including the worker thread that polls libinput,
@@ -128,7 +128,7 @@ struct Listener::Impl {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
     bool ok = ready.load();
-    TYPR_IO_LOG_DEBUG("Listener (Linux/libinput): start result=%u",
+    AXIDEV_IO_LOG_DEBUG("Listener (Linux/libinput): start result=%u",
                       static_cast<unsigned>(ok));
     return ok;
   }
@@ -155,7 +155,7 @@ struct Listener::Impl {
       callback = nullptr;
     }
 
-    TYPR_IO_LOG_INFO("Listener (Linux/libinput): stopped");
+    AXIDEV_IO_LOG_INFO("Listener (Linux/libinput): stopped");
   }
 
   /**
@@ -180,7 +180,7 @@ private:
   void threadMain() {
     struct udev *udev = udev_new();
     if (!udev) {
-      TYPR_IO_LOG_ERROR("Listener (Linux/libinput): udev_new() failed");
+      AXIDEV_IO_LOG_ERROR("Listener (Linux/libinput): udev_new() failed");
       running.store(false);
       ready.store(false);
       return;
@@ -188,7 +188,7 @@ private:
 
     li = libinput_udev_create_context(&kInterface, nullptr, udev);
     if (!li) {
-      TYPR_IO_LOG_ERROR(
+      AXIDEV_IO_LOG_ERROR(
           "Listener (Linux/libinput): libinput_udev_create_context() failed");
       udev_unref(udev);
       running.store(false);
@@ -197,7 +197,7 @@ private:
     }
 
     if (libinput_udev_assign_seat(li, "seat0") < 0) {
-      TYPR_IO_LOG_ERROR(
+      AXIDEV_IO_LOG_ERROR(
           "Listener (Linux/libinput): libinput_udev_assign_seat() failed. "
           "Are you in the 'input' group or running with necessary privileges?");
       libinput_unref(li);
@@ -210,7 +210,7 @@ private:
     // Initialize xkbcommon context / keymap / state for translating keycodes
     xkbCtx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     if (!xkbCtx) {
-      TYPR_IO_LOG_ERROR("Listener (Linux/libinput): xkb_context_new() failed");
+      AXIDEV_IO_LOG_ERROR("Listener (Linux/libinput): xkb_context_new() failed");
       libinput_unref(li);
       udev_unref(udev);
       running.store(false);
@@ -337,7 +337,7 @@ private:
           // etc.)
           layoutStr = lang;
         }
-        TYPR_IO_LOG_DEBUG("Listener (Linux/libinput): guessed layout from "
+        AXIDEV_IO_LOG_DEBUG("Listener (Linux/libinput): guessed layout from "
                           "locale: %s",
                           layoutStr.c_str());
       }
@@ -366,14 +366,14 @@ private:
       dbg += "options=" + optionsStr + " ";
     }
     if (!dbg.empty()) {
-      TYPR_IO_LOG_DEBUG("Listener (Linux/libinput): xkb names: %s",
+      AXIDEV_IO_LOG_DEBUG("Listener (Linux/libinput): xkb names: %s",
                         dbg.c_str());
     }
 
     xkbKeymap =
         xkb_keymap_new_from_names(xkbCtx, &names, XKB_KEYMAP_COMPILE_NO_FLAGS);
     if (!xkbKeymap) {
-      TYPR_IO_LOG_ERROR(
+      AXIDEV_IO_LOG_ERROR(
           "Listener (Linux/libinput): xkb_keymap_new_from_names() failed");
       xkb_context_unref(xkbCtx);
       libinput_unref(li);
@@ -384,7 +384,7 @@ private:
     }
     xkbState = xkb_state_new(xkbKeymap);
     if (!xkbState) {
-      TYPR_IO_LOG_ERROR("Listener (Linux/libinput): xkb_state_new() failed");
+      AXIDEV_IO_LOG_ERROR("Listener (Linux/libinput): xkb_state_new() failed");
       xkb_keymap_unref(xkbKeymap);
       xkb_context_unref(xkbCtx);
       libinput_unref(li);
@@ -395,7 +395,7 @@ private:
     }
 
     ready.store(true);
-    TYPR_IO_LOG_INFO("Listener (Linux/libinput): Monitoring started");
+    AXIDEV_IO_LOG_INFO("Listener (Linux/libinput): Monitoring started");
 
     int fd = libinput_get_fd(li);
     struct pollfd pfd = {.fd = fd, .events = POLLIN, .revents = 0};
@@ -518,7 +518,7 @@ private:
     // Debug logging
     {
       std::string kname = keyToString(mapped);
-      TYPR_IO_LOG_DEBUG("Listener (Linux/libinput) %s: evdev=%u keysym=%u "
+      AXIDEV_IO_LOG_DEBUG("Listener (Linux/libinput) %s: evdev=%u keysym=%u "
                         "key=%s cp=%u mods=0x%02x",
                         pressed ? "press" : "release", keycode,
                         static_cast<unsigned>(sym), kname.c_str(),
@@ -672,21 +672,21 @@ Listener::Listener(Listener &&) noexcept = default;
 Listener &Listener::operator=(Listener &&) noexcept = default;
 
 bool Listener::start(Callback cb) {
-  TYPR_IO_LOG_DEBUG("Listener::start() called (Linux/libinput)");
+  AXIDEV_IO_LOG_DEBUG("Listener::start() called (Linux/libinput)");
   return m_impl ? m_impl->start(std::move(cb)) : false;
 }
 
 void Listener::stop() {
-  TYPR_IO_LOG_DEBUG("Listener::stop() called (Linux/libinput)");
+  AXIDEV_IO_LOG_DEBUG("Listener::stop() called (Linux/libinput)");
   if (m_impl)
     m_impl->stop();
 }
 
 bool Listener::isListening() const {
-  TYPR_IO_LOG_DEBUG("Listener::isListening() called (Linux/libinput)");
+  AXIDEV_IO_LOG_DEBUG("Listener::isListening() called (Linux/libinput)");
   return m_impl ? m_impl->isRunning() : false;
 }
 
-} // namespace typr::io::keyboard
+} // namespace axidev::io::keyboard
 
 #endif // __linux__

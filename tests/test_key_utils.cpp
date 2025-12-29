@@ -10,13 +10,13 @@
 //  - Modifier bit-ops and hasModifier helper
 //  - Capabilities default values
 //
-// To run these tests enable TYPR_IO_BUILD_TESTS=ON when configuring the
+// To run these tests enable AXIDEV_IO_BUILD_TESTS=ON when configuring the
 // project.
 
 #include <catch2/catch_all.hpp>
 
-#include <typr-io/keyboard/common.hpp>
-#include <typr-io/log.hpp>
+#include <axidev-io/keyboard/common.hpp>
+#include <axidev-io/log.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-using namespace typr::io::keyboard;
+using namespace axidev::io::keyboard;
 
 static std::string toLowerCopy(const std::string &s) {
   std::string out = s;
@@ -35,7 +35,7 @@ static std::string toLowerCopy(const std::string &s) {
 }
 
 TEST_CASE("keyToString / stringToKey roundtrip and uniqueness", "[key_utils]") {
-  TYPR_IO_LOG_INFO("test_key_utils: roundtrip/uniqueness start");
+  AXIDEV_IO_LOG_INFO("test_key_utils: roundtrip/uniqueness start");
   std::unordered_set<std::string> seen;
   int canonicalCount = 0;
 
@@ -85,7 +85,7 @@ TEST_CASE("keyToString / stringToKey roundtrip and uniqueness", "[key_utils]") {
       if (lowerCounts[lower] == 1) {
         REQUIRE(stringToKey(lower) == k);
       } else {
-        TYPR_IO_LOG_DEBUG(
+        AXIDEV_IO_LOG_DEBUG(
             "Skipping lowercased roundtrip for ambiguous canonical name '%s'",
             name.c_str());
       }
@@ -98,7 +98,7 @@ TEST_CASE("keyToString / stringToKey roundtrip and uniqueness", "[key_utils]") {
       if (upperCounts[upper] == 1) {
         REQUIRE(stringToKey(upper) == k);
       } else {
-        TYPR_IO_LOG_DEBUG(
+        AXIDEV_IO_LOG_DEBUG(
             "Skipping uppercased roundtrip for ambiguous canonical name '%s'",
             name.c_str());
       }
@@ -110,7 +110,7 @@ TEST_CASE("keyToString / stringToKey roundtrip and uniqueness", "[key_utils]") {
 }
 
 TEST_CASE("Recognizes helpful aliases / synonyms", "[key_utils][aliases]") {
-  TYPR_IO_LOG_INFO("test_key_utils: aliases/synonyms start");
+  AXIDEV_IO_LOG_INFO("test_key_utils: aliases/synonyms start");
   REQUIRE(stringToKey("esc") == Key::Escape);
   REQUIRE(stringToKey("ESC") == Key::Escape);
   REQUIRE(stringToKey("return") == Key::Enter);
@@ -181,7 +181,7 @@ TEST_CASE("Recognizes helpful aliases / synonyms", "[key_utils][aliases]") {
   REQUIRE(stringToKey("\t") == Key::Tab);
 }
 TEST_CASE("Recognizes X11 / XF86 / KP alias names", "[key_utils][x11]") {
-  TYPR_IO_LOG_INFO("test_key_utils: x11 aliases start");
+  AXIDEV_IO_LOG_INFO("test_key_utils: x11 aliases start");
 
   // Modifier / control variants
   REQUIRE(stringToKey("Control_L") == Key::CtrlLeft);
@@ -249,7 +249,7 @@ TEST_CASE("Recognizes X11 / XF86 / KP alias names", "[key_utils][x11]") {
   REQUIRE(stringToKey("KP_Multiply") == stringToKey("kp_multiply"));
 }
 TEST_CASE("Recognizes ASCII control inputs", "[key_utils][ascii]") {
-  TYPR_IO_LOG_INFO("test_key_utils: ascii controls start");
+  AXIDEV_IO_LOG_INFO("test_key_utils: ascii controls start");
   // Control characters commonly observed in terminal / listener input.
   REQUIRE(stringToKey("\x08") == Key::Backspace);
   REQUIRE(stringToKey("\x03") == Key::AsciiETX);
@@ -271,7 +271,7 @@ TEST_CASE("Recognizes ASCII control inputs", "[key_utils][ascii]") {
   REQUIRE(stringToKey("\t") == Key::Tab);
 }
 TEST_CASE("Handles invalid and edge-case inputs", "[key_utils][edge]") {
-  TYPR_IO_LOG_INFO("test_key_utils: edge-case inputs start");
+  AXIDEV_IO_LOG_INFO("test_key_utils: edge-case inputs start");
   REQUIRE(stringToKey("NotAKey") == Key::Unknown);
   REQUIRE(stringToKey("") == Key::Unknown);
   // whitespace is NOT trimmed by design
@@ -281,7 +281,7 @@ TEST_CASE("Handles invalid and edge-case inputs", "[key_utils][edge]") {
 
 TEST_CASE("keyToString returns expected canonical values",
           "[key_utils][canonical]") {
-  TYPR_IO_LOG_INFO("test_key_utils: canonical values start");
+  AXIDEV_IO_LOG_INFO("test_key_utils: canonical values start");
   REQUIRE(keyToString(Key::A) == "A");
   REQUIRE(keyToString(Key::Num1) == "1");
   REQUIRE(keyToString(Key::F5) == "F5");
@@ -292,7 +292,7 @@ TEST_CASE("keyToString returns expected canonical values",
 }
 
 TEST_CASE("Modifier bit-ops and helpers", "[modifier]") {
-  TYPR_IO_LOG_INFO("test_key_utils: modifier bit-ops start");
+  AXIDEV_IO_LOG_INFO("test_key_utils: modifier bit-ops start");
   Modifier m = Modifier::None;
   REQUIRE(!hasModifier(m, Modifier::Shift));
 
@@ -314,7 +314,7 @@ TEST_CASE("Modifier bit-ops and helpers", "[modifier]") {
 }
 
 TEST_CASE("Capabilities defaults to false", "[capabilities]") {
-  TYPR_IO_LOG_INFO("test_key_utils: capabilities defaults start");
+  AXIDEV_IO_LOG_INFO("test_key_utils: capabilities defaults start");
   Capabilities c;
   REQUIRE(!c.canInjectKeys);
   REQUIRE(!c.canInjectText);
