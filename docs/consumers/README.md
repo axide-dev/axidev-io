@@ -51,10 +51,9 @@ int main() {
 - Use `combo(mods, key)` to safely perform shortcuts (it will hold modifiers, tap the key, then release modifiers).
 - Use `setKeyDelay()` to tune the timing of `tap`/`combo` if necessary for fragile apps.
 
-## Examples & test harness
+## Examples
 
 - Look at `examples/` for small example programs demonstrating typical usage.
-- `test_consumer/` contains a lightweight consumer used by the project's test targets. It's useful for smoke-testing your environment and understanding how the public API behaves on your platform.
 
 ## Runtime caveats & platform notes
 

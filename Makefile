@@ -7,12 +7,8 @@
 #   make test                                # build and run tests
 #   make integration-test                    # run integration tests (interactive)
 #   make run-unit-tests                      # run unit tests binary directly
-#   make run-consumer RUN_ARGS="--help"      # run consumer with arguments
 #   make export-compile-commands             # copy compile_commands.json to repo root
 #   make clean
-#
-# You can pass additional CMake -D flags via CMAKE_ARGS:
-#   make configure CMAKE_ARGS="-DAXIDEV_IO_BUILD_TEST_CONSUMER=ON"
 
 CMAKE ?= cmake
 CTEST ?= ctest
@@ -30,10 +26,9 @@ else
 EXE_EXT :=
 endif
 
-RUN_CONSUMER := $(BUILD_DIR)/axidev_io_consumer$(EXE_EXT)
 RUN_UNIT_TESTS := $(BUILD_DIR)/tests/axidev-io-unit-tests$(EXE_EXT)
 
-.PHONY: all configure configure-release build test integration-test run-unit-tests run-consumer export-compile-commands clean help
+.PHONY: all configure configure-release build test integration-test run-unit-tests export-compile-commands clean help
 
 all: build
 
@@ -73,17 +68,6 @@ run-unit-tests:
 		"$(RUN_UNIT_TESTS)"; \
 	else \
 		echo "Unit tests binary not found: $(RUN_UNIT_TESTS)"; \
-		exit 1; \
-	fi
-
-# Run the in-tree consumer (make sure you configured with AXIDEV_IO_BUILD_TEST_CONSUMER=ON)
-# Example: make run-consumer RUN_ARGS="--tap A"
-run-consumer: build
-	@if [ -x "$(RUN_CONSUMER)" ]; then \
-		"$(RUN_CONSUMER)" $(RUN_ARGS); \
-	else \
-		echo "Consumer binary not found: $(RUN_CONSUMER)"; \
-		echo "Did you configure with -DAXIDEV_IO_BUILD_TEST_CONSUMER=ON and then run 'make build'?"; \
 		exit 1; \
 	fi
 

@@ -121,7 +121,7 @@ cmake --build .
 ## Contributing
 
 - Update `docs/consumers/` or `docs/developers/` for user- or developer-facing changes.
-- Add tests or examples to `examples/` and `test_consumer/` where relevant.
+- Add tests or examples to `examples/` where relevant.
 - Open a pull request with a clear description and focused changes.
 
 ## License

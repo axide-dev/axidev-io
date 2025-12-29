@@ -58,7 +58,6 @@ Top-level important paths (brief):
   - `src/keyboard/listener/` — global output listener implementations (`listener_macos.mm`, `listener_windows.cpp`, `listener_linux.cpp`).
   - `src/keyboard/common/` — shared keyboard utilities (key-to-string mappings, etc.).
 - `examples/` — example programs demonstrating consumer usage.
-- `test_consumer/` — lightweight test consumer used in `make test`.
 - Packaging manifests: `conanfile.py`, `vcpkg.json`.
 
 ## Build & development workflow
@@ -103,7 +102,7 @@ When adding support for a new platform, follow this checklist:
    - Ensure `capabilities()` reflects whether your backend supports `canInjectKeys`, `canInjectText`, `canSimulateHID`, etc.
    - Ensure `isReady()` accurately reports readiness (permissions, device present).
 6. Add tests/examples:
-   - Add a small example showing the typical usage and, when possible, a test in `test_consumer/` or new test target that can run headless.
+   - Add a small example showing the typical usage and, when possible, a test in a new test target that can run headless.
 7. Document:
    - Update `docs/developers/README.md` with platform-specific caveats and any runtime permission instructions.
    - Update `docs/consumers/README.md` if consumers need to do anything special (permissions, runtime flags).
@@ -174,7 +173,6 @@ Before opening a PR:
 - `src/keyboard/sender/` — input injection implementations.
 - `src/keyboard/listener/` — global output listener implementations.
 - `examples/` — sample apps demonstrating consumer APIs.
-- `test_consumer/` — lightweight test harness used by `make test`.
 - `CMakeLists.txt`, `Makefile`, `conanfile.py`, `vcpkg.json` — build and packaging helpers.
 - `docs/consumers/README.md` — consumer-focused docs.
 - `docs/developers/README.md` — this file (developer docs).
