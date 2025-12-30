@@ -59,7 +59,7 @@ runs:
         fi
 
     - name: Install LLVM-MinGW
-      uses: mstorsjo/llvm-mingw
+      uses: mstorsjo/llvm-mingw@20251216
       with:
         target: ${{ steps.setup.outputs.target }}
 
