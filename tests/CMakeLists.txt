@@ -48,6 +48,10 @@ target_link_libraries(axidev-io-unit-tests
         GTest::gtest_main
 )
 
+if(MINGW AND AXIDEV_IO_MINGW_STATIC_RUNTIME)
+    target_link_options(axidev-io-unit-tests PRIVATE -static -static-libgcc -static-libstdc++)
+endif()
+
 # Ensure modern C++ standard (project uses C++20)
 target_compile_features(axidev-io-unit-tests PRIVATE cxx_std_20)
 
@@ -72,6 +76,10 @@ if(AXIDEV_IO_BUILD_INTEGRATION_TESTS)
             axidev::io
             GTest::gtest_main
     )
+
+    if(MINGW AND AXIDEV_IO_MINGW_STATIC_RUNTIME)
+        target_link_options(axidev-io-integration-tests PRIVATE -static -static-libgcc -static-libstdc++)
+    endif()
 
     # Ensure consistent language standard
     target_compile_features(axidev-io-integration-tests PRIVATE cxx_std_20)

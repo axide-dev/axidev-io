@@ -98,6 +98,10 @@ runs:
           CMAKE_ARGS+=( -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON )
         fi
 
+        # Prefer self-contained executables on MinGW by statically linking
+        # libstdc++/libgcc (avoids requiring LLVM-MinGW runtime DLLs).
+        CMAKE_ARGS+=( -DAXIDEV_IO_MINGW_STATIC_RUNTIME=ON )
+
         cmake "${CMAKE_ARGS[@]}"
 
     - name: Build (CMake)
@@ -105,40 +109,6 @@ runs:
       run: |
         set -euo pipefail
         cmake --build build --config '${{ inputs.build-type }}' --parallel
-
-    - name: Bundle LLVM-MinGW runtime (tests)
-      shell: bash
-      run: |
-        set -euo pipefail
-        VERSION='${{ inputs.mingw-version }}'
-        TOOLCHAIN_BIN='${{ github.workspace }}/llvm-mingw-'"$VERSION"'-ucrt-x86_64/bin'
-
-        if [ ! -d "$TOOLCHAIN_BIN" ]; then
-          echo "Expected LLVM-MinGW bin dir not found: $TOOLCHAIN_BIN" >&2
-          exit 1
-        fi
-
-        # Place runtime DLLs next to test executables so downloaded artifacts run
-        # on Windows machines without LLVM-MinGW installed.
-        mkdir -p build/tests
-
-        copy_if_present() {
-          local name="$1"
-          if [ -f "$TOOLCHAIN_BIN/$name" ]; then
-            cp -f "$TOOLCHAIN_BIN/$name" build/tests/
-          fi
-        }
-
-        copy_if_present 'libunwind.dll'
-        copy_if_present 'libwinpthread-1.dll'
-        copy_if_present 'libstdc++-6.dll'
-        copy_if_present 'libc++.dll'
-        copy_if_present 'libc++abi.dll'
-
-        for dll in "$TOOLCHAIN_BIN"/libgcc_s_*.dll; do
-          [ -f "$dll" ] || continue
-          cp -f "$dll" build/tests/
-        done
 
     - name: Run tests (ctest)
       if: ${{ inputs.run-tests == 'true' }}
@@ -155,42 +125,6 @@ runs:
       run: |
         set -euo pipefail
         cmake --install build --prefix dist --config '${{ inputs.build-type }}'
-
-    - name: Bundle LLVM-MinGW runtime (package)
-      if: ${{ inputs.package-output == 'true' }}
-      shell: bash
-      run: |
-        set -euo pipefail
-        VERSION='${{ inputs.mingw-version }}'
-        TOOLCHAIN_BIN='${{ github.workspace }}/llvm-mingw-'"$VERSION"'-ucrt-x86_64/bin'
-
-        if [ ! -d "$TOOLCHAIN_BIN" ]; then
-          echo "Expected LLVM-MinGW bin dir not found: $TOOLCHAIN_BIN" >&2
-          exit 1
-        fi
-
-        if [ ! -d dist/bin ]; then
-          # Nothing to bundle if the install didn't produce any runtime outputs.
-          exit 0
-        fi
-
-        copy_if_present() {
-          local name="$1"
-          if [ -f "$TOOLCHAIN_BIN/$name" ]; then
-            cp -f "$TOOLCHAIN_BIN/$name" dist/bin/
-          fi
-        }
-
-        copy_if_present 'libunwind.dll'
-        copy_if_present 'libwinpthread-1.dll'
-        copy_if_present 'libstdc++-6.dll'
-        copy_if_present 'libc++.dll'
-        copy_if_present 'libc++abi.dll'
-
-        for dll in "$TOOLCHAIN_BIN"/libgcc_s_*.dll; do
-          [ -f "$dll" ] || continue
-          cp -f "$dll" dist/bin/
-        done
 
     - name: Package (Windows)
       if: ${{ inputs.package-output == 'true' }}
@@ -218,4 +152,3 @@ runs:
         path: |
           build/tests/axidev-io-unit-tests*
           build/tests/axidev-io-integration-tests*
-          build/tests/*.dll

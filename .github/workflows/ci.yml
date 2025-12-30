@@ -34,3 +34,15 @@ jobs:
           build-type: Release
           build-tests: "true"
           run-tests: "true"
+
+  build-windows-msvc-x64:
+    name: Build (Windows x64 / MSVC)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-windows-msvc
+        with:
+          arch: x64
+          build-type: Release
+          build-tests: "true"
+          run-tests: "true"
