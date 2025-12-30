@@ -78,6 +78,18 @@ jobs:
           package-output: "true"
           version: ${{ github.event.inputs.version || '' }}
 
+  build-windows-msvc-x64:
+    name: Build & package (Windows x64 / MSVC)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-windows-msvc
+        with:
+          arch: x64
+          build-type: Release
+          package-output: "true"
+          version: ${{ github.event.inputs.version || '' }}
+
   build-windows-arm64:
     name: Build & package (Windows arm64)
     runs-on: windows-11-arm
@@ -100,22 +112,128 @@ jobs:
       - build-macos-arm64
       - build-windows-x64
       - build-windows-arm64
-    if: always()
+      - build-windows-msvc-x64
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-        continue-on-error: true
 
-      - name: Prepare & Upload Release
+      - name: Collect release assets
+        id: collect-assets
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_VERSION: ${{ github.event.inputs.version || '' }}
         run: |
+          set -euo pipefail
           TAG="${INPUT_VERSION:-${GITHUB_REF#refs/tags/}}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
           mkdir -p release-assets
-          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release-assets/ \;
-          gh release create "$TAG" release-assets/* --title "$TAG" --generate-notes || \
-          gh release upload "$TAG" release-assets/* --clobber
+
+          expected=(
+            "axidev-io-${TAG}-linux-x64.tar.gz"
+            "axidev-io-${TAG}-linux-arm64.tar.gz"
+            "axidev-io-${TAG}-macos-x86_64.tar.gz"
+            "axidev-io-${TAG}-macos-arm64.tar.gz"
+            "axidev-io-${TAG}-windows-x64.zip"
+            "axidev-io-${TAG}-windows-arm64.zip"
+            "axidev-io-${TAG}-windows-msvc-x64.zip"
+          )
+
+          missing=0
+          for name in "${expected[@]}"; do
+            src="$(find artifacts -type f -name "$name" -print -quit || true)"
+            if [ -z "$src" ]; then
+              echo "::error::Missing expected release asset: $name"
+              missing=1
+              continue
+            fi
+            cp "$src" "release-assets/$name"
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::One or more release assets are missing."
+            exit 1
+          fi
+
+      - name: Create GitHub release
+        id: create-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.collect-assets.outputs.tag }}
+          release_name: ${{ steps.collect-assets.outputs.tag }}
+          commitish: ${{ github.sha }}
+
+      - name: Upload asset (linux x64)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-linux-x64.tar.gz
+          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-linux-x64.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload asset (linux arm64)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-linux-arm64.tar.gz
+          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-linux-arm64.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload asset (macos x86_64)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-macos-x86_64.tar.gz
+          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-macos-x86_64.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload asset (macos arm64)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-macos-arm64.tar.gz
+          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-macos-arm64.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload asset (windows x64)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-x64.zip
+          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-x64.zip
+          asset_content_type: application/zip
+
+      - name: Upload asset (windows arm64)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-arm64.zip
+          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-arm64.zip
+          asset_content_type: application/zip
+
+      - name: Upload asset (windows msvc x64)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-msvc-x64.zip
+          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-msvc-x64.zip
+          asset_content_type: application/zip
