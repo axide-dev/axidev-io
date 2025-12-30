@@ -43,14 +43,27 @@ elseif(UNIX)
     # Request static libraries from pkg-config
     set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH ON)
 
-    pkg_check_modules(LIBINPUT REQUIRED libinput)
-    pkg_check_modules(LIBUDEV REQUIRED libudev)
-    pkg_check_modules(XKBCOMMON REQUIRED xkbcommon)
+    # Find libraries with static linking information
+    pkg_check_modules(LIBINPUT REQUIRED IMPORTED_TARGET libinput)
+    pkg_check_modules(LIBUDEV REQUIRED IMPORTED_TARGET libudev)
+    pkg_check_modules(XKBCOMMON REQUIRED IMPORTED_TARGET xkbcommon)
 
-    # Get static library paths
-    pkg_check_modules(LIBINPUT_STATIC REQUIRED --static libinput)
-    pkg_check_modules(LIBUDEV_STATIC REQUIRED --static libudev)
-    pkg_check_modules(XKBCOMMON_STATIC REQUIRED --static xkbcommon)
+    # Also get static library information
+    execute_process(
+        COMMAND pkg-config --libs --static libinput
+        OUTPUT_VARIABLE LIBINPUT_STATIC_LIBS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    execute_process(
+        COMMAND pkg-config --libs --static libudev
+        OUTPUT_VARIABLE LIBUDEV_STATIC_LIBS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    execute_process(
+        COMMAND pkg-config --libs --static xkbcommon
+        OUTPUT_VARIABLE XKBCOMMON_STATIC_LIBS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
 
     list(APPEND AXIDEV_SOURCES
         src/keyboard/sender/sender_uinput.cpp
@@ -93,14 +106,20 @@ elseif(WIN32)
     target_link_libraries(axidev_io PUBLIC user32 kernel32)
 elseif(UNIX)
     target_include_directories(axidev_io PRIVATE
-        ${LIBINPUT_STATIC_INCLUDE_DIRS}
-        ${XKBCOMMON_STATIC_INCLUDE_DIRS}
-        ${LIBUDEV_STATIC_INCLUDE_DIRS}
+        ${LIBINPUT_INCLUDE_DIRS}
+        ${XKBCOMMON_INCLUDE_DIRS}
+        ${LIBUDEV_INCLUDE_DIRS}
     )
+
+    # Use static libraries by passing the full static link flags
+    separate_arguments(LIBINPUT_STATIC_LIBS_LIST UNIX_COMMAND "${LIBINPUT_STATIC_LIBS}")
+    separate_arguments(LIBUDEV_STATIC_LIBS_LIST UNIX_COMMAND "${LIBUDEV_STATIC_LIBS}")
+    separate_arguments(XKBCOMMON_STATIC_LIBS_LIST UNIX_COMMAND "${XKBCOMMON_STATIC_LIBS}")
+
     target_link_libraries(axidev_io PRIVATE
-        ${LIBINPUT_STATIC_LDFLAGS}
-        ${XKBCOMMON_STATIC_LDFLAGS}
-        ${LIBUDEV_STATIC_LDFLAGS}
+        ${LIBINPUT_STATIC_LIBS_LIST}
+        ${XKBCOMMON_STATIC_LIBS_LIST}
+        ${LIBUDEV_STATIC_LIBS_LIST}
     )
 endif()
 
