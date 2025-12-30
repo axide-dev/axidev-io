@@ -11,23 +11,24 @@ on:
     branches: [main]
 
 jobs:
-  build:
-    uses: ./.github/workflows/build-reusable.yml
-    with:
-      matrix-json: |
-        [
-          {
-            "os": "ubuntu-latest",
-            "arch": "x64",
-            "build-type": "Release",
-            "build-tests": true,
-            "run-tests": true
-          },
-          {
-            "os": "windows-latest",
-            "arch": "x64",
-            "build-type": "Release",
-            "build-tests": true,
-            "run-tests": true
-          }
-        ]
+  build-ubuntu-x64:
+    name: Build (Ubuntu x64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/build-linux
+        with:
+          arch: x64
+          build-type: Release
+          build-tests: "true"
+          run-tests: "true"
+
+  build-windows-x64:
+    name: Build (Windows x64)
+    runs-on: windows-latest
+    steps:
+      - uses: ./.github/actions/build-windows-mingw
+        with:
+          arch: x64
+          build-type: Release
+          build-tests: "true"
+          run-tests: "true"

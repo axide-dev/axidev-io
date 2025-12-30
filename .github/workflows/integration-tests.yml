@@ -27,53 +27,80 @@ permissions:
   contents: write
 
 jobs:
-  integration-tests:
-    uses: ./.github/workflows/build-reusable.yml
-    with:
-      matrix-json: |
-        [
-          {
-            "os": "ubuntu-latest",
-            "arch": "x64",
-            "build-type": "Release",
-            "build-tests": true,
-            "build-integration-tests": true,
-          },
-          {
-            "os": "ubuntu-24.04-arm",
-            "arch": "arm64",
-            "build-type": "Release",
-            "build-tests": true,
-            "build-integration-tests": true,
-          },
-          {
-            "os": "macos-latest",
-            "arch": "arm64",
-            "build-type": "Release",
-            "build-tests": true,
-            "build-integration-tests": true
-          },
-          {
-            "os": "windows-latest",
-            "arch": "x64",
-            "build-type": "Release",
-            "build-tests": true,
-            "build-integration-tests": true
-          },
-          {
-            "os": "windows-11-arm",
-            "arch": "arm64",
-            "build-type": "Release",
-            "build-tests": true,
-            "build-integration-tests": true,
-          }
-        ]
-      artifact-name-prefix: ""
+  build-ubuntu-x64:
+    name: Build integration binaries (Ubuntu x64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/build-linux
+        with:
+          arch: x64
+          build-type: Release
+          build-tests: "true"
+          build-integration-tests: "true"
+          upload-binaries: "true"
+          artifact-name: integration-test-binary-ubuntu-latest-x64
+
+  build-ubuntu-arm64:
+    name: Build integration binaries (Ubuntu arm64)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: ./.github/actions/build-linux
+        with:
+          arch: arm64
+          build-type: Release
+          build-tests: "true"
+          build-integration-tests: "true"
+          upload-binaries: "true"
+          artifact-name: integration-test-binary-ubuntu-24.04-arm-arm64
+
+  build-macos-arm64:
+    name: Build integration binaries (macOS arm64)
+    runs-on: macos-latest
+    steps:
+      - uses: ./.github/actions/build-macos
+        with:
+          arch: arm64
+          build-type: Release
+          build-tests: "true"
+          build-integration-tests: "true"
+          upload-binaries: "true"
+          artifact-name: integration-test-binary-macos-latest-arm64
+
+  build-windows-x64:
+    name: Build integration binaries (Windows x64)
+    runs-on: windows-latest
+    steps:
+      - uses: ./.github/actions/build-windows-mingw
+        with:
+          arch: x64
+          build-type: Release
+          build-tests: "true"
+          build-integration-tests: "true"
+          upload-binaries: "true"
+          artifact-name: integration-test-binary-windows-latest-x64
+
+  build-windows-arm64:
+    name: Build integration binaries (Windows arm64)
+    runs-on: windows-11-arm
+    steps:
+      - uses: ./.github/actions/build-windows-mingw
+        with:
+          arch: arm64
+          build-type: Release
+          build-tests: "true"
+          build-integration-tests: "true"
+          upload-binaries: "true"
+          artifact-name: integration-test-binary-windows-11-arm-arm64
 
   release:
     name: Create integration test release
     runs-on: ubuntu-latest
-    needs: integration-tests
+    needs:
+      - build-ubuntu-x64
+      - build-ubuntu-arm64
+      - build-macos-arm64
+      - build-windows-x64
+      - build-windows-arm64
     if: ${{ always() }}
     permissions:
       contents: write
