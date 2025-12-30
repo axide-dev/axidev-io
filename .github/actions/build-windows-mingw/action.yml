@@ -48,11 +48,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-
     - name: Install MinGW-w64
       uses: egor-tensin/setup-mingw@v2
       with:

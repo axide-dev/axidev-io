@@ -15,6 +15,7 @@ jobs:
     name: Build (Ubuntu x64)
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/build-linux
         with:
           arch: x64
@@ -26,6 +27,7 @@ jobs:
     name: Build (Windows x64)
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/build-windows-mingw
         with:
           arch: x64

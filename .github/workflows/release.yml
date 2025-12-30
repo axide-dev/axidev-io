@@ -22,6 +22,7 @@ jobs:
     name: Build & package (Ubuntu x64)
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/build-linux
         with:
           arch: x64
@@ -33,6 +34,7 @@ jobs:
     name: Build & package (Ubuntu arm64)
     runs-on: ubuntu-24.04-arm
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/build-linux
         with:
           arch: arm64
@@ -44,6 +46,7 @@ jobs:
     name: Build & package (macOS x86_64)
     runs-on: macos-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/build-macos
         with:
           arch: x86_64
@@ -55,6 +58,7 @@ jobs:
     name: Build & package (macOS arm64)
     runs-on: macos-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/build-macos
         with:
           arch: arm64
@@ -66,6 +70,7 @@ jobs:
     name: Build & package (Windows x64)
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/build-windows-mingw
         with:
           arch: x64
@@ -77,6 +82,7 @@ jobs:
     name: Build & package (Windows arm64)
     runs-on: windows-11-arm
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/build-windows-mingw
         with:
           arch: arm64
