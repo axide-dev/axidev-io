@@ -81,11 +81,6 @@ jobs:
             sudo chmod 666 /dev/uinput || true
           fi
 
-      - name: Start Xvfb (Linux)
-        if: matrix.enable-xvfb
-        run: |
-          Xvfb :99 -screen 0 1024x768x24 & sleep 2
-
       - name: Clean stale build directory
         shell: bash
         run: rm -rf build
