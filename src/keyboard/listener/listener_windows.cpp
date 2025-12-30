@@ -1,6 +1,6 @@
 /**
- * @file listener_windows.cpp
- * @brief Windows (WH_KEYBOARD_LL) implementation of the Listener.
+ * @file keyboard/listener/listener_windows.cpp
+ * @brief Windows implementation of axidev::io::keyboard::Listener.
  *
  * Uses a low-level keyboard hook (WH_KEYBOARD_LL) to observe global keyboard
  * activity, translate virtual keys and produced characters into logical
@@ -8,30 +8,23 @@
  * the public `Listener` callback. Callback invocations occur on the hook
  * thread and therefore must be thread-safe and avoid long/blocking work.
  *
- * Notes:
- *  - This implementation focuses on common printable characters and physical
- *    key mappings and intentionally avoids complex IME/dead-key composition
- *    behavior to remain lightweight and predictable.
- *  - WH_KEYBOARD_LL typically does not require elevated privileges, but
- *    behavior can vary across different Windows versions and configurations.
+ * @note This implementation focuses on common printable characters and physical
+ *       key mappings and intentionally avoids complex IME/dead-key composition
+ *       behavior to remain lightweight and predictable.
  */
 
+
+#include <axidev-io/keyboard/listener.hpp>
+
 #ifdef _WIN32
-
-#include <typr-io/listener.hpp>
-
 #include <Windows.h>
 #include <atomic>
-#include <chrono>
-#include <cstdio>
 #include <cstdlib>
 #include <mutex>
 #include <thread>
-#include <typr-io/log.hpp>
-#include <unordered_map>
-#include <vector>
+#include <axidev-io/log.hpp>
 
-namespace typr::io {
+namespace axidev::io::keyboard {
 
 namespace {
 
@@ -79,18 +72,19 @@ bool isExtendedKeyForVK(WORD vk) {
  * @brief Check whether debug output is enabled for the listener backend.
  *
  * The behaviour follows the logging facility: it is influenced by the
- * environment and the global log level (legacy `TYPR_OSK_DEBUG_BACKEND` or the
- * newer `TYPR_IO_LOG_LEVEL` mechanism).
+ * environment and the global log level (legacy `AXIDEV_OSK_DEBUG_BACKEND` or the
+ * newer `AXIDEV_IO_LOG_LEVEL` mechanism).
  *
  * @return true if debug-level logging is enabled for the process.
  */
-static bool output_debug_enabled() { return ::typr::io::log::debugEnabled(); }
+static bool output_debug_enabled() { return ::axidev::io::log::debugEnabled(); }
 
 } // namespace
 
 /**
  * @internal
- * @brief Pimpl for `typr::io::Listener` (Windows / hook-based backend).
+ * @brief Pimpl for `axidev::io::keyboard::Listener` (Windows / hook-based
+ * backend).
  *
  * This structure manages the platform-specific pieces required for the
  * Windows listener: hook installation, the hook worker thread, VK -> Key
@@ -127,7 +121,7 @@ struct Listener::Impl {
     running.store(true);
     // Mark not-ready until the hook is actually installed.
     ready.store(false);
-    TYPR_IO_LOG_INFO("Listener (Windows): start requested");
+    AXIDEV_IO_LOG_INFO("Listener (Windows): start requested");
     worker = std::thread(&Impl::threadMain, this);
 
     // Wait briefly for the hook to be installed (or to fail). This allows
@@ -137,10 +131,10 @@ struct Listener::Impl {
         return false;
       if (ready.load())
         return true;
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      Sleep(5);
     }
     bool ok = ready.load();
-    TYPR_IO_LOG_DEBUG("Listener (Windows): start result=%u",
+    AXIDEV_IO_LOG_DEBUG("Listener (Windows): start result=%u",
                       static_cast<unsigned>(ok));
     return ok;
   }
@@ -155,7 +149,7 @@ struct Listener::Impl {
   void stop() {
     if (!running.load())
       return;
-    TYPR_IO_LOG_INFO("Listener (Windows): stop requested");
+    AXIDEV_IO_LOG_INFO("Listener (Windows): stop requested");
     running.store(false);
 
     // Wake the thread by posting WM_QUIT
@@ -166,7 +160,7 @@ struct Listener::Impl {
 
     if (worker.joinable())
       worker.join();
-    TYPR_IO_LOG_INFO("Listener (Windows): stopped");
+    AXIDEV_IO_LOG_INFO("Listener (Windows): stopped");
   }
 
   /**
@@ -492,7 +486,7 @@ private:
         if (cpIt != lastPressCp.end()) {
           codepoint = cpIt->second;
           if (output_debug_enabled()) {
-            TYPR_IO_LOG_DEBUG(
+            AXIDEV_IO_LOG_DEBUG(
                 "Listener (Windows): using last-press cp=%u for release vk=%u",
                 static_cast<unsigned>(codepoint), static_cast<unsigned>(vk));
           }
@@ -509,7 +503,7 @@ private:
         if (elapsed < kReleaseDebounceMs && sigIt->second.first == codepoint &&
             sigIt->second.second == mods) {
           if (output_debug_enabled()) {
-            TYPR_IO_LOG_DEBUG("Listener (Windows): ignoring duplicate release "
+            AXIDEV_IO_LOG_DEBUG("Listener (Windows): ignoring duplicate release "
                               "(same cp+mods) for vk=%u key=%s cp=%u mods=%u",
                               static_cast<unsigned>(vk), keyName.c_str(),
                               static_cast<unsigned>(codepoint),
@@ -538,7 +532,7 @@ private:
 
     invokeCallback(codepoint, mappedKey, mods, pressed);
 
-    TYPR_IO_LOG_DEBUG(
+    AXIDEV_IO_LOG_DEBUG(
         "Listener (Windows) %s: vk=%u sc=%u flags=%u key=%s cp=%u mods=%u",
         pressed ? "press" : "release", static_cast<unsigned>(vk),
         static_cast<unsigned>(kbd->scanCode), static_cast<unsigned>(kbd->flags),
@@ -551,7 +545,7 @@ private:
    * @brief Derive the current modifier bitmask via Win32 `GetKeyState`.
    *
    * Tests Shift/Ctrl/Alt/Super and CapsLock state and returns a
-   * `typr::io::Modifier` bitmask representing the active modifiers.
+   * `axidev::io::Modifier` bitmask representing the active modifiers.
    *
    * @return Modifier Active modifier bitmask.
    */
@@ -617,13 +611,13 @@ private:
       threadId.store(0);
       running.store(false);
       ready.store(false);
-      TYPR_IO_LOG_ERROR("Listener (Windows): SetWindowsHookEx failed");
+      AXIDEV_IO_LOG_ERROR("Listener (Windows): SetWindowsHookEx failed");
       return;
     }
 
     // Hook installed successfully
     ready.store(true);
-    TYPR_IO_LOG_INFO("Listener (Windows): low-level keyboard hook installed");
+    AXIDEV_IO_LOG_INFO("Listener (Windows): low-level keyboard hook installed");
 
     // Standard message loop (blocks on GetMessage; WM_QUIT ends it).
     MSG msg;
@@ -646,27 +640,27 @@ std::atomic<Listener::Impl *> Listener::Impl::s_instance{nullptr};
 
 // OutputListener public API wrappers
 
-TYPR_IO_API Listener::Listener() : m_impl(std::make_unique<Impl>()) {}
-TYPR_IO_API Listener::~Listener() { stop(); }
-TYPR_IO_API Listener::Listener(Listener &&) noexcept = default;
-TYPR_IO_API Listener &Listener::operator=(Listener &&) noexcept = default;
+AXIDEV_IO_API Listener::Listener() : m_impl(std::make_unique<Impl>()) {}
+AXIDEV_IO_API Listener::~Listener() { stop(); }
+AXIDEV_IO_API Listener::Listener(Listener &&) noexcept = default;
+AXIDEV_IO_API Listener &Listener::operator=(Listener &&) noexcept = default;
 
-TYPR_IO_API bool Listener::start(Callback cb) {
-  TYPR_IO_LOG_DEBUG("Listener::start() called (Windows)");
+AXIDEV_IO_API bool Listener::start(Callback cb) {
+  AXIDEV_IO_LOG_DEBUG("Listener::start() called (Windows)");
   return m_impl ? m_impl->start(std::move(cb)) : false;
 }
 
-TYPR_IO_API void Listener::stop() {
-  TYPR_IO_LOG_DEBUG("Listener::stop() called (Windows)");
+AXIDEV_IO_API void Listener::stop() {
+  AXIDEV_IO_LOG_DEBUG("Listener::stop() called (Windows)");
   if (m_impl)
     m_impl->stop();
 }
 
-TYPR_IO_API bool Listener::isListening() const {
-  TYPR_IO_LOG_DEBUG("Listener::isListening() called (Windows)");
+AXIDEV_IO_API bool Listener::isListening() const {
+  AXIDEV_IO_LOG_DEBUG("Listener::isListening() called (Windows)");
   return m_impl ? m_impl->isRunning() : false;
 }
 
-} // namespace typr::io
+} // namespace axidev::io::keyboard
 
 #endif // _WIN32

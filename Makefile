@@ -1,16 +1,14 @@
 # Makefile - convenience tasks for local development
 #
 # Usage examples:
-#   make configure                  # configure in Debug mode (exports compile_commands.json)
+#   make configure                           # configure in Debug mode (exports compile_commands.json)
 #   make configure CMAKE_BUILD_TYPE=Release
-#   make build                      # build (after configure)
-#   make test                       # build and run tests
-#   make run-consumer RUN_ARGS="--help"
-#   make export-compile-commands    # copy compile_commands.json to repo root
+#   make build                               # build (after configure)
+#   make test                                # build and run tests
+#   make integration-test                    # run integration tests (interactive)
+#   make run-unit-tests                      # run unit tests binary directly
+#   make export-compile-commands             # copy compile_commands.json to repo root
 #   make clean
-#
-# You can pass additional CMake -D flags via CMAKE_ARGS:
-#   make configure CMAKE_ARGS="-DTYPR_IO_BUILD_TEST_CONSUMER=ON"
 
 CMAKE ?= cmake
 CTEST ?= ctest
@@ -28,9 +26,9 @@ else
 EXE_EXT :=
 endif
 
-RUN_CONSUMER := $(BUILD_DIR)/typr_io_consumer$(EXE_EXT)
+RUN_UNIT_TESTS := $(BUILD_DIR)/tests/axidev-io-unit-tests$(EXE_EXT)
 
-.PHONY: all configure configure-release build test run-consumer export-compile-commands clean help
+.PHONY: all configure configure-release build test integration-test run-unit-tests export-compile-commands clean help
 
 all: build
 
@@ -45,18 +43,31 @@ build:
 	@echo "Building (parallel jobs = $(JOBS))..."
 	$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS)
 
-test: build
+test:
+	@echo "Configuring with tests enabled..."
+	$(CMAKE) -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DAXIDEV_IO_BUILD_TESTS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_ARGS)
+	@echo "Building (parallel jobs = $(JOBS))..."
+	$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS)
 	@echo "Running tests..."
 	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure
 
-# Run the in-tree consumer (make sure you configured with TYPR_IO_BUILD_TEST_CONSUMER=ON)
-# Example: make run-consumer RUN_ARGS="--tap A"
-run-consumer: build
-	@if [ -x "$(RUN_CONSUMER)" ]; then \
-		"$(RUN_CONSUMER)" $(RUN_ARGS); \
+integration-test:
+	@echo "Running integration tests (interactive)..."
+	$(CMAKE) -S . -B $(BUILD_DIR) -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+	$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS)
+	AXIDEV_IO_RUN_INTEGRATION_TESTS=1 AXIDEV_IO_INTERACTIVE=1 $(CTEST) --test-dir $(BUILD_DIR) -R axidev-io-integration-tests -C Debug --output-on-failure -V
+
+run-unit-tests:
+	@if [ ! -x "$(RUN_UNIT_TESTS)" ]; then \
+		echo "Unit tests binary not found. Configuring and building with tests enabled..."; \
+		$(CMAKE) -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DAXIDEV_IO_BUILD_TESTS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_ARGS); \
+		$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS); \
+	fi
+	@echo "Running unit tests binary..."
+	@if [ -x "$(RUN_UNIT_TESTS)" ]; then \
+		"$(RUN_UNIT_TESTS)"; \
 	else \
-		echo "Consumer binary not found: $(RUN_CONSUMER)"; \
-		echo "Did you configure with -DTYPR_IO_BUILD_TEST_CONSUMER=ON and then run 'make build'?"; \
+		echo "Unit tests binary not found: $(RUN_UNIT_TESTS)"; \
 		exit 1; \
 	fi
 
@@ -77,6 +88,8 @@ help:
 	@echo "  configure-release         Configure with Release build type."
 	@echo "  build                     Build the project."
 	@echo "  test                      Build and run tests (ctest)."
+	@echo "  integration-test          Configure, build, and run integration tests (interactive)."
+	@echo "  run-unit-tests            Run unit tests binary directly (must build first)."
 	@echo "  run-consumer              Run the in-tree consumer (use RUN_ARGS to pass args)."
 	@echo "  export-compile-commands   Copy build/compile_commands.json to repository root."
 	@echo "  clean                     Remove build dir and compile_commands.json."

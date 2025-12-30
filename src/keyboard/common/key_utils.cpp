@@ -1,14 +1,15 @@
 /**
- * @file key_utils.cpp
- * @brief Utility helpers for mapping between `Key` enums and their canonical
- * textual names, and other small string helpers used by the key utilities.
+ * @file keyboard/common/key_utils.cpp
+ * @brief Utility helpers for mapping between `axidev::io::keyboard::Key` enums
+ *        and their canonical textual names.
  *
- * This file implements `keyToString` and `stringToKey` and several internal
- * helpers used to normalize and escape input for logging and lookups.
+ * This file implements `axidev::io::keyboard::keyToString` and
+ * `axidev::io::keyboard::stringToKey` along with internal helpers used to
+ * normalize and escape input for logging and lookups.
  */
 
-#include <typr-io/core.hpp>
-#include <typr-io/log.hpp>
+#include <axidev-io/keyboard/common.hpp>
+#include <axidev-io/log.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -17,8 +18,9 @@
 #include <unordered_map>
 #include <vector>
 
-namespace typr {
+namespace axidev {
 namespace io {
+namespace keyboard {
 
 namespace {
 
@@ -369,7 +371,7 @@ const std::vector<std::pair<Key, std::string>> &keyStringPairs() {
  * @return std::string Canonical name for the key (e.g., "A", "Enter").
  *         Returns "Unknown" if the key does not have a canonical name.
  */
-TYPR_IO_API std::string keyToString(Key key) {
+AXIDEV_IO_API std::string keyToString(Key key) {
   for (const auto &pair : keyStringPairs()) {
     if (pair.first == key) {
       return pair.second;
@@ -389,7 +391,7 @@ TYPR_IO_API std::string keyToString(Key key) {
  * @return Key Parsed `Key` value, or `Key::Unknown` for empty or unrecognized
  *         inputs.
  */
-TYPR_IO_API Key stringToKey(const std::string &input) {
+AXIDEV_IO_API Key stringToKey(const std::string &input) {
   static std::unordered_map<std::string, Key> rev;
   if (input.empty()) {
     return Key::Unknown;
@@ -639,12 +641,12 @@ TYPR_IO_API Key stringToKey(const std::string &input) {
       if (inserted) {
         ++seeded;
       } else {
-        TYPR_IO_LOG_DEBUG("stringToKey: canonical lowercase '%s' collides with "
+        AXIDEV_IO_LOG_DEBUG("stringToKey: canonical lowercase '%s' collides with "
                           "existing mapping - keeping existing",
                           lower.c_str());
       }
     }
-    TYPR_IO_LOG_DEBUG(
+    AXIDEV_IO_LOG_DEBUG(
         "Seeding reverse map with %zu canonical entries (%zu inserted)",
         keyStringPairs().size(), seeded);
 
@@ -864,10 +866,11 @@ TYPR_IO_API Key stringToKey(const std::string &input) {
   if (key == "sunfront")
     return Key::SunFront;
 
-  TYPR_IO_LOG_DEBUG("stringToKey: unknown input='%s'",
+  AXIDEV_IO_LOG_DEBUG("stringToKey: unknown input='%s'",
                     escapeForLog(input).c_str());
   return Key::Unknown;
 }
 
+} // namespace keyboard
 } // namespace io
-} // namespace typr
+} // namespace axidev

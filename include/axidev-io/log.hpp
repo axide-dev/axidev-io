@@ -2,21 +2,21 @@
 
 /**
  * @file log.hpp
- * @brief Lightweight, header-only logging utility used by typr-io backends.
+ * @brief Lightweight, header-only logging utility used by axidev-io backends.
  *
  * Usage:
  *   @code{.cpp}
- *   #include <typr-io/log.hpp>
- *   TYPR_IO_LOG_DEBUG("something happened: %d", value);
- *   TYPR_IO_LOG_INFO("ready");
+ *   #include <axidev-io/log.hpp>
+ *   AXIDEV_IO_LOG_DEBUG("something happened: %d", value);
+ *   AXIDEV_IO_LOG_INFO("ready");
  *   @endcode
  *
  * Runtime configuration is controlled by environment variables:
- *  - TYPR_IO_LOG_LEVEL: one of "debug", "info", "warn", "error".
- *    If unset, the legacy TYPR_OSK_DEBUG_BACKEND is consulted (unset ->
+ *  - AXIDEV_IO_LOG_LEVEL: one of "debug", "info", "warn", "error".
+ *    If unset, the legacy AXIDEV_OSK_DEBUG_BACKEND is consulted (unset ->
  *    debug enabled for testing; "0" disables debug).
- *  - TYPR_IO_FORCE_COLORS: non-empty -> force ANSI colors on.
- *  - TYPR_IO_NO_COLOR: non-empty -> disable ANSI colors.
+ *  - AXIDEV_IO_FORCE_COLORS: non-empty -> force ANSI colors on.
+ *  - AXIDEV_IO_NO_COLOR: non-empty -> disable ANSI colors.
  *
  * The header is intentionally small and portable and works in plain C++ and
  * Objective-C++ translation units.
@@ -38,7 +38,7 @@
 #include <unistd.h>
 #endif
 
-namespace typr {
+namespace axidev {
 namespace io {
 namespace log {
 
@@ -73,12 +73,12 @@ inline const char *levelToString(Level l) {
 /**
  * @brief Parse runtime configuration to determine the default log level.
  *
- * Prefers the TYPR_IO_LOG_LEVEL environment variable; falls back to the
- * legacy TYPR_OSK_DEBUG_BACKEND behavior when TYPR_IO_LOG_LEVEL is not set.
+ * Prefers the AXIDEV_IO_LOG_LEVEL environment variable; falls back to the
+ * legacy AXIDEV_OSK_DEBUG_BACKEND behavior when AXIDEV_IO_LOG_LEVEL is not set.
  * @return Level The determined default log level.
  */
 inline Level parseLevelFromEnv() {
-  const char *lvlEnv = std::getenv("TYPR_IO_LOG_LEVEL");
+  const char *lvlEnv = std::getenv("AXIDEV_IO_LOG_LEVEL");
   if (lvlEnv && lvlEnv[0] != '\0') {
     std::string s(lvlEnv);
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
@@ -96,7 +96,7 @@ inline Level parseLevelFromEnv() {
     return Level::Info;
   }
 
-  const char *legacy = std::getenv("TYPR_OSK_DEBUG_BACKEND");
+  const char *legacy = std::getenv("AXIDEV_OSK_DEBUG_BACKEND");
   if (!legacy) {
     // Default to enabled for the time being while testing (preserve legacy
     // behaviour).
@@ -166,15 +166,15 @@ inline const char *levelColor(Level l) {
  * @internal
  * @brief Determine whether ANSI colors should be emitted.
  *
- * Colors can be forced via TYPR_IO_FORCE_COLORS or disabled with
- * TYPR_IO_NO_COLOR. Otherwise colors are enabled when stderr is a TTY.
+ * Colors can be forced via AXIDEV_IO_FORCE_COLORS or disabled with
+ * AXIDEV_IO_NO_COLOR. Otherwise colors are enabled when stderr is a TTY.
  * @return true if colors are enabled, false otherwise.
  */
 inline bool colorsEnabled() {
-  const char *force = std::getenv("TYPR_IO_FORCE_COLORS");
+  const char *force = std::getenv("AXIDEV_IO_FORCE_COLORS");
   if (force && force[0] != '\0')
     return true;
-  const char *no = std::getenv("TYPR_IO_NO_COLOR");
+  const char *no = std::getenv("AXIDEV_IO_NO_COLOR");
   if (no && no[0] != '\0')
     return false;
 #if defined(_WIN32) || defined(_WIN64)
@@ -186,17 +186,17 @@ inline bool colorsEnabled() {
 
 /**
  * @internal
- * @brief Trim a file path so it starts at the last "typr-io" component.
+ * @brief Trim a file path so it starts at the last "axidev-io" component.
  *
- * If the substring "typr-io" is not present this function returns the
+ * If the substring "axidev-io" is not present this function returns the
  * basename (the portion after the last slash/backslash).
  * @param path Null-terminated file path.
  * @return const char* Pointer into `path` that points to the trimmed start.
  */
-inline const char *trimPathToTyprIo(const char *path) {
+inline const char *trimPathToAxidevIo(const char *path) {
   if (!path)
     return path;
-  const char *needle = "typr-io";
+  const char *needle = "axidev-io";
   const size_t needle_len = std::strlen(needle);
   const char *last = nullptr;
   const char *p = path;
@@ -272,10 +272,10 @@ inline void vlog(Level level, const char *file, int line, const char *fmt,
   const char *file_color = use_colors ? "\x1b[90m" : "";
   const char *lvl_color = use_colors ? levelColor(level) : "";
 
-  const char *trimmed = trimPathToTyprIo(file);
+  const char *trimmed = trimPathToAxidevIo(file);
 
   // Header: timestamp.millis [LEVEL] file:line: (with coloring)
-  std::fprintf(stderr, "[typr-io] %s.%03d [", timebuf,
+  std::fprintf(stderr, "[axidev-io] %s.%03d [", timebuf,
                static_cast<int>(ms.count()));
   if (use_colors)
     std::fputs(lvl_color, stderr);
@@ -325,26 +325,26 @@ inline bool debugEnabled() { return isEnabled(Level::Debug); }
 
 } // namespace log
 } // namespace io
-} // namespace typr
+} // namespace axidev
 
 /**
  * @defgroup LoggingMacros Helper logging macros
  * @brief Convenience macros that include file and line automatically.
  *
- * These macros wrap `::typr::io::log::log` and automatically supply `__FILE__`
- * and `__LINE__`.
+ * These macros wrap `::axidev::io::log::log` and automatically supply
+ * `__FILE__` and `__LINE__`.
  * @{
  */
-#define TYPR_IO_LOG_DEBUG(fmt, ...)                                            \
-  ::typr::io::log::log(::typr::io::log::Level::Debug, __FILE__, __LINE__, fmt, \
-                       ##__VA_ARGS__)
-#define TYPR_IO_LOG_INFO(fmt, ...)                                             \
-  ::typr::io::log::log(::typr::io::log::Level::Info, __FILE__, __LINE__, fmt,  \
-                       ##__VA_ARGS__)
-#define TYPR_IO_LOG_WARN(fmt, ...)                                             \
-  ::typr::io::log::log(::typr::io::log::Level::Warn, __FILE__, __LINE__, fmt,  \
-                       ##__VA_ARGS__)
-#define TYPR_IO_LOG_ERROR(fmt, ...)                                            \
-  ::typr::io::log::log(::typr::io::log::Level::Error, __FILE__, __LINE__, fmt, \
-                       ##__VA_ARGS__)
+#define AXIDEV_IO_LOG_DEBUG(fmt, ...)                                          \
+  ::axidev::io::log::log(::axidev::io::log::Level::Debug, __FILE__, __LINE__,  \
+                         fmt, ##__VA_ARGS__)
+#define AXIDEV_IO_LOG_INFO(fmt, ...)                                           \
+  ::axidev::io::log::log(::axidev::io::log::Level::Info, __FILE__, __LINE__,   \
+                         fmt, ##__VA_ARGS__)
+#define AXIDEV_IO_LOG_WARN(fmt, ...)                                           \
+  ::axidev::io::log::log(::axidev::io::log::Level::Warn, __FILE__, __LINE__,   \
+                         fmt, ##__VA_ARGS__)
+#define AXIDEV_IO_LOG_ERROR(fmt, ...)                                          \
+  ::axidev::io::log::log(::axidev::io::log::Level::Error, __FILE__, __LINE__,  \
+                         fmt, ##__VA_ARGS__)
 /** @} */ /* end of LoggingMacros */

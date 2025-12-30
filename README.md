@@ -1,4 +1,4 @@
-# typr-io
+# axidev-io
 
 A lightweight C++ library for cross-platform keyboard input injection and monitoring.
 
@@ -15,21 +15,21 @@ Start with the document that matches your goal.
 
 CMake (consumer) usage:
 
-```typr-io/README.md#L1-4
-find_package(typr-io CONFIG REQUIRED)
+```axidev-io/README.md#L1-4
+find_package(axidev-io CONFIG REQUIRED)
 add_executable(myapp src/main.cpp)
-target_link_libraries(myapp PRIVATE typr::io)
+target_link_libraries(myapp PRIVATE axidev::io)
 ```
 
 Minimal usage example:
 
-```typr-io/README.md#L6-12
-#include <typr-io/sender.hpp>
+```axidev-io/README.md#L6-12
+#include <axidev-io/keyboard/sender.hpp>
 
 int main() {
-  typr::io::Sender sender;
+  axidev::io::keyboard::Sender sender;
   if (sender.capabilities().canInjectKeys) {
-    sender.tap(typr::io::Key::A);
+    sender.tap(axidev::io::keyboard::Key::A);
   }
   return 0;
 }
@@ -37,55 +37,55 @@ int main() {
 
 ## C API (C wrapper)
 
-A compact C ABI is available for consumers that want to bind typr-io from other
-languages. The C API header is installed as `<typr-io/c_api.h>` and provides
-opaque handle types for `Sender` and `Listener`, simple helpers to convert key
-names, and a small set of functions to control sending and listening from C.
+A compact C ABI is available for consumers that want to bind axidev-io from other
+languages. The C API header is installed as `<axidev-io/c_api.h>` and provides
+opaque handle types for keyboard `Sender` and `Listener`, simple helpers to convert key
+names, and a small set of functions to control keyboard sending and listening from C.
 
 Basic usage (C):
 
 ```c
-#include <typr-io/c_api.h>
+#include <axidev-io/c_api.h>
 #include <stdio.h>
 
-/* Example listener callback */
-static void my_cb(uint32_t codepoint, typr_io_key_t key,
-                  typr_io_modifier_t mods, bool pressed, void *ud) {
+/* Example keyboard listener callback */
+static void my_cb(uint32_t codepoint, axidev_io_keyboard_key_t key,
+                  axidev_io_keyboard_modifier_t mods, bool pressed, void *ud) {
   (void)ud;
-  char *name = typr_io_key_to_string(key);
+  char *name = axidev_io_keyboard_key_to_string(key);
   printf("key=%s codepoint=%u mods=0x%02x %s\n", name ? name : "?", (unsigned)codepoint,
          (unsigned)mods, pressed ? "pressed" : "released");
-  if (name) typr_io_free_string(name);
+  if (name) axidev_io_free_string(name);
 }
 
 int main(void) {
-  typr_io_sender_t sender = typr_io_sender_create();
+  axidev_io_keyboard_sender_t sender = axidev_io_keyboard_sender_create();
   if (!sender) {
-    char *err = typr_io_get_last_error();
+    char *err = axidev_io_get_last_error();
     if (err) {
-      fprintf(stderr, "sender create: %s\n", err);
-      typr_io_free_string(err);
+      fprintf(stderr, "keyboard sender create: %s\n", err);
+      axidev_io_free_string(err);
     }
     return 1;
   }
 
-  typr_io_capabilities_t caps;
-  typr_io_sender_get_capabilities(sender, &caps);
+  axidev_io_keyboard_capabilities_t caps;
+  axidev_io_keyboard_sender_get_capabilities(sender, &caps);
   if (caps.can_inject_keys) {
-    typr_io_sender_tap(sender, typr_io_string_to_key("A"));
+    axidev_io_keyboard_sender_tap(sender, axidev_io_keyboard_string_to_key("A"));
   } else if (caps.can_inject_text) {
-    typr_io_sender_type_text_utf8(sender, "Hello from C API\n");
+    axidev_io_keyboard_sender_type_text_utf8(sender, "Hello from C API\n");
   }
 
-  typr_io_sender_destroy(sender);
+  axidev_io_keyboard_sender_destroy(sender);
 
-  /* Listener example (may require platform permissions) */
-  typr_io_listener_t listener = typr_io_listener_create();
-  if (listener && typr_io_listener_start(listener, my_cb, NULL)) {
+  /* Keyboard listener example (may require platform permissions) */
+  axidev_io_keyboard_listener_t listener = axidev_io_keyboard_listener_create();
+  if (listener && axidev_io_keyboard_listener_start(listener, my_cb, NULL)) {
     /* ... application runs ... */
-    typr_io_listener_stop(listener);
+    axidev_io_keyboard_listener_stop(listener);
   }
-  typr_io_listener_destroy(listener);
+  axidev_io_keyboard_listener_destroy(listener);
 
   return 0;
 }
@@ -94,24 +94,24 @@ int main(void) {
 Notes:
 
 - Strings returned by the C API are heap-allocated and must be freed with
-  `typr_io_free_string`.
-- Listener callbacks may be invoked from an internal thread; your callback
+  `axidev_io_free_string`.
+- Keyboard listener callbacks may be invoked from an internal thread; your callback
   must be thread-safe.
-- Use `typr_io_get_last_error()` to retrieve a heap-allocated error message if
-  a function fails (free it with `typr_io_free_string`).
+- Use `axidev_io_get_last_error()` to retrieve a heap-allocated error message if
+  a function fails (free it with `axidev_io_free_string`).
 
 An example C program is available at `examples/example_c.c`. Build it with:
 
 ```bash
 mkdir build
 cd build
-cmake .. -DTYPR_IO_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
+cmake .. -DAXIDEV_IO_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
 cmake --build .
 ```
 
 ## Building from source
 
-```typr-io/README.md#L14-18
+```axidev-io/README.md#L14-18
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -121,7 +121,7 @@ cmake --build .
 ## Contributing
 
 - Update `docs/consumers/` or `docs/developers/` for user- or developer-facing changes.
-- Add tests or examples to `examples/` and `test_consumer/` where relevant.
+- Add tests or examples to `examples/` where relevant.
 - Open a pull request with a clear description and focused changes.
 
 ## License

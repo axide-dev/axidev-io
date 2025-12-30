@@ -1,0 +1,129 @@
+name: Build (Windows / MSVC)
+description: Configure, build, test, and optionally package axidev-io on Windows using MSVC.
+
+inputs:
+  arch:
+    description: MSVC platform (x64, arm64)
+    required: true
+  build-type:
+    description: CMake config (Release, Debug, RelWithDebInfo, MinSizeRel)
+    required: false
+    default: Release
+  build-tests:
+    description: Enable unit/integration test targets
+    required: false
+    default: "false"
+  build-integration-tests:
+    description: Enable integration tests (AXIDEV_IO_BUILD_INTEGRATION_TESTS)
+    required: false
+    default: "false"
+  run-tests:
+    description: Run ctest after build
+    required: false
+    default: "false"
+  package-output:
+    description: Install to dist/ and package into packages/
+    required: false
+    default: "false"
+  upload-binaries:
+    description: Upload built test binaries as artifacts
+    required: false
+    default: "false"
+  artifact-name:
+    description: Artifact name (required when upload-binaries=true)
+    required: false
+  cmake-generator:
+    description: Optional CMake generator override
+    required: false
+    default: "Visual Studio 17 2022"
+  version:
+    description: Release version override (otherwise uses tag ref)
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Clean stale build directory
+      shell: pwsh
+      run: |
+        Remove-Item -Recurse -Force build-msvc, dist, packages -ErrorAction SilentlyContinue
+
+    - name: Configure (CMake)
+      shell: pwsh
+      run: |
+        $buildType = "${{ inputs.build-type }}"
+        $gen = "${{ inputs.cmake-generator }}"
+
+        $arch = "${{ inputs.arch }}"
+        if ($arch -eq "arm64") {
+          $platform = "ARM64"
+        } else {
+          $platform = "x64"
+        }
+
+        $args = @(
+          "-S", ".",
+          "-B", "build-msvc",
+          "-G", $gen,
+          "-A", $platform,
+          "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>"
+        )
+
+        if ("${{ inputs.build-tests }}" -eq "true") {
+          $args += "-DAXIDEV_IO_BUILD_TESTS=ON"
+        }
+
+        if ("${{ inputs.build-integration-tests }}" -eq "true") {
+          $args += "-DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON"
+        }
+
+        cmake @args
+
+    - name: Build (CMake)
+      shell: pwsh
+      run: |
+        cmake --build build-msvc --config "${{ inputs.build-type }}" --parallel
+
+    - name: Run tests (ctest)
+      if: ${{ inputs.run-tests == 'true' }}
+      shell: pwsh
+      env:
+        CTEST_OUTPUT_ON_FAILURE: 1
+      run: |
+        ctest --test-dir build-msvc --output-on-failure -C "${{ inputs.build-type }}"
+
+    - name: Install
+      if: ${{ inputs.package-output == 'true' }}
+      shell: pwsh
+      run: |
+        cmake --install build-msvc --prefix dist --config "${{ inputs.build-type }}"
+
+    - name: Package (Windows)
+      if: ${{ inputs.package-output == 'true' }}
+      shell: pwsh
+      run: |
+        $tag = "${{ inputs.version }}"
+        if (-not $tag) {
+          $tag = $env:GITHUB_REF -replace '^refs/tags/', ''
+        }
+        New-Item -ItemType Directory -Path packages -Force | Out-Null
+        Compress-Archive -Path "dist\*" -DestinationPath "packages/axidev-io-$tag-windows-msvc-${{ inputs.arch }}.zip" -Force
+
+    - name: Upload release package
+      if: ${{ inputs.package-output == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-package-windows-msvc-${{ inputs.arch }}
+        path: packages/*.zip
+
+    - name: Upload test binaries
+      if: ${{ inputs.upload-binaries == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          build-msvc/tests/${{ inputs.build-type }}/axidev-io-unit-tests*
+          build-msvc/tests/${{ inputs.build-type }}/axidev-io-integration-tests*
+          build-msvc/tests/axidev-io-unit-tests*
+          build-msvc/tests/axidev-io-integration-tests*

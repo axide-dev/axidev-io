@@ -1,49 +1,21 @@
 #pragma once
 /**
- * @file core.hpp
- * @brief Core public types and utilities for typr::io.
+ * @file keyboard/common.hpp
+ * @brief Core keyboard types and utilities for axidev::io::keyboard.
  *
  * This header defines logical key identifiers, modifier flags, backend
  * capability flags and small helper utilities used by both the `Sender`
  * (input injection) and `Listener` (global monitoring) subsystems.
  */
 
+#include <axidev-io/core.hpp>
+
 #include <cstdint>
 #include <string>
 
-#ifndef TYPR_IO_VERSION
-// Default version; CMake can override these by defining TYPR_IO_VERSION_* via
-// -D flags if desired.
-#define TYPR_IO_VERSION "0.2.1"
-#define TYPR_IO_VERSION_MAJOR 0
-#define TYPR_IO_VERSION_MINOR 2
-#define TYPR_IO_VERSION_PATCH 1
-#endif
-
-// Symbol export macro to support building shared libraries on Windows.
-// CMake configures `typr_io_EXPORTS` when building the shared target.
-// For static builds we expose `TYPR_IO_STATIC` so headers avoid using
-// __declspec(dllimport) which would make defining functions invalid on MSVC.
-#ifndef TYPR_IO_API
-#if defined(_WIN32) || defined(__CYGWIN__)
-#if defined(typr_io_EXPORTS)
-#define TYPR_IO_API __declspec(dllexport)
-#elif defined(TYPR_IO_STATIC)
-#define TYPR_IO_API
-#else
-#define TYPR_IO_API __declspec(dllimport)
-#endif
-#else
-#if defined(__GNUC__) && (__GNUC__ >= 4)
-#define TYPR_IO_API __attribute__((visibility("default")))
-#else
-#define TYPR_IO_API
-#endif
-#endif
-#endif
-
-namespace typr {
+namespace axidev {
 namespace io {
+namespace keyboard {
 
 /**
  * @enum Key
@@ -394,7 +366,7 @@ inline bool hasModifier(Modifier state, Modifier flag) {
 // Backend capabilities description - describes what a backend / sender can do.
 /**
  * @struct Capabilities
- * @brief Describes features supported or required by a Sender backend.
+ * @brief Describes features supported or required by a keyboard Sender backend.
  *
  * Each boolean member indicates whether a backend supports a particular
  * capability or requires a platform permission/feature. Inspect these via
@@ -413,9 +385,11 @@ struct Capabilities {
 // Backend type / platform descriptor (which implementation is active)
 /**
  * @enum BackendType
- * @brief Backend/platform descriptor for the active sender implementation.
+ * @brief Backend/platform descriptor for the active keyboard sender
+ * implementation.
  *
- * Indicates which platform-specific backend is active for input injection.
+ * Indicates which platform-specific backend is active for keyboard input
+ * injection.
  */
 enum class BackendType : uint8_t {
   Unknown,
@@ -432,20 +406,14 @@ enum class BackendType : uint8_t {
  * @param key Logical key to convert.
  * @return std::string Canonical name for the key (e.g., "A", "Enter").
  */
-TYPR_IO_API std::string keyToString(Key key);
+AXIDEV_IO_API std::string keyToString(Key key);
 /**
  * @brief Parse a textual key name into a Key value.
  * @param str Input string (case-insensitive; accepts common aliases).
  * @return Key Parsed key value or Key::Unknown for unrecognized strings.
  */
-TYPR_IO_API Key stringToKey(const std::string &str);
+AXIDEV_IO_API Key stringToKey(const std::string &str);
 
-/**
- * @brief Convenience access to the library version string (mirrors
- * TYPR_IO_VERSION).
- * @return const char* Null-terminated version string (statically allocated).
- */
-inline const char *libraryVersion() noexcept { return TYPR_IO_VERSION; }
-
+} // namespace keyboard
 } // namespace io
-} // namespace typr
+} // namespace axidev

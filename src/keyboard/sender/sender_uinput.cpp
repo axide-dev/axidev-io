@@ -1,17 +1,16 @@
-#if defined(__linux__) && !defined(BACKEND_USE_X11)
-
 /**
- * @file sender_uinput.cpp
- * @brief Linux/uinput implementation for typr::io::Sender.
+ * @file keyboard/sender/sender_uinput.cpp
+ * @brief Linux/uinput implementation of axidev::io::keyboard::Sender.
  *
  * Uses the Linux uinput subsystem to create a virtual keyboard device and
  * emit EV_KEY events. The implementation is layout-aware and uses xkbcommon
  * to detect the active keyboard layout and translate characters to keycodes
- * where possible. This file is compiled only when the uinput backend is
- * selected (non-X11 builds).
+ * where possible. Compiled only when the uinput backend is selected.
  */
 
-#include <typr-io/sender.hpp>
+#if defined(__linux__) && !defined(BACKEND_USE_X11)
+
+#include <axidev-io/keyboard/sender.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -25,12 +24,12 @@
 #include <linux/uinput.h>
 #include <sys/ioctl.h>
 #include <thread>
-#include <typr-io/log.hpp>
+#include <axidev-io/log.hpp>
 #include <unistd.h>
 #include <unordered_map>
 #include <xkbcommon/xkbcommon.h>
 
-namespace typr::io {
+namespace axidev::io::keyboard {
 
 /**
  * @internal
@@ -58,7 +57,7 @@ struct Sender::Impl {
   Impl() {
     fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
     if (fd < 0) {
-      TYPR_IO_LOG_ERROR("Sender (uinput): failed to open /dev/uinput: %s",
+      AXIDEV_IO_LOG_ERROR("Sender (uinput): failed to open /dev/uinput: %s",
                         strerror(errno));
       return;
     }
@@ -86,7 +85,7 @@ struct Sender::Impl {
     initXkb();
     initKeyMap();
 
-    TYPR_IO_LOG_INFO(
+    AXIDEV_IO_LOG_INFO(
         "Sender (uinput): device initialized fd=%d keymap_entries=%zu "
         "char_entries=%zu",
         fd, keyMap.size(), charToKeycode.size());
@@ -103,7 +102,7 @@ struct Sender::Impl {
     if (fd >= 0) {
       ioctl(fd, UI_DEV_DESTROY);
       close(fd);
-      TYPR_IO_LOG_INFO("Sender (uinput): device destroyed (fd=%d)", fd);
+      AXIDEV_IO_LOG_INFO("Sender (uinput): device destroyed (fd=%d)", fd);
     }
   }
 
@@ -164,7 +163,7 @@ struct Sender::Impl {
   void initXkb() {
     xkbCtx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     if (!xkbCtx) {
-      TYPR_IO_LOG_ERROR("Sender (uinput): xkb_context_new() failed");
+      AXIDEV_IO_LOG_ERROR("Sender (uinput): xkb_context_new() failed");
       return;
     }
 
@@ -174,7 +173,7 @@ struct Sender::Impl {
 
     if (!detectedLayout.empty()) {
       names.layout = detectedLayout.c_str();
-      TYPR_IO_LOG_INFO("Sender (uinput): detected layout '%s'",
+      AXIDEV_IO_LOG_INFO("Sender (uinput): detected layout '%s'",
                        detectedLayout.c_str());
     }
 
@@ -183,13 +182,13 @@ struct Sender::Impl {
         XKB_KEYMAP_COMPILE_NO_FLAGS);
 
     if (!xkbKeymap) {
-      TYPR_IO_LOG_ERROR("Sender (uinput): xkb_keymap_new_from_names() failed");
+      AXIDEV_IO_LOG_ERROR("Sender (uinput): xkb_keymap_new_from_names() failed");
       return;
     }
 
     xkbState = xkb_state_new(xkbKeymap);
     if (!xkbState) {
-      TYPR_IO_LOG_ERROR("Sender (uinput): xkb_state_new() failed");
+      AXIDEV_IO_LOG_ERROR("Sender (uinput): xkb_state_new() failed");
     }
   }
 
@@ -209,7 +208,7 @@ struct Sender::Impl {
     // 1. Check XKB_DEFAULT_LAYOUT environment variable
     const char *envLayout = std::getenv("XKB_DEFAULT_LAYOUT");
     if (envLayout && envLayout[0] != '\0') {
-      TYPR_IO_LOG_DEBUG("Sender (uinput): layout from XKB_DEFAULT_LAYOUT: %s",
+      AXIDEV_IO_LOG_DEBUG("Sender (uinput): layout from XKB_DEFAULT_LAYOUT: %s",
                         envLayout);
       return envLayout;
     }
@@ -237,7 +236,7 @@ struct Sender::Impl {
               value = value.substr(0, commaPos);
             }
             if (!value.empty()) {
-              TYPR_IO_LOG_DEBUG(
+              AXIDEV_IO_LOG_DEBUG(
                   "Sender (uinput): layout from /etc/default/keyboard: %s",
                   value.c_str());
               return value;
@@ -264,7 +263,7 @@ struct Sender::Impl {
         }
         pclose(pipe);
         if (!layout.empty()) {
-          TYPR_IO_LOG_DEBUG("Sender (uinput): layout from setxkbmap: %s",
+          AXIDEV_IO_LOG_DEBUG("Sender (uinput): layout from setxkbmap: %s",
                             layout.c_str());
           return layout;
         }
@@ -298,7 +297,7 @@ struct Sender::Impl {
       // Add more as needed
     }
 
-    TYPR_IO_LOG_DEBUG(
+    AXIDEV_IO_LOG_DEBUG(
         "Sender (uinput): could not detect layout, using system default");
     return "";
   }
@@ -376,7 +375,7 @@ struct Sender::Impl {
     // Add fallback mappings for special keys
     initFallbackKeyMap();
 
-    TYPR_IO_LOG_DEBUG(
+    AXIDEV_IO_LOG_DEBUG(
         "Sender (uinput): initKeyMap populated %zu key entries, %zu char "
         "entries",
         keyMap.size(), charToKeycode.size());
@@ -610,7 +609,7 @@ struct Sender::Impl {
   bool sendKeyByKey(Key key, bool down) {
     auto it = keyMap.find(key);
     if (it == keyMap.end()) {
-      TYPR_IO_LOG_DEBUG("Sender (uinput): no mapping for key=%s",
+      AXIDEV_IO_LOG_DEBUG("Sender (uinput): no mapping for key=%s",
                         keyToString(key).c_str());
       return false;
     }
@@ -631,7 +630,7 @@ struct Sender::Impl {
   bool typeCodepoint(char32_t cp) {
     auto it = charToKeycode.find(cp);
     if (it == charToKeycode.end()) {
-      TYPR_IO_LOG_DEBUG("Sender (uinput): no mapping for codepoint U+%04X",
+      AXIDEV_IO_LOG_DEBUG("Sender (uinput): no mapping for codepoint U+%04X",
                         static_cast<unsigned>(cp));
       return false;
     }
@@ -881,6 +880,6 @@ void Sender::setKeyDelay(uint32_t delayUs) {
     m_impl->keyDelayUs = delayUs;
 }
 
-} // namespace typr::io
+} // namespace axidev::io::keyboard
 
 #endif // __linux__ && !BACKEND_USE_X11

@@ -1,0 +1,154 @@
+name: Build (Windows / MinGW)
+description: Configure, build, test, and optionally package axidev-io on Windows using MinGW.
+
+inputs:
+  arch:
+    description: MinGW platform (e.g. x64, arm64)
+    required: true
+  mingw-version:
+    description: LLVM-MinGW release version (date tag)
+    required: false
+    default: "20251216"
+  build-type:
+    description: CMake build type
+    required: false
+    default: Release
+  build-tests:
+    description: Enable unit/integration test targets
+    required: false
+    default: "false"
+  build-integration-tests:
+    description: Enable integration tests (AXIDEV_IO_BUILD_INTEGRATION_TESTS)
+    required: false
+    default: "false"
+  run-tests:
+    description: Run ctest after build
+    required: false
+    default: "false"
+  package-output:
+    description: Install to dist/ and package into packages/
+    required: false
+    default: "false"
+  upload-binaries:
+    description: Upload built test binaries as artifacts
+    required: false
+    default: "false"
+  artifact-name:
+    description: Artifact name (required when upload-binaries=true)
+    required: false
+  cmake-generator:
+    description: Optional CMake generator override
+    required: false
+    default: ""
+  version:
+    description: Release version override (otherwise uses tag ref)
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Set LLVM-MinGW target
+      id: setup
+      shell: bash
+      run: |
+        if [ "${{ inputs.arch }}" = "arm64" ]; then
+          echo "target=aarch64-w64-mingw32" >> $GITHUB_OUTPUT
+        else
+          echo "target=x86_64-w64-mingw32" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Install LLVM-MinGW
+      shell: bash
+      run: |
+        set -euo pipefail
+        VERSION="${{ inputs.mingw-version }}"
+        URL="https://github.com/mstorsjo/llvm-mingw/releases/download/${VERSION}/llvm-mingw-${VERSION}-ucrt-x86_64.zip"
+        echo "Downloading LLVM-MinGW $VERSION..."
+        curl -L -o llvm-mingw.zip "$URL"
+        echo "Extracting LLVM-MinGW..."
+        7z x llvm-mingw.zip -y > /dev/null
+        echo "${{ github.workspace }}/llvm-mingw-${VERSION}-ucrt-x86_64/bin" >> $GITHUB_PATH
+
+    - name: Clean stale build directory
+      shell: bash
+      run: rm -rf build dist packages
+
+    - name: Configure (CMake)
+      shell: bash
+      run: |
+        set -euo pipefail
+        BUILD_TYPE='${{ inputs.build-type }}'
+
+        # Default to Unix Makefiles with gcc/g++ unless overridden.
+        CMAKE_ARGS=(-S . -B build -DCMAKE_BUILD_TYPE="$BUILD_TYPE")
+
+        if [ -z '${{ inputs.cmake-generator }}' ]; then
+          TARGET='${{ steps.setup.outputs.target }}'
+          CMAKE_ARGS+=( -G 'Ninja' -DCMAKE_C_COMPILER="${TARGET}-gcc" -DCMAKE_CXX_COMPILER="${TARGET}-g++" )
+        else
+          CMAKE_ARGS+=( -G '${{ inputs.cmake-generator }}' )
+        fi
+
+        if [ '${{ inputs.build-tests }}' = 'true' ]; then
+          CMAKE_ARGS+=( -DAXIDEV_IO_BUILD_TESTS=ON )
+        fi
+
+        if [ '${{ inputs.build-integration-tests }}' = 'true' ]; then
+          CMAKE_ARGS+=( -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON )
+        fi
+
+        # Prefer self-contained executables on MinGW by statically linking
+        # libstdc++/libgcc (avoids requiring LLVM-MinGW runtime DLLs).
+        CMAKE_ARGS+=( -DAXIDEV_IO_MINGW_STATIC_RUNTIME=ON )
+
+        cmake "${CMAKE_ARGS[@]}"
+
+    - name: Build (CMake)
+      shell: bash
+      run: |
+        set -euo pipefail
+        cmake --build build --config '${{ inputs.build-type }}' --parallel
+
+    - name: Run tests (ctest)
+      if: ${{ inputs.run-tests == 'true' }}
+      shell: bash
+      env:
+        CTEST_OUTPUT_ON_FAILURE: 1
+      run: |
+        set -euo pipefail
+        ctest --test-dir build --output-on-failure -C '${{ inputs.build-type }}'
+
+    - name: Install
+      if: ${{ inputs.package-output == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        cmake --install build --prefix dist --config '${{ inputs.build-type }}'
+
+    - name: Package (Windows)
+      if: ${{ inputs.package-output == 'true' }}
+      shell: pwsh
+      run: |
+        $tag = "${{ inputs.version }}"
+        if (-not $tag) {
+          $tag = $env:GITHUB_REF -replace '^refs/tags/', ''
+        }
+        New-Item -ItemType Directory -Path packages -Force | Out-Null
+        Compress-Archive -Path "dist\*" -DestinationPath "packages/axidev-io-$tag-windows-${{ inputs.arch }}.zip" -Force
+
+    - name: Upload release package
+      if: ${{ inputs.package-output == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-package-windows-${{ inputs.arch }}
+        path: packages/*.zip
+
+    - name: Upload test binaries
+      if: ${{ inputs.upload-binaries == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          build/tests/axidev-io-unit-tests*
+          build/tests/axidev-io-integration-tests*

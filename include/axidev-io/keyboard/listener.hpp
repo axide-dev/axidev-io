@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file listener.hpp
+ * @file keyboard/listener.hpp
  * @brief Global keyboard event Listener (cross-platform).
  *
  * The Listener provides a cross-platform, best-effort global keyboard event
@@ -30,12 +30,12 @@
  * Example:
  *
  * @code{.cpp}
- * #include <typr-io/listener.hpp>
+ * #include <axidev-io/keyboard/listener.hpp>
  *
  * int main() {
- *   typr::io::Listener l;
- *   bool ok = l.start([](char32_t cp, typr::io::Key k, typr::io::Modifier m,
- *                        bool pressed) {
+ *   axidev::io::keyboard::Listener l;
+ *   bool ok = l.start([](char32_t cp, axidev::io::keyboard::Key k,
+ *                        axidev::io::keyboard::Modifier m, bool pressed) {
  *     // handle event
  *   });
  *   if (!ok) {
@@ -50,10 +50,11 @@
 #include <functional>
 #include <memory>
 
-#include <typr-io/core.hpp>
+#include <axidev-io/keyboard/common.hpp>
 
-namespace typr {
+namespace axidev {
 namespace io {
+namespace keyboard {
 
 /**
  * @class Listener
@@ -64,7 +65,7 @@ namespace io {
  * end listening. Callbacks may be invoked on an internal background thread,
  * therefore they must be thread-safe.
  */
-class TYPR_IO_API Listener {
+class AXIDEV_IO_API Listener {
 public:
   /**
    * @brief Callback invoked for each observed key event.
@@ -121,5 +122,6 @@ private:
   std::unique_ptr<Impl> m_impl;
 };
 
+} // namespace keyboard
 } // namespace io
-} // namespace typr
+} // namespace axidev

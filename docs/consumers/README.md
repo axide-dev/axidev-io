@@ -1,15 +1,15 @@
 # Consumer Guide
 
-This document is for application authors who want to use `typr-io` to inject input or listen for keyboard output in their apps. It focuses on quickstarts, common usage patterns, examples and runtime caveats.
+This document is for application authors who want to use `axidev-io` to inject input or listen for keyboard output in their apps. It focuses on quickstarts, common usage patterns, examples and runtime caveats.
 
 ## Quickstart — build & install
 
 Build the project (Release shared library):
 
-```typr-io/docs/consumers/README.md#L1-6
+```axidev-io/docs/consumers/README.md#L1-6
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DTYPR_IO_BUILD_SHARED=ON
+cmake .. -DCMAKE_BUILD_TYPE=Release -DAXIDEV_IO_BUILD_SHARED=ON
 cmake --build . -- -j
 # optionally install:
 # cmake --install . --prefix /usr/local
@@ -17,27 +17,27 @@ cmake --build . -- -j
 
 CMake usage in your project:
 
-```typr-io/docs/consumers/README.md#L8-12
-find_package(typr-io CONFIG REQUIRED)
+```axidev-io/docs/consumers/README.md#L8-12
+find_package(axidev-io CONFIG REQUIRED)
 add_executable(myapp src/main.cpp)
-target_link_libraries(myapp PRIVATE typr::io)
+target_link_libraries(myapp PRIVATE axidev::io)
 ```
 
 Include the specific headers for the public API you need:
 
 ```
-#include <typr-io/sender.hpp>
+#include <axidev-io/keyboard/sender.hpp>
 #include <iostream>
 
 int main() {
-  typr::io::Sender sender;
+  axidev::io::keyboard::Sender sender;
   auto caps = sender.capabilities();
   std::cout << "canInjectKeys: " << caps.canInjectKeys << "\n";
 
   if (caps.canInjectText) {
-    sender.typeText("Hello from typr-io");
+    sender.typeText("Hello from axidev-io");
   } else if (caps.canInjectKeys) {
-    sender.tap(typr::io::Key::A);
+    sender.tap(axidev::io::keyboard::Key::A);
   }
   return 0;
 }
@@ -51,10 +51,9 @@ int main() {
 - Use `combo(mods, key)` to safely perform shortcuts (it will hold modifiers, tap the key, then release modifiers).
 - Use `setKeyDelay()` to tune the timing of `tap`/`combo` if necessary for fragile apps.
 
-## Examples & test harness
+## Examples
 
 - Look at `examples/` for small example programs demonstrating typical usage.
-- `test_consumer/` contains a lightweight consumer used by the project's test targets. It's useful for smoke-testing your environment and understanding how the public API behaves on your platform.
 
 ## Runtime caveats & platform notes
 
@@ -74,10 +73,10 @@ If a desired capability is not available on the target platform, use `capabiliti
 
 - Logging is enabled by default at the Debug level (most verbose). Logs are printed to stderr and include an ISO-like timestamp, severity, file:line, thread id, and the formatted message.
 - To control runtime verbosity, use the environment variable:
-  - `TYPR_IO_LOG_LEVEL=debug|info|warn|error`
-    Example: `TYPR_IO_LOG_LEVEL=info` limits output to Info and above.
-- Legacy compatibility: if `TYPR_IO_LOG_LEVEL` is not set, the legacy `TYPR_OSK_DEBUG_BACKEND` env var is still recognized (non-zero enables debug logging, `0` disables). Prefer `TYPR_IO_LOG_LEVEL` for explicit control.
-- You can also change the log level programmatically from code by calling `typr::io::log::setLevel(typr::io::log::Level::Info)` (include `<typr-io/log.hpp>`).
+  - `AXIDEV_IO_LOG_LEVEL=debug|info|warn|error`
+    Example: `AXIDEV_IO_LOG_LEVEL=info` limits output to Info and above.
+- Legacy compatibility: if `AXIDEV_IO_LOG_LEVEL` is not set, the legacy `AXIDEV_OSK_DEBUG_BACKEND` env var is still recognized (non-zero enables debug logging, `0` disables). Prefer `AXIDEV_IO_LOG_LEVEL` for explicit control.
+- You can also change the log level programmatically from code by calling `axidev::io::log::setLevel(axidev::io::log::Level::Info)` (include `<axidev-io/log.hpp>`).
 - For macOS permission issues, check System Settings → Privacy & Security → Accessibility / Input Monitoring and confirm your app has been granted access.
 - For uinput permission problems on Linux, ensure your udev rule is installed and the running user is in the correct group, then re-login or reload udev rules.
 
@@ -91,8 +90,8 @@ If a desired capability is not available on the target platform, use `capabiliti
 
 ## Where to go next
 
-- Read `docs/developers/README.md` for build details, platform backend internals, and information on how to extend `typr-io`.
-- Browse the public headers at `include/typr-io/` (e.g., `include/typr-io/core.hpp`, `include/typr-io/sender.hpp`, `include/typr-io/listener.hpp`) for API reference and types.
+- Read `docs/developers/README.md` for build details, platform backend internals, and information on how to extend `axidev-io`.
+- Browse the public headers at `include/axidev-io/` (e.g., `include/axidev-io/core.hpp`, `include/axidev-io/sender.hpp`, `include/axidev-io/listener.hpp`) for API reference and types.
 - File issues or feature requests in the project's issue tracker if you encounter platform-specific behavior, layout mappings that don't match expectations, or missing capabilities.
 
 If you have specific problems reproducing expected keyboard behavior on a platform (wrong character, missing modifier, layout mismatch), please include:

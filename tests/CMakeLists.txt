@@ -1,77 +1,92 @@
-# CMake configuration for unit tests (Catch2)
+# CMake configuration for unit tests (Google Test)
 #
 # This file is intended to be included via `add_subdirectory(tests)` from the
-# top-level CMake when TYPR_IO_BUILD_TESTS=ON.
+# top-level CMake when AXIDEV_IO_BUILD_TESTS=ON.
 #
-# It fetches Catch2 (v3) via FetchContent and builds a small test executable
-# that links against the `typr::io` target produced by the main project.
+# It fetches Google Test via FetchContent and builds a small test executable
+# that links against the `axidev::io` target produced by the main project.
 
 cmake_minimum_required(VERSION 3.15)
 
 # If tests are disabled at configure time, do nothing here. The top-level
 # project typically checks this, but being defensive makes the subdir usable
 # standalone too.
-if(NOT TYPR_IO_BUILD_TESTS)
-    message(STATUS "TYPR_IO_BUILD_TESTS is OFF; skipping unit tests subdirectory")
+if(NOT AXIDEV_IO_BUILD_TESTS)
+    message(STATUS "AXIDEV_IO_BUILD_TESTS is OFF; skipping unit tests subdirectory")
     return()
 endif()
 
 include(FetchContent)
 
-# Prefer an already-available Catch2; otherwise fetch a known release.
-if(NOT TARGET Catch2::Catch2WithMain)
+# Prefer an already-available Google Test; otherwise fetch a known release.
+if(NOT TARGET GTest::gtest_main)
     FetchContent_Declare(
-        catch2
-        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-        GIT_TAG v3.4.0
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.14.0
     )
-    # This makes the Catch2 targets available (Catch2::Catch2WithMain)
-    FetchContent_MakeAvailable(catch2)
+    # For Windows: Prevent overriding the parent project's compiler/linker settings
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    # This makes the Google Test targets available (GTest::gtest_main)
+    FetchContent_MakeAvailable(googletest)
 endif()
 
 # Optional: integration tests are interactive / long-running and should be
 # separated from the regular unit test binary. Enable them with:
-#   -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON
-option(TYPR_IO_BUILD_INTEGRATION_TESTS "Build integration tests (interactive / long-running)" OFF)
+#   -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON
+option(AXIDEV_IO_BUILD_INTEGRATION_TESTS "Build integration tests (interactive / long-running)" OFF)
 
 # Unit test executable (only lightweight, non-interactive tests)
-add_executable(typr-io-unit-tests
+add_executable(axidev-io-unit-tests
     test_key_utils.cpp
     test_c_api.cpp
 )
 
-target_link_libraries(typr-io-unit-tests
+target_link_libraries(axidev-io-unit-tests
     PRIVATE
-        typr::io
-        Catch2::Catch2WithMain
+        axidev::io
+        GTest::gtest_main
 )
 
+if(MINGW AND AXIDEV_IO_MINGW_STATIC_RUNTIME)
+    target_link_options(axidev-io-unit-tests PRIVATE -static -static-libgcc -static-libstdc++)
+endif()
+
 # Ensure modern C++ standard (project uses C++20)
-target_compile_features(typr-io-unit-tests PRIVATE cxx_std_20)
+target_compile_features(axidev-io-unit-tests PRIVATE cxx_std_20)
 
 # Register with CTest
 enable_testing()
-add_test(NAME typr-io-unit-tests COMMAND typr-io-unit-tests)
+include(GoogleTest)
+gtest_discover_tests(axidev-io-unit-tests
+    DISCOVERY_MODE POST_BUILD
+)
 # Label the unit test so runners can select it explicitly if desired
-set_property(TEST typr-io-unit-tests PROPERTY LABELS unit)
+set_property(TARGET axidev-io-unit-tests PROPERTY LABELS unit)
 
-# Optional integration test executable (built when TYPR_IO_BUILD_INTEGRATION_TESTS=ON)
-if(TYPR_IO_BUILD_INTEGRATION_TESTS)
-    add_executable(typr-io-integration-tests
+# Optional integration test executable (built when AXIDEV_IO_BUILD_INTEGRATION_TESTS=ON)
+if(AXIDEV_IO_BUILD_INTEGRATION_TESTS)
+    add_executable(axidev-io-integration-tests
         test_integration_sender.cpp
         test_integration_listener.cpp
     )
 
-    target_link_libraries(typr-io-integration-tests
+    target_link_libraries(axidev-io-integration-tests
         PRIVATE
-            typr::io
-            Catch2::Catch2WithMain
+            axidev::io
+            GTest::gtest_main
     )
 
-    # Ensure consistent language standard
-    target_compile_features(typr-io-integration-tests PRIVATE cxx_std_20)
+    if(MINGW AND AXIDEV_IO_MINGW_STATIC_RUNTIME)
+        target_link_options(axidev-io-integration-tests PRIVATE -static -static-libgcc -static-libstdc++)
+    endif()
 
-    add_test(NAME typr-io-integration-tests COMMAND typr-io-integration-tests)
+    # Ensure consistent language standard
+    target_compile_features(axidev-io-integration-tests PRIVATE cxx_std_20)
+
+    gtest_discover_tests(axidev-io-integration-tests
+        DISCOVERY_MODE POST_BUILD
+    )
     # Mark the test with a label so runners can select it explicitly if desired
-    set_property(TEST typr-io-integration-tests PROPERTY LABELS integration)
+    set_property(TARGET axidev-io-integration-tests PROPERTY LABELS integration)
 endif()

@@ -1,0 +1,116 @@
+{
+  "version": 3,
+  "vendor": {
+    "axidev-io": {}
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Debug (default)",
+      "description": "Default debug configuration with compile commands export",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "description": "Debug configuration with compile commands export",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "description": "Release configuration with optimizations",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "integration-tests",
+      "displayName": "Integration Tests",
+      "description": "Configuration for running integration tests",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "AXIDEV_IO_BUILD_TESTS": "ON",
+        "AXIDEV_IO_BUILD_INTEGRATION_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "displayName": "Debug Build",
+      "description": "Build in debug mode",
+      "jobs": 0
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "displayName": "Release Build",
+      "description": "Build in release mode",
+      "jobs": 0
+    },
+    {
+      "name": "integration-tests",
+      "configurePreset": "integration-tests",
+      "displayName": "Integration Tests Build",
+      "description": "Build for integration tests",
+      "jobs": 0
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "displayName": "Default Tests",
+      "description": "Run unit tests with default configuration",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "unit-tests",
+      "configurePreset": "debug",
+      "displayName": "Unit Tests",
+      "description": "Run unit tests in debug mode",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "integration-tests",
+      "configurePreset": "integration-tests",
+      "displayName": "Integration Tests",
+      "description": "Run integration tests interactively",
+      "output": {
+        "outputOnFailure": true,
+        "verbosity": "verbose"
+      },
+      "filter": {
+        "include": {
+          "name": "axidev-io-integration-tests"
+        }
+      },
+      "environment": {
+        "AXIDEV_IO_RUN_INTEGRATION_TESTS": "1",
+        "AXIDEV_IO_INTERACTIVE": "1"
+      }
+    }
+  ]
+}

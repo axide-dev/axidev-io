@@ -1,0 +1,128 @@
+name: Build (macOS)
+description: Configure, build, test, and optionally package axidev-io on macOS.
+
+inputs:
+  arch:
+    description: CMAKE_OSX_ARCHITECTURES value (e.g. arm64, x86_64)
+    required: true
+  build-type:
+    description: CMake build type
+    required: false
+    default: Release
+  build-tests:
+    description: Enable unit/integration test targets
+    required: false
+    default: "false"
+  build-integration-tests:
+    description: Enable integration tests (AXIDEV_IO_BUILD_INTEGRATION_TESTS)
+    required: false
+    default: "false"
+  run-tests:
+    description: Run ctest after build
+    required: false
+    default: "false"
+  package-output:
+    description: Install to dist/ and package into packages/
+    required: false
+    default: "false"
+  upload-binaries:
+    description: Upload built test binaries as artifacts
+    required: false
+    default: "false"
+  artifact-name:
+    description: Artifact name (required when upload-binaries=true)
+    required: false
+  cmake-generator:
+    description: Optional CMake generator
+    required: false
+    default: ""
+  version:
+    description: Release version override (otherwise uses tag ref)
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Install dependencies (macOS)
+      shell: bash
+      run: |
+        brew update
+        brew install cmake
+
+    - name: Clean stale build directory
+      shell: bash
+      run: rm -rf build dist packages
+
+    - name: Configure (CMake)
+      shell: bash
+      run: |
+        set -euo pipefail
+        BUILD_TYPE='${{ inputs.build-type }}'
+        CMAKE_ARGS=(-S . -B build -DCMAKE_BUILD_TYPE="$BUILD_TYPE")
+
+        if [ '${{ inputs.build-tests }}' = 'true' ]; then
+          CMAKE_ARGS+=( -DAXIDEV_IO_BUILD_TESTS=ON )
+        fi
+
+        if [ '${{ inputs.build-integration-tests }}' = 'true' ]; then
+          CMAKE_ARGS+=( -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON )
+        fi
+
+        CMAKE_ARGS+=( -DCMAKE_OSX_ARCHITECTURES='${{ inputs.arch }}' )
+
+        if [ -n '${{ inputs.cmake-generator }}' ]; then
+          CMAKE_ARGS+=( -G '${{ inputs.cmake-generator }}' )
+        fi
+
+        cmake "${CMAKE_ARGS[@]}"
+
+    - name: Build (CMake)
+      shell: bash
+      run: |
+        set -euo pipefail
+        cmake --build build --config '${{ inputs.build-type }}' --parallel
+
+    - name: Run tests (ctest)
+      if: ${{ inputs.run-tests == 'true' }}
+      shell: bash
+      env:
+        CTEST_OUTPUT_ON_FAILURE: 1
+      run: |
+        set -euo pipefail
+        ctest --test-dir build --output-on-failure -C '${{ inputs.build-type }}'
+
+    - name: Install
+      if: ${{ inputs.package-output == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        cmake --install build --prefix dist --config '${{ inputs.build-type }}'
+
+    - name: Package (macOS)
+      if: ${{ inputs.package-output == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        TAG='${{ inputs.version }}'
+        if [ -z "$TAG" ]; then
+          TAG="${GITHUB_REF#refs/tags/}"
+        fi
+        mkdir -p packages
+        tar -C dist -czf "packages/axidev-io-${TAG}-macos-${{ inputs.arch }}.tar.gz" .
+
+    - name: Upload release package
+      if: ${{ inputs.package-output == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-package-macos-${{ inputs.arch }}
+        path: packages/*.tar.gz
+
+    - name: Upload test binaries
+      if: ${{ inputs.upload-binaries == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          build/tests/axidev-io-unit-tests*
+          build/tests/axidev-io-integration-tests*

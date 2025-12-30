@@ -1,6 +1,6 @@
 # Developer Guide
 
-This document is for maintainers and contributors who want to work on `typr-io`. It explains the repository layout, how to build and test locally, how to add or modify platform backends (senders/listeners), debugging tips, and the recommended PR workflow.
+This document is for maintainers and contributors who want to work on `axidev-io`. It explains the repository layout, how to build and test locally, how to add or modify platform backends (senders/listeners), debugging tips, and the recommended PR workflow.
 
 Table of contents
 
@@ -35,7 +35,7 @@ You can also use `cmake` directly:
 ```sh
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DTYPR_IO_BUILD_EXAMPLES=ON
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DAXIDEV_IO_BUILD_EXAMPLES=ON
 cmake --build . -- -j
 ```
 
@@ -52,21 +52,20 @@ Top-level important paths (brief):
 
 - `CMakeLists.txt` — top-level build configuration and exported targets.
 - `Makefile` — convenience targets like `configure`, `build`, `test`, `run-consumer`.
-- `include/typr-io/` — public headers (e.g., `include/typr-io/core.hpp`, `include/typr-io/sender.hpp`, `include/typr-io/listener.hpp`).
+- `include/axidev-io/` — public headers (e.g., `include/axidev-io/core.hpp`, `include/axidev-io/keyboard/common.hpp`, `include/axidev-io/keyboard/sender.hpp`, `include/axidev-io/keyboard/listener.hpp`).
 - `src/`:
-  - `src/sender/` — platform input injection (HID / virtual keyboard) implementations (e.g. `sender_macos.mm`, `sender_windows.cpp`, `sender_uinput.cpp`).
-  - `src/listener/` — global output listener implementations (`listener_macos.mm`, `listener_windows.cpp`, `listener_linux.cpp`).
-  - `src/common/` — cross-platform helpers.
+  - `src/keyboard/sender/` — platform input injection (HID / virtual keyboard) implementations (e.g. `sender_macos.mm`, `sender_windows.cpp`, `sender_uinput.cpp`).
+  - `src/keyboard/listener/` — global output listener implementations (`listener_macos.mm`, `listener_windows.cpp`, `listener_linux.cpp`).
+  - `src/keyboard/common/` — shared keyboard utilities (key-to-string mappings, etc.).
 - `examples/` — example programs demonstrating consumer usage.
-- `test_consumer/` — lightweight test consumer used in `make test`.
 - Packaging manifests: `conanfile.py`, `vcpkg.json`.
 
 ## Build & development workflow
 
 - Use `make configure` to configure the project and generate the `compile_commands.json` used by clangd.
 - Toggle options during `cmake` configure:
-  - `-DTYPR_IO_BUILD_EXAMPLES=ON` — build examples.
-  - `-DTYPR_IO_BUILD_SHARED=ON` — build shared library variant.
+  - `-DAXIDEV_IO_BUILD_EXAMPLES=ON` — build examples.
+  - `-DAXIDEV_IO_BUILD_SHARED=ON` — build shared library variant.
   - `-DBACKEND_USE_X11=ON` — platform-specific feature toggles (example).
 - Use `make build` (or `cmake --build`) to build.
 - Run `make test` to run the project's smoke tests.
@@ -76,12 +75,12 @@ Top-level important paths (brief):
 
 - Logging is enabled by default at the Debug level (most verbose) for the time being. Logged messages include an ISO-like timestamp, severity, file:line, thread id, and the formatted message.
 - Control runtime logging with the environment variable (preferred):
-  - `TYPR_IO_LOG_LEVEL=debug|info|warn|error`
-    Example: `TYPR_IO_LOG_LEVEL=info` limits output to Info and above.
-- Programmatic control: you can also change the log level at runtime from code by calling `typr::io::log::setLevel(typr::io::log::Level::Info)` (include `<typr-io/log.hpp>`).
-- Legacy: `TYPR_OSK_DEBUG_BACKEND=0|1` is still recognized historically, but `TYPR_IO_LOG_LEVEL` is the preferred mechanism. When `TYPR_IO_LOG_LEVEL` is not set logging defaults to Debug (enabled).
+  - `AXIDEV_IO_LOG_LEVEL=debug|info|warn|error`
+    Example: `AXIDEV_IO_LOG_LEVEL=info` limits output to Info and above.
+- Programmatic control: you can also change the log level at runtime from code by calling `axidev::io::log::setLevel(axidev::io::log::Level::Info)` (include `<axidev-io/log.hpp>`).
+- Legacy: `AXIDEV_OSK_DEBUG_BACKEND=0|1` is still recognized historically, but `AXIDEV_IO_LOG_LEVEL` is the preferred mechanism. When `AXIDEV_IO_LOG_LEVEL` is not set logging defaults to Debug (enabled).
 - Quick debugging:
-  - To enable very verbose logs for local debugging: `TYPR_IO_LOG_LEVEL=debug`
+  - To enable very verbose logs for local debugging: `AXIDEV_IO_LOG_LEVEL=debug`
 - Platform-specific tips:
   - macOS: check System Settings → Privacy & Security (Accessibility / Input Monitoring).
   - Linux: the listener uses `libinput` + `xkbcommon` as the canonical Linux listener and these packages are required at configure time. Ensure the `libinput`, `libudev`, and `xkbcommon` development packages are installed (pkg-config detects them during configure) and that the running user has appropriate runtime privileges (for example, membership in the `input` group) to access `/dev/input/event*` devices.
@@ -93,8 +92,8 @@ Top-level important paths (brief):
 When adding support for a new platform, follow this checklist:
 
 1. Decide where it belongs:
-   - Input injection backends go in `src/sender/` (e.g. `sender_<platform>.[cpp|mm]`).
-   - Global output listener backends go in `src/listener/` (e.g. `listener_<platform>.[cpp|mm]`).
+   - Input injection backends go in `src/keyboard/sender/` (e.g. `sender_<platform>.[cpp|mm]`).
+   - Global output listener backends go in `src/keyboard/listener/` (e.g. `listener_<platform>.[cpp|mm]`).
 2. Use the existing platform implementations as a template (see `sender_macos.mm`, `sender_windows.cpp`, `sender_uinput.cpp`, `listener_linux.cpp`).
 3. Keep platform-specific code out of shared headers; prefer implementation files and conditional build rules.
 4. Add the new source file to the CMake target:
@@ -103,7 +102,7 @@ When adding support for a new platform, follow this checklist:
    - Ensure `capabilities()` reflects whether your backend supports `canInjectKeys`, `canInjectText`, `canSimulateHID`, etc.
    - Ensure `isReady()` accurately reports readiness (permissions, device present).
 6. Add tests/examples:
-   - Add a small example showing the typical usage and, when possible, a test in `test_consumer/` or new test target that can run headless.
+   - Add a small example showing the typical usage and, when possible, a test in a new test target that can run headless.
 7. Document:
    - Update `docs/developers/README.md` with platform-specific caveats and any runtime permission instructions.
    - Update `docs/consumers/README.md` if consumers need to do anything special (permissions, runtime flags).
@@ -122,23 +121,23 @@ Listener vs Sender considerations
 - Integration tests are separated from the lightweight unit tests because they exercise OS integration and may be interactive, require permissions/GUI, or take longer to run.
 - To build and run integration tests locally:
   - Enable integration tests at configure time:
-    - `cmake -S . -B build -DTYPR_IO_BUILD_TESTS=ON -DTYPR_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Debug`
+    - `cmake -S . -B build -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Debug`
     - `cmake --build build --parallel`
   - Run the integration test binary directly:
-    - `./build/tests/typr-io-integration-tests`
+    - `./build/tests/axidev-io-integration-tests`
   - Or run via CTest:
-    - `ctest --test-dir build -R typr-io-integration-tests -C Debug --output-on-failure`
+    - `ctest --test-dir build -R axidev-io-integration-tests -C Debug --output-on-failure`
   - Useful environment variables (may be respected by integration tests or local helpers):
-    - `TYPR_IO_RUN_INTEGRATION_TESTS=1` : historically used to gate integration tests.
-    - `TYPR_IO_AUTO_CONFIRM=1` : auto-confirm interactive prompts for non-interactive runs (CI).
-    - `TYPR_IO_INTERACTIVE=1` : enable interactive prompts when running locally.
+    - `AXIDEV_IO_RUN_INTEGRATION_TESTS=1` : historically used to gate integration tests.
+    - `AXIDEV_IO_AUTO_CONFIRM=1` : auto-confirm interactive prompts for non-interactive runs (CI).
+    - `AXIDEV_IO_INTERACTIVE=1` : enable interactive prompts when running locally.
 - Keep tests platform-neutral where possible. For platform-specific behavior, provide small example-based tests and mark them so CI or maintainers can choose when to execute them.
 - When adding critical behavior, add a test (or smoke example) that reproduces the issue so regressions are less likely.
 
 ## Packaging & release notes
 
 - The repository includes `conanfile.py` and `vcpkg.json` to help with packaging.
-- The public target exported by `CMakeLists.txt` is intended for `find_package(typr-io CONFIG REQUIRED)`.
+- The public target exported by `CMakeLists.txt` is intended for `find_package(axidev-io CONFIG REQUIRED)`.
 - When preparing a release:
   - Update version metadata and the public headers if necessary.
   - Add release notes describing platform caveats and any API changes.
@@ -158,7 +157,7 @@ Before opening a PR:
 
 - macOS:
   - Accessibility and Input Monitoring permissions can block injection or listening. `requestPermissions()` can prompt for Accessibility permission where applicable, but some permissions require user action in Settings.
-  - For local preparation, the repository includes a helper task ("Prepare integration tests (request permissions)") (see `.zed/tasks.json`) that runs `./build/typr_io_consumer --request-permissions` to trigger runtime permission prompts after building the consumer.
+  - For local preparation, the repository includes a helper task ("Prepare integration tests (request permissions)") (see `.zed/tasks.json`) that runs `./build/axidev_io_consumer --request-permissions` to trigger runtime permission prompts after building the consumer.
   - Use `.mm` files for Objective-C++ code that needs macOS system APIs.
 - Linux:
   - uinput requires correct `/dev/uinput` permissions. Common guidance:
@@ -170,11 +169,10 @@ Before opening a PR:
 
 ## Key files & references
 
-- `include/typr-io/` — public headers (e.g., `include/typr-io/core.hpp`, `include/typr-io/sender.hpp`, `include/typr-io/listener.hpp`).
-- `src/sender/` — input injection implementations.
-- `src/listener/` — global output listener implementations.
+- `include/axidev-io/` — public headers (e.g., `include/axidev-io/core.hpp`, `include/axidev-io/keyboard/common.hpp`, `include/axidev-io/keyboard/sender.hpp`, `include/axidev-io/keyboard/listener.hpp`).
+- `src/keyboard/sender/` — input injection implementations.
+- `src/keyboard/listener/` — global output listener implementations.
 - `examples/` — sample apps demonstrating consumer APIs.
-- `test_consumer/` — lightweight test harness used by `make test`.
 - `CMakeLists.txt`, `Makefile`, `conanfile.py`, `vcpkg.json` — build and packaging helpers.
 - `docs/consumers/README.md` — consumer-focused docs.
 - `docs/developers/README.md` — this file (developer docs).
@@ -184,6 +182,6 @@ If you need help with a platform-specific problem, please open an issue and incl
 - OS and version,
 - Keyboard layout (e.g., `en-US`, `fr-FR (AZERTY)`, `dvorak`),
 - Short reproduction steps (a small program or sequence that demonstrates the problem),
-- Any relevant debug logging (set `TYPR_OSK_DEBUG_BACKEND=1`).
+- Any relevant debug logging (set `AXIDEV_OSK_DEBUG_BACKEND=1`).
 
 Thanks for contributing — clear documentation, small focused PRs, and tests/examples go a long way toward making the project easy to maintain.
