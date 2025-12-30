@@ -93,46 +93,27 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release-assets
-          # Find all integration test binaries and test-consumer binaries
-          find artifacts -type f \( -name 'axidev-io-integration-tests*' -o -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) ! -name '*.o' ! -name '*.obj' ! -name '*.cmake' -exec cp {} release-assets/ \;
-          # Rename binaries to include OS and architecture from their artifact directory names
-          cd release-assets
-          for file in axidev-io-integration-tests*; do
-            if [ -f "$file" ]; then
-              # Try to find the original artifact directory name
-              artifact_dir=$(find ../artifacts -name "$file" -printf '%h\n' | head -1)
-              if [ -n "$artifact_dir" ]; then
-                os_arch=$(basename "$artifact_dir" | sed 's/integration-test-binary-//' | sed 's/test-consumer-binary-//')
-                ext="${file##*.}"
-                if [ "$ext" = "$file" ]; then ext=""; else ext=".$ext"; fi
-                base="${file%.*}"
-                if [ -n "$ext" ]; then
-                  new_name="${base}-${os_arch}${ext}"
-                else
-                  new_name="${file}-${os_arch}"
-                fi
-                mv "$file" "$new_name" 2>/dev/null || true
-              fi
+          if [ ! -d artifacts ]; then
+            echo "No artifacts downloaded; skipping asset collection."
+            exit 0
+          fi
+          while IFS= read -r -d '' file; do
+            artifact_dir=$(dirname "$file")
+            os_arch=$(basename "$artifact_dir" | sed 's/^integration-test-binary-//' | sed 's/^test-consumer-binary-//')
+            if [ -z "$os_arch" ]; then
+              os_arch=unknown
             fi
-          done
-          for file in axidev_io_consumer* axidev-io-test-consumer*; do
-            if [ -f "$file" ]; then
-              artifact_dir=$(find ../artifacts -name "$file" -printf '%h\n' | head -1)
-              if [ -n "$artifact_dir" ]; then
-                os_arch=$(basename "$artifact_dir" | sed 's/integration-test-binary-//' | sed 's/test-consumer-binary-//')
-                ext="${file##*.}"
-                if [ "$ext" = "$file" ]; then ext=""; else ext=".$ext"; fi
-                base="${file%.*}"
-                if [ -n "$ext" ]; then
-                  new_name="${base}-${os_arch}${ext}"
-                else
-                  new_name="${file}-${os_arch}"
-                fi
-                mv "$file" "$new_name" 2>/dev/null || true
-              fi
+            artifact_name=$(basename "$file")
+            ext="${artifact_name##*.}"
+            if [ "$ext" = "$artifact_name" ]; then
+              base="$artifact_name"
+              ext=""
+            else
+              base="${artifact_name%.*}"
+              ext=".$ext"
             fi
-          done
-          cd ..
+            cp "$file" "release-assets/${base}-${os_arch}${ext}"
+          done < <(find artifacts -type f \( -name 'axidev-io-integration-tests*' -o -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) ! -name '*.o' ! -name '*.obj' ! -name '*.cmake' -print0)
 
       - name: Check for release assets
         id: check-assets
@@ -143,11 +124,45 @@ jobs:
             echo "has_assets=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create GitHub release and upload assets
+      - name: Generate release metadata
+        if: steps.check-assets.outputs.has_assets == 'true'
+        id: release-tag
+        run: |
+          TAG="integration-tests-$(date +%Y%m%d-%H%M%S)"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "name=Integration Test Binaries - $TAG" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        if: steps.check-assets.outputs.has_assets == 'true'
+        id: create-release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ steps.release-tag.outputs.tag }}
+          release_name: ${{ steps.release-tag.outputs.name }}
+          body: |
+            Manually triggered integration test binaries for various platforms.
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release assets
         if: steps.check-assets.outputs.has_assets == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="integration-tests-$(date +%Y%m%d-%H%M%S)"
-          gh release create "$TAG" release-assets/* --title "Integration Test Binaries - $TAG" --notes "Manually triggered integration test binaries for various platforms." --prerelease || \
-          gh release upload "$TAG" release-assets/* --clobber
+          set -euo pipefail
+          upload_url="${{ steps.create-release.outputs.upload_url }}"
+          upload_url="${upload_url%\{*}"
+          for asset in release-assets/*; do
+            if [ ! -f "$asset" ]; then
+              continue
+            fi
+            name=$(basename "$asset")
+            echo "Uploading $name"
+            curl -sS -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"$asset" \
+              "${upload_url}?name=${name}"
+          done
