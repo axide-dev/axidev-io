@@ -94,7 +94,7 @@ jobs:
         run: |
           mkdir -p release-assets
           # Find all integration test binaries and test-consumer binaries
-          find artifacts -type f \( -name 'axidev-io-integration-tests*' -o -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) ! -name '*.o' ! -name '*.obj' -exec cp {} release-assets/ \;
+          find artifacts -type f \( -name 'axidev-io-integration-tests*' -o -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) ! -name '*.o' ! -name '*.obj' ! -name '*.cmake' -exec cp {} release-assets/ \;
           # Rename binaries to include OS and architecture from their artifact directory names
           cd release-assets
           for file in axidev-io-integration-tests*; do
