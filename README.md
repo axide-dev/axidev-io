@@ -15,7 +15,8 @@ Start with the document that matches your goal.
 
 CMake (consumer) usage:
 
-```axidev-io/README.md#L1-4
+```cpp
+cmake_minimum_required(VERSION 3.15)
 find_package(axidev-io CONFIG REQUIRED)
 add_executable(myapp src/main.cpp)
 target_link_libraries(myapp PRIVATE axidev::io)
@@ -23,7 +24,7 @@ target_link_libraries(myapp PRIVATE axidev::io)
 
 Minimal usage example:
 
-```axidev-io/README.md#L6-12
+```cpp
 #include <axidev-io/keyboard/sender.hpp>
 
 int main() {
@@ -111,7 +112,7 @@ cmake --build .
 
 ## Building from source
 
-```axidev-io/README.md#L14-18
+```bash
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
