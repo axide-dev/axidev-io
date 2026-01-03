@@ -13,6 +13,7 @@
 #include <axidev-io/keyboard/sender.hpp>
 
 #include <algorithm>
+#include <axidev-io/log.hpp>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -24,11 +25,11 @@
 #include <linux/uinput.h>
 #include <sys/ioctl.h>
 #include <thread>
-#include <axidev-io/log.hpp>
 #include <unistd.h>
 #include <unordered_map>
 #include <xkbcommon/xkbcommon.h>
 
+#include "keyboard/common/linux_keysym.hpp"
 #include "keyboard/common/linux_layout.hpp"
 
 namespace axidev::io::keyboard {
@@ -60,7 +61,7 @@ struct Sender::Impl {
     fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
     if (fd < 0) {
       AXIDEV_IO_LOG_ERROR("Sender (uinput): failed to open /dev/uinput: %s",
-                        strerror(errno));
+                          strerror(errno));
       return;
     }
 
@@ -203,7 +204,8 @@ struct Sender::Impl {
                                   XKB_KEYMAP_COMPILE_NO_FLAGS);
 
     if (!xkbKeymap) {
-      AXIDEV_IO_LOG_ERROR("Sender (uinput): xkb_keymap_new_from_names() failed");
+      AXIDEV_IO_LOG_ERROR(
+          "Sender (uinput): xkb_keymap_new_from_names() failed");
       return;
     }
 
@@ -220,246 +222,14 @@ struct Sender::Impl {
   }
 
   void initKeyMap() {
-    keyMap.clear();
-    charToKeycode.clear();
-
-    if (!xkbKeymap || !xkbState) {
-      initFallbackKeyMap();
-      return;
-    }
-
-    // Scan all keycodes and build reverse mapping:
-    // For each keycode, check what character it produces (unshifted and
-    // shifted)
-    xkb_keycode_t minKey = xkb_keymap_min_keycode(xkbKeymap);
-    xkb_keycode_t maxKey = xkb_keymap_max_keycode(xkbKeymap);
-
-    for (xkb_keycode_t xkbKey = minKey; xkbKey <= maxKey; ++xkbKey) {
-      int evdevCode = static_cast<int>(xkbKey) - 8; // XKB offset
-      if (evdevCode <= 0)
-        continue;
-
-      // Get UTF-32 for unshifted state
-      uint32_t unshifted = xkb_state_key_get_utf32(xkbState, xkbKey);
-
-      // Get keysym for Key enum mapping (try unshifted, then shifted as a
-      // fallback)
-      xkb_keysym_t sym = xkb_state_key_get_one_sym(xkbState, xkbKey);
-      Key mappedKey = keysymToKey(sym);
-
-      // If the unshifted keysym didn't map (e.g. French AZERTY where top-row
-      // produces symbols unshifted and digits when shifted), try mapping the
-      // shifted keysym which may represent the logical key we're looking for.
-      if (mappedKey == Key::Unknown) {
-        xkb_mod_index_t shiftMod =
-            xkb_keymap_mod_get_index(xkbKeymap, XKB_MOD_NAME_SHIFT);
-        if (shiftMod != XKB_MOD_INVALID) {
-          xkb_state_update_mask(xkbState, (1u << shiftMod), 0, 0, 0, 0, 0);
-          xkb_keysym_t shiftedSym = xkb_state_key_get_one_sym(xkbState, xkbKey);
-          mappedKey = keysymToKey(shiftedSym);
-          // Reset state back to no modifiers
-          xkb_state_update_mask(xkbState, 0, 0, 0, 0, 0, 0);
-        }
-      }
-
-      if (mappedKey != Key::Unknown && keyMap.find(mappedKey) == keyMap.end()) {
-        keyMap[mappedKey] = evdevCode;
-      }
-
-      // Store character -> keycode mapping (unshifted)
-      if (unshifted != 0 &&
-          charToKeycode.find(unshifted) == charToKeycode.end()) {
-        charToKeycode[unshifted] = {evdevCode, false};
-      }
-
-      // Now check shifted state
-      xkb_mod_index_t shiftMod =
-          xkb_keymap_mod_get_index(xkbKeymap, XKB_MOD_NAME_SHIFT);
-      if (shiftMod != XKB_MOD_INVALID) {
-        xkb_state_update_mask(xkbState, (1u << shiftMod), 0, 0, 0, 0, 0);
-        uint32_t shifted = xkb_state_key_get_utf32(xkbState, xkbKey);
-
-        if (shifted != 0 && shifted != unshifted &&
-            charToKeycode.find(shifted) == charToKeycode.end()) {
-          charToKeycode[shifted] = {evdevCode, true};
-        }
-
-        // Reset state
-        xkb_state_update_mask(xkbState, 0, 0, 0, 0, 0, 0);
-      }
-    }
-
-    // Add fallback mappings for special keys
-    initFallbackKeyMap();
+    const auto linuxMap = detail::initLinuxKeyMap(xkbKeymap, xkbState);
+    keyMap = std::move(linuxMap.keyToEvdev);
+    charToKeycode = std::move(linuxMap.charToKeycode);
 
     AXIDEV_IO_LOG_DEBUG(
         "Sender (uinput): initKeyMap populated %zu key entries, %zu char "
         "entries",
         keyMap.size(), charToKeycode.size());
-  }
-
-  /**
-   * @internal
-   * @brief Map an xkb keysym to a logical `Key` enum value.
-   *
-   * This helper attempts efficient mappings for common contiguous ranges:
-   * - ASCII letters (a-z, A-Z) map to `Key::A`..`Key::Z`
-   * - Digits (0-9) map to `Key::Num0`..`Key::Num9`
-   * - Function keys (F1..F20) map to `Key::F1`..`Key::F20`
-   *
-   * When a keysym does not fall into those ranges, the function falls back to
-   * an explicit switch that covers common control keys, punctuation and other
-   * symbol keysyms. If no mapping exists the function returns `Key::Unknown`.
-   *
-   * @param sym xkb keysym to translate.
-   * @return Key Mapped logical key, or `Key::Unknown` if unmapped.
-   */
-  Key keysymToKey(xkb_keysym_t sym) {
-    if (sym >= XKB_KEY_a && sym <= XKB_KEY_z)
-      return static_cast<Key>(static_cast<int>(Key::A) + (sym - XKB_KEY_a));
-    if (sym >= XKB_KEY_A && sym <= XKB_KEY_Z)
-      return static_cast<Key>(static_cast<int>(Key::A) + (sym - XKB_KEY_A));
-    if (sym >= XKB_KEY_0 && sym <= XKB_KEY_9)
-      return static_cast<Key>(static_cast<int>(Key::Num0) + (sym - XKB_KEY_0));
-    if (sym >= XKB_KEY_F1 && sym <= XKB_KEY_F20)
-      return static_cast<Key>(static_cast<int>(Key::F1) + (sym - XKB_KEY_F1));
-
-    switch (sym) {
-    case XKB_KEY_Return:
-      return Key::Enter;
-    case XKB_KEY_BackSpace:
-      return Key::Backspace;
-    case XKB_KEY_space:
-      return Key::Space;
-    case XKB_KEY_Tab:
-      return Key::Tab;
-    case XKB_KEY_Escape:
-      return Key::Escape;
-    case XKB_KEY_Left:
-      return Key::Left;
-    case XKB_KEY_Right:
-      return Key::Right;
-    case XKB_KEY_Up:
-      return Key::Up;
-    case XKB_KEY_Down:
-      return Key::Down;
-    case XKB_KEY_Home:
-      return Key::Home;
-    case XKB_KEY_End:
-      return Key::End;
-    case XKB_KEY_Page_Up:
-      return Key::PageUp;
-    case XKB_KEY_Page_Down:
-      return Key::PageDown;
-    case XKB_KEY_Delete:
-      return Key::Delete;
-    case XKB_KEY_Insert:
-      return Key::Insert;
-    case XKB_KEY_Shift_L:
-      return Key::ShiftLeft;
-    case XKB_KEY_Shift_R:
-      return Key::ShiftRight;
-    case XKB_KEY_Control_L:
-      return Key::CtrlLeft;
-    case XKB_KEY_Control_R:
-      return Key::CtrlRight;
-    case XKB_KEY_Alt_L:
-      return Key::AltLeft;
-    case XKB_KEY_Alt_R:
-      return Key::AltRight;
-    case XKB_KEY_Super_L:
-      return Key::SuperLeft;
-    case XKB_KEY_Super_R:
-      return Key::SuperRight;
-    case XKB_KEY_Caps_Lock:
-      return Key::CapsLock;
-    case XKB_KEY_Num_Lock:
-      return Key::NumLock;
-    default:
-      return Key::Unknown;
-    }
-  }
-
-  /**
-   * @internal
-   * @brief Populate `keyMap` with conservative fallback keycodes when XKB
-   *        layout information is unavailable.
-   *
-   * This helper installs sensible, layout-independent mappings for common
-   * modifier, navigation, function and numpad keys (typically based on
-   * physical positions or canonical evdev defaults). It is used as a fallback
-   * when the XKB `keymap` / `state` are not present so the uinput backend can
-   * still inject basic keys reliably.
-   *
-   * The function is intentionally conservative and only sets values that are
-   * safe across a wide range of layouts; it prefers physical key semantics
-   * over layout-dependent shifted/unshifted characters.
-   */
-  void initFallbackKeyMap() {
-    auto set = [this](Key k, int v) {
-      if (keyMap.find(k) == keyMap.end())
-        keyMap[k] = v;
-    };
-
-    // Modifiers (always same physical keys)
-    set(Key::ShiftLeft, KEY_LEFTSHIFT);
-    set(Key::ShiftRight, KEY_RIGHTSHIFT);
-    set(Key::CtrlLeft, KEY_LEFTCTRL);
-    set(Key::CtrlRight, KEY_RIGHTCTRL);
-    set(Key::AltLeft, KEY_LEFTALT);
-    set(Key::AltRight, KEY_RIGHTALT);
-    set(Key::SuperLeft, KEY_LEFTMETA);
-    set(Key::SuperRight, KEY_RIGHTMETA);
-    set(Key::CapsLock, KEY_CAPSLOCK);
-    set(Key::NumLock, KEY_NUMLOCK);
-
-    // Navigation (layout-independent)
-    set(Key::Space, KEY_SPACE);
-    set(Key::Enter, KEY_ENTER);
-    set(Key::Tab, KEY_TAB);
-    set(Key::Backspace, KEY_BACKSPACE);
-    set(Key::Delete, KEY_DELETE);
-    set(Key::Escape, KEY_ESC);
-    set(Key::Left, KEY_LEFT);
-    set(Key::Right, KEY_RIGHT);
-    set(Key::Up, KEY_UP);
-    set(Key::Down, KEY_DOWN);
-    set(Key::Home, KEY_HOME);
-    set(Key::End, KEY_END);
-    set(Key::PageUp, KEY_PAGEUP);
-    set(Key::PageDown, KEY_PAGEDOWN);
-
-    // Function keys
-    set(Key::F1, KEY_F1);
-    set(Key::F2, KEY_F2);
-    set(Key::F3, KEY_F3);
-    set(Key::F4, KEY_F4);
-    set(Key::F5, KEY_F5);
-    set(Key::F6, KEY_F6);
-    set(Key::F7, KEY_F7);
-    set(Key::F8, KEY_F8);
-    set(Key::F9, KEY_F9);
-    set(Key::F10, KEY_F10);
-    set(Key::F11, KEY_F11);
-    set(Key::F12, KEY_F12);
-
-    // Numpad (physical position)
-    set(Key::Numpad0, KEY_KP0);
-    set(Key::Numpad1, KEY_KP1);
-    set(Key::Numpad2, KEY_KP2);
-    set(Key::Numpad3, KEY_KP3);
-    set(Key::Numpad4, KEY_KP4);
-    set(Key::Numpad5, KEY_KP5);
-    set(Key::Numpad6, KEY_KP6);
-    set(Key::Numpad7, KEY_KP7);
-    set(Key::Numpad8, KEY_KP8);
-    set(Key::Numpad9, KEY_KP9);
-    set(Key::NumpadDivide, KEY_KPSLASH);
-    set(Key::NumpadMultiply, KEY_KPASTERISK);
-    set(Key::NumpadMinus, KEY_KPMINUS);
-    set(Key::NumpadPlus, KEY_KPPLUS);
-    set(Key::NumpadEnter, KEY_KPENTER);
-    set(Key::NumpadDecimal, KEY_KPDOT);
   }
 
   /**
@@ -530,7 +300,7 @@ struct Sender::Impl {
     auto it = keyMap.find(key);
     if (it == keyMap.end()) {
       AXIDEV_IO_LOG_DEBUG("Sender (uinput): no mapping for key=%s",
-                        keyToString(key).c_str());
+                          keyToString(key).c_str());
       return false;
     }
     return sendKey(it->second, down);
@@ -551,7 +321,7 @@ struct Sender::Impl {
     auto it = charToKeycode.find(cp);
     if (it == charToKeycode.end()) {
       AXIDEV_IO_LOG_DEBUG("Sender (uinput): no mapping for codepoint U+%04X",
-                        static_cast<unsigned>(cp));
+                          static_cast<unsigned>(cp));
       return false;
     }
 

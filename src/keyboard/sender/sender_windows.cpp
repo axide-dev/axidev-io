@@ -14,50 +14,9 @@
 #include <vector>
 #include <unordered_map>
 
+#include "keyboard/common/windows_keymap.hpp"
+
 namespace axidev::io::keyboard {
-
-namespace {
-
-/**
- * @internal
- * @brief Return true if a Win32 virtual-key should be treated as an "extended"
- * key when synthesizing input.
- *
- * Certain virtual-key codes require the EXTENDEDKEY flag during input
- * synthesis (e.g., navigation keys, some keypad keys, right-side modifiers).
- * Centralizing the decision here keeps the injection and mapping logic
- * consistent across the Windows backend.
- *
- * @param vk Virtual-key code to test.
- * @return true if the key is considered an extended key; false otherwise.
- */
-bool isExtendedKey(WORD vk) {
-  switch (vk) {
-  case VK_INSERT:
-  case VK_DELETE:
-  case VK_HOME:
-  case VK_END:
-  case VK_PRIOR:
-  case VK_NEXT:
-  case VK_LEFT:
-  case VK_RIGHT:
-  case VK_UP:
-  case VK_DOWN:
-  case VK_SNAPSHOT:
-  case VK_DIVIDE:
-  case VK_NUMLOCK:
-  case VK_RCONTROL:
-  case VK_RMENU:
-  case VK_LWIN:
-  case VK_RWIN:
-  case VK_APPS:
-    return true;
-  default:
-    return false;
-  }
-}
-
-} // namespace
 
 /**
  * @internal
@@ -93,152 +52,8 @@ struct Sender::Impl {
    * layout information is not available.
    */
   void initKeyMap() {
-    // Try to discover printable mappings from the active keyboard layout.
-    // Iterate physical scan codes (like macOS) and map them via the layout to
-    // their virtual-key and Unicode output. This makes the discovery layout-
-    // aware at the physical-key level.
-    BYTE keyState[256]{}; // all keys up
-    wchar_t buf[4];
-    static constexpr int kMaxScanCode = 128;
-    for (UINT sc = 0; sc < kMaxScanCode; ++sc) {
-      UINT vk = MapVirtualKeyEx(sc, MAPVK_VSC_TO_VK, layout);
-      if (vk == 0)
-        continue;
-      int ret = ToUnicodeEx(vk, sc, keyState, buf,
-                            static_cast<int>(sizeof(buf) / sizeof(buf[0])), 0,
-                            layout);
-      if (ret > 0) {
-        wchar_t first = buf[0];
-        std::string mappedKeyString;
-        if (first == L' ') {
-          mappedKeyString = "space";
-        } else if (first == L'\t') {
-          mappedKeyString = "tab";
-        } else if (first == L'\r' || first == L'\n') {
-          mappedKeyString = "enter";
-        } else if (first < 0x80) {
-          mappedKeyString = std::string(1, static_cast<char>(first));
-        } else {
-          continue;
-        }
-        Key mapped = stringToKey(mappedKeyString);
-        if (mapped != Key::Unknown) {
-          if (keyMap.find(mapped) == keyMap.end()) {
-            keyMap[mapped] = static_cast<WORD>(vk);
-          }
-        }
-      }
-    }
-
-    // Fallback explicit mappings for common non-printable keys / modifiers
-    auto setIfMissing = [this](Key k, WORD v) {
-      if (this->keyMap.find(k) == this->keyMap.end())
-        this->keyMap[k] = v;
-    };
-
-    // Common keys
-    setIfMissing(Key::Space, VK_SPACE);
-    setIfMissing(Key::Enter, VK_RETURN);
-    setIfMissing(Key::Tab, VK_TAB);
-    setIfMissing(Key::Backspace, VK_BACK);
-    setIfMissing(Key::Delete, VK_DELETE);
-    setIfMissing(Key::Escape, VK_ESCAPE);
-    setIfMissing(Key::Left, VK_LEFT);
-    setIfMissing(Key::Right, VK_RIGHT);
-    setIfMissing(Key::Up, VK_UP);
-    setIfMissing(Key::Down, VK_DOWN);
-    setIfMissing(Key::Home, VK_HOME);
-    setIfMissing(Key::End, VK_END);
-    setIfMissing(Key::PageUp, VK_PRIOR);
-    setIfMissing(Key::PageDown, VK_NEXT);
-
-    // Modifiers
-    setIfMissing(Key::ShiftLeft, VK_LSHIFT);
-    setIfMissing(Key::ShiftRight, VK_RSHIFT);
-    setIfMissing(Key::CtrlLeft, VK_LCONTROL);
-    setIfMissing(Key::CtrlRight, VK_RCONTROL);
-    setIfMissing(Key::AltLeft, VK_LMENU);
-    setIfMissing(Key::AltRight, VK_RMENU);
-    setIfMissing(Key::SuperLeft, VK_LWIN);
-    setIfMissing(Key::SuperRight, VK_RWIN);
-    setIfMissing(Key::CapsLock, VK_CAPITAL);
-
-    // Function keys
-    setIfMissing(Key::F1, VK_F1);
-    setIfMissing(Key::F2, VK_F2);
-    setIfMissing(Key::F3, VK_F3);
-    setIfMissing(Key::F4, VK_F4);
-    setIfMissing(Key::F5, VK_F5);
-    setIfMissing(Key::F6, VK_F6);
-    setIfMissing(Key::F7, VK_F7);
-    setIfMissing(Key::F8, VK_F8);
-    setIfMissing(Key::F9, VK_F9);
-    setIfMissing(Key::F10, VK_F10);
-    setIfMissing(Key::F11, VK_F11);
-    setIfMissing(Key::F12, VK_F12);
-    setIfMissing(Key::F13, VK_F13);
-    setIfMissing(Key::F14, VK_F14);
-    setIfMissing(Key::F15, VK_F15);
-    setIfMissing(Key::F16, VK_F16);
-    setIfMissing(Key::F17, VK_F17);
-    setIfMissing(Key::F18, VK_F18);
-    setIfMissing(Key::F19, VK_F19);
-    setIfMissing(Key::F20, VK_F20);
-
-    // Top-row numbers (unshifted)
-    // Ensure top-row numeric keys that may be layout-dependent still have a
-    // sensible fallback mapping so callers using Key::NumX can inject digits.
-    setIfMissing(Key::Num0, VK_NUMPAD0);
-    setIfMissing(Key::Num1, VK_NUMPAD1);
-    setIfMissing(Key::Num2, VK_NUMPAD2);
-    setIfMissing(Key::Num3, VK_NUMPAD3);
-    setIfMissing(Key::Num4, VK_NUMPAD4);
-    setIfMissing(Key::Num5, VK_NUMPAD5);
-    setIfMissing(Key::Num6, VK_NUMPAD6);
-    setIfMissing(Key::Num7, VK_NUMPAD7);
-    setIfMissing(Key::Num8, VK_NUMPAD8);
-    setIfMissing(Key::Num9, VK_NUMPAD9);
-
-    // Numpad
-    setIfMissing(Key::Numpad0, VK_NUMPAD0);
-    setIfMissing(Key::Numpad1, VK_NUMPAD1);
-    setIfMissing(Key::Numpad2, VK_NUMPAD2);
-    setIfMissing(Key::Numpad3, VK_NUMPAD3);
-    setIfMissing(Key::Numpad4, VK_NUMPAD4);
-    setIfMissing(Key::Numpad5, VK_NUMPAD5);
-    setIfMissing(Key::Numpad6, VK_NUMPAD6);
-    setIfMissing(Key::Numpad7, VK_NUMPAD7);
-    setIfMissing(Key::Numpad8, VK_NUMPAD8);
-    setIfMissing(Key::Numpad9, VK_NUMPAD9);
-    setIfMissing(Key::NumpadDivide, VK_DIVIDE);
-    setIfMissing(Key::NumpadMultiply, VK_MULTIPLY);
-    setIfMissing(Key::NumpadMinus, VK_SUBTRACT);
-    setIfMissing(Key::NumpadPlus, VK_ADD);
-    setIfMissing(Key::NumpadEnter, VK_RETURN);
-    setIfMissing(Key::NumpadDecimal, VK_DECIMAL);
-
-    // Misc
-    setIfMissing(Key::Menu, VK_APPS);
-    setIfMissing(Key::Mute, VK_VOLUME_MUTE);
-    setIfMissing(Key::VolumeDown, VK_VOLUME_DOWN);
-    setIfMissing(Key::VolumeUp, VK_VOLUME_UP);
-    setIfMissing(Key::MediaPlayPause, VK_MEDIA_PLAY_PAUSE);
-    setIfMissing(Key::MediaStop, VK_MEDIA_STOP);
-    setIfMissing(Key::MediaNext, VK_MEDIA_NEXT_TRACK);
-    setIfMissing(Key::MediaPrevious, VK_MEDIA_PREV_TRACK);
-
-    // Punctuation (OEM)
-    setIfMissing(Key::Grave, VK_OEM_3);
-    setIfMissing(Key::Minus, VK_OEM_MINUS);
-    setIfMissing(Key::Equal, VK_OEM_PLUS);
-    setIfMissing(Key::LeftBracket, VK_OEM_4);
-    setIfMissing(Key::RightBracket, VK_OEM_6);
-    setIfMissing(Key::Backslash, VK_OEM_5);
-    setIfMissing(Key::Semicolon, VK_OEM_1);
-    setIfMissing(Key::Apostrophe, VK_OEM_7);
-    setIfMissing(Key::Comma, VK_OEM_COMMA);
-    setIfMissing(Key::Period, VK_OEM_PERIOD);
-    setIfMissing(Key::Slash, VK_OEM_2);
+    auto km = ::axidev::io::keyboard::detail::initWindowsKeyMap(layout);
+    keyMap = std::move(km.keyToVk);
     AXIDEV_IO_LOG_DEBUG("Sender (Windows): initKeyMap populated %zu entries",
                       keyMap.size());
   }
@@ -290,7 +105,7 @@ struct Sender::Impl {
     input.ki.wScan = MapVirtualKeyW(vk, MAPVK_VK_TO_VSC);
     input.ki.dwFlags = KEYEVENTF_SCANCODE;
 
-    if (isExtendedKey(vk)) {
+    if (::axidev::io::keyboard::detail::isWindowsExtendedKey(vk)) {
       input.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
     }
     if (!down) {

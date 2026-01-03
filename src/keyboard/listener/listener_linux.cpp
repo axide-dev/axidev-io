@@ -32,6 +32,7 @@
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include "keyboard/common/linux_keysym.hpp"
 #include "keyboard/common/linux_layout.hpp"
 
 namespace axidev::io::keyboard {
@@ -416,122 +417,15 @@ private:
   }
 
   Key mapKeysymToKey(xkb_keysym_t sym) {
-    // Quick alphabetic mapping (lowercase and uppercase)
-    if (sym >= XKB_KEY_a && sym <= XKB_KEY_z) {
-      return static_cast<Key>(static_cast<int>(Key::A) + (sym - XKB_KEY_a));
-    }
-    if (sym >= XKB_KEY_A && sym <= XKB_KEY_Z) {
-      return static_cast<Key>(static_cast<int>(Key::A) + (sym - XKB_KEY_A));
-    }
+    Key mapped = detail::keysymToKey(sym);
+    if (mapped != Key::Unknown)
+      return mapped;
 
-    // Top-row numbers
-    if (sym >= XKB_KEY_0 && sym <= XKB_KEY_9) {
-      return static_cast<Key>(static_cast<int>(Key::Num0) + (sym - XKB_KEY_0));
-    }
-
-    // Function keys
-    if (sym >= XKB_KEY_F1 && sym <= XKB_KEY_F20) {
-      return static_cast<Key>(static_cast<int>(Key::F1) + (sym - XKB_KEY_F1));
-    }
-
-    // Direct mappings for common control keys
-    switch (sym) {
-    case XKB_KEY_Return:
-      return Key::Enter;
-    case XKB_KEY_BackSpace:
-      return Key::Backspace;
-    case XKB_KEY_space:
-      return Key::Space;
-    case XKB_KEY_Tab:
-      return Key::Tab;
-    case XKB_KEY_Escape:
-      return Key::Escape;
-    case XKB_KEY_Left:
-      return Key::Left;
-    case XKB_KEY_Right:
-      return Key::Right;
-    case XKB_KEY_Up:
-      return Key::Up;
-    case XKB_KEY_Down:
-      return Key::Down;
-    case XKB_KEY_Home:
-      return Key::Home;
-    case XKB_KEY_End:
-      return Key::End;
-    case XKB_KEY_Page_Up:
-      return Key::PageUp;
-    case XKB_KEY_Page_Down:
-      return Key::PageDown;
-    case XKB_KEY_Delete:
-      return Key::Delete;
-    case XKB_KEY_Insert:
-      return Key::Insert;
-    // Numpad
-    case XKB_KEY_KP_Divide:
-      return Key::NumpadDivide;
-    case XKB_KEY_KP_Multiply:
-      return Key::NumpadMultiply;
-    case XKB_KEY_KP_Subtract:
-      return Key::NumpadMinus;
-    case XKB_KEY_KP_Add:
-      return Key::NumpadPlus;
-    case XKB_KEY_KP_Enter:
-      return Key::NumpadEnter;
-    case XKB_KEY_KP_Decimal:
-      return Key::NumpadDecimal;
-    case XKB_KEY_KP_0:
-      return Key::Numpad0;
-    case XKB_KEY_KP_1:
-      return Key::Numpad1;
-    case XKB_KEY_KP_2:
-      return Key::Numpad2;
-    case XKB_KEY_KP_3:
-      return Key::Numpad3;
-    case XKB_KEY_KP_4:
-      return Key::Numpad4;
-    case XKB_KEY_KP_5:
-      return Key::Numpad5;
-    case XKB_KEY_KP_6:
-      return Key::Numpad6;
-    case XKB_KEY_KP_7:
-      return Key::Numpad7;
-    case XKB_KEY_KP_8:
-      return Key::Numpad8;
-    case XKB_KEY_KP_9:
-      return Key::Numpad9;
-    // Common punctuation
-    case XKB_KEY_comma:
-      return Key::Comma;
-    case XKB_KEY_period:
-      return Key::Period;
-    case XKB_KEY_slash:
-      return Key::Slash;
-    case XKB_KEY_backslash:
-      return Key::Backslash;
-    case XKB_KEY_semicolon:
-      return Key::Semicolon;
-    case XKB_KEY_apostrophe:
-      return Key::Apostrophe;
-    case XKB_KEY_minus:
-      return Key::Minus;
-    case XKB_KEY_equal:
-      return Key::Equal;
-    case XKB_KEY_grave:
-      return Key::Grave;
-    case XKB_KEY_bracketleft:
-      return Key::LeftBracket;
-    case XKB_KEY_bracketright:
-      return Key::RightBracket;
-    default:
-      break;
-    }
-
-    // Try to map using the keysym name -> stringToKey as a best-effort fallback
     char name[64] = {0};
     if (xkb_keysym_get_name(sym, name, sizeof(name)) > 0) {
-      Key mapped = stringToKey(std::string(name));
-      if (mapped != Key::Unknown)
-        return mapped;
+      Key fallback = stringToKey(std::string(name));
+      if (fallback != Key::Unknown)
+        return fallback;
     }
 
     return Key::Unknown;

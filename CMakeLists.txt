@@ -29,11 +29,12 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(AXIDEV_SOURCES src/keyboard/common/key_utils.cpp src/c_api.cpp)
 
 if(APPLE)
-  list(APPEND AXIDEV_SOURCES src/keyboard/sender/sender_macos.mm
-       src/keyboard/listener/listener_macos.mm)
+  list(APPEND AXIDEV_SOURCES src/keyboard/common/macos_keymap.mm
+    src/keyboard/sender/sender_macos.mm src/keyboard/listener/listener_macos.mm)
 elseif(WIN32)
-  list(APPEND AXIDEV_SOURCES src/keyboard/sender/sender_windows.cpp
-       src/keyboard/listener/listener_windows.cpp)
+  list(APPEND AXIDEV_SOURCES src/keyboard/common/windows_keymap.cpp
+    src/keyboard/sender/sender_windows.cpp
+    src/keyboard/listener/listener_windows.cpp)
 elseif(UNIX)
   find_package(PkgConfig REQUIRED)
 
@@ -59,9 +60,10 @@ elseif(UNIX)
     OUTPUT_VARIABLE XKBCOMMON_STATIC_LIBS
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-  list(APPEND AXIDEV_SOURCES src/keyboard/common/linux_layout.cpp
-       src/keyboard/sender/sender_uinput.cpp
-       src/keyboard/listener/listener_linux.cpp)
+    list(APPEND AXIDEV_SOURCES src/keyboard/common/linux_layout.cpp
+      src/keyboard/common/linux_keysym.cpp
+      src/keyboard/sender/sender_uinput.cpp
+      src/keyboard/listener/listener_linux.cpp)
 endif()
 
 if(AXIDEV_IO_BUILD_SHARED)
