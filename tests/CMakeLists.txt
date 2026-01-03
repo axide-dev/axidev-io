@@ -60,6 +60,7 @@ enable_testing()
 include(GoogleTest)
 gtest_discover_tests(axidev-io-unit-tests
     DISCOVERY_MODE POST_BUILD
+    TEST_PREFIX "axidev-io-unit-tests."
 )
 # Label the unit test so runners can select it explicitly if desired
 set_property(TARGET axidev-io-unit-tests PROPERTY LABELS unit)
@@ -86,6 +87,7 @@ if(AXIDEV_IO_BUILD_INTEGRATION_TESTS)
 
     gtest_discover_tests(axidev-io-integration-tests
         DISCOVERY_MODE POST_BUILD
+        TEST_PREFIX "axidev-io-integration-tests."
     )
     # Mark the test with a label so runners can select it explicitly if desired
     set_property(TARGET axidev-io-integration-tests PROPERTY LABELS integration)
