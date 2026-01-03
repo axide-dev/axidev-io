@@ -135,6 +135,48 @@ void fillWindowsFallbackMappings(WindowsKeyMap &keyMap) {
   setIfMissing(Key::MediaNext, VK_MEDIA_NEXT_TRACK);
   setIfMissing(Key::MediaPrevious, VK_MEDIA_PREV_TRACK);
 
+  // Letter keys (physical VK codes - layout independent)
+  // VK_A through VK_Z are 0x41-0x5A (same as ASCII 'A'-'Z')
+  setIfMissing(Key::A, 0x41);
+  setIfMissing(Key::B, 0x42);
+  setIfMissing(Key::C, 0x43);
+  setIfMissing(Key::D, 0x44);
+  setIfMissing(Key::E, 0x45);
+  setIfMissing(Key::F, 0x46);
+  setIfMissing(Key::G, 0x47);
+  setIfMissing(Key::H, 0x48);
+  setIfMissing(Key::I, 0x49);
+  setIfMissing(Key::J, 0x4A);
+  setIfMissing(Key::K, 0x4B);
+  setIfMissing(Key::L, 0x4C);
+  setIfMissing(Key::M, 0x4D);
+  setIfMissing(Key::N, 0x4E);
+  setIfMissing(Key::O, 0x4F);
+  setIfMissing(Key::P, 0x50);
+  setIfMissing(Key::Q, 0x51);
+  setIfMissing(Key::R, 0x52);
+  setIfMissing(Key::S, 0x53);
+  setIfMissing(Key::T, 0x54);
+  setIfMissing(Key::U, 0x55);
+  setIfMissing(Key::V, 0x56);
+  setIfMissing(Key::W, 0x57);
+  setIfMissing(Key::X, 0x58);
+  setIfMissing(Key::Y, 0x59);
+  setIfMissing(Key::Z, 0x5A);
+
+  // Number keys (physical VK codes - layout independent)
+  // VK_0 through VK_9 are 0x30-0x39 (same as ASCII '0'-'9')
+  setIfMissing(Key::Num0, 0x30);
+  setIfMissing(Key::Num1, 0x31);
+  setIfMissing(Key::Num2, 0x32);
+  setIfMissing(Key::Num3, 0x33);
+  setIfMissing(Key::Num4, 0x34);
+  setIfMissing(Key::Num5, 0x35);
+  setIfMissing(Key::Num6, 0x36);
+  setIfMissing(Key::Num7, 0x37);
+  setIfMissing(Key::Num8, 0x38);
+  setIfMissing(Key::Num9, 0x39);
+
   // Punctuation (OEM keys - layout dependent but commonly consistent)
   setIfMissing(Key::Grave, VK_OEM_3);
   setIfMissing(Key::Minus, VK_OEM_MINUS);

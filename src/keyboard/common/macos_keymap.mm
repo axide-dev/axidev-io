@@ -99,6 +99,46 @@ void fillMacOSFallbackMappings(MacOSKeyMap &keyMap) {
   setIfMissing(Key::NumpadEnter, kVK_ANSI_KeypadEnter);
   setIfMissing(Key::NumpadDecimal, kVK_ANSI_KeypadDecimal);
 
+  // ANSI letter keys (physical key positions - layout independent)
+  setIfMissing(Key::A, kVK_ANSI_A);
+  setIfMissing(Key::B, kVK_ANSI_B);
+  setIfMissing(Key::C, kVK_ANSI_C);
+  setIfMissing(Key::D, kVK_ANSI_D);
+  setIfMissing(Key::E, kVK_ANSI_E);
+  setIfMissing(Key::F, kVK_ANSI_F);
+  setIfMissing(Key::G, kVK_ANSI_G);
+  setIfMissing(Key::H, kVK_ANSI_H);
+  setIfMissing(Key::I, kVK_ANSI_I);
+  setIfMissing(Key::J, kVK_ANSI_J);
+  setIfMissing(Key::K, kVK_ANSI_K);
+  setIfMissing(Key::L, kVK_ANSI_L);
+  setIfMissing(Key::M, kVK_ANSI_M);
+  setIfMissing(Key::N, kVK_ANSI_N);
+  setIfMissing(Key::O, kVK_ANSI_O);
+  setIfMissing(Key::P, kVK_ANSI_P);
+  setIfMissing(Key::Q, kVK_ANSI_Q);
+  setIfMissing(Key::R, kVK_ANSI_R);
+  setIfMissing(Key::S, kVK_ANSI_S);
+  setIfMissing(Key::T, kVK_ANSI_T);
+  setIfMissing(Key::U, kVK_ANSI_U);
+  setIfMissing(Key::V, kVK_ANSI_V);
+  setIfMissing(Key::W, kVK_ANSI_W);
+  setIfMissing(Key::X, kVK_ANSI_X);
+  setIfMissing(Key::Y, kVK_ANSI_Y);
+  setIfMissing(Key::Z, kVK_ANSI_Z);
+
+  // ANSI number keys (physical key positions - layout independent)
+  setIfMissing(Key::Num0, kVK_ANSI_0);
+  setIfMissing(Key::Num1, kVK_ANSI_1);
+  setIfMissing(Key::Num2, kVK_ANSI_2);
+  setIfMissing(Key::Num3, kVK_ANSI_3);
+  setIfMissing(Key::Num4, kVK_ANSI_4);
+  setIfMissing(Key::Num5, kVK_ANSI_5);
+  setIfMissing(Key::Num6, kVK_ANSI_6);
+  setIfMissing(Key::Num7, kVK_ANSI_7);
+  setIfMissing(Key::Num8, kVK_ANSI_8);
+  setIfMissing(Key::Num9, kVK_ANSI_9);
+
   // ANSI punctuation (physical key positions)
   setIfMissing(Key::Grave, kVK_ANSI_Grave);
   setIfMissing(Key::Minus, kVK_ANSI_Minus);

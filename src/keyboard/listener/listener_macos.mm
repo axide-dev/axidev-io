@@ -52,6 +52,35 @@ Modifier flagsToModifier(CGEventFlags flags) {
 
 static bool output_debug_enabled() { return ::axidev::io::log::debugEnabled(); }
 
+/**
+ * @brief Derive the canonical lowercase codepoint for a Key enum value.
+ *
+ * For letter keys (A-Z), returns the lowercase ASCII codepoint ('a'-'z').
+ * For number keys (Num0-Num9), returns the ASCII digit ('0'-'9').
+ * For other keys, returns 0 (caller should use the system-provided codepoint).
+ *
+ * This ensures consistent character output regardless of keyboard layout
+ * mismatches between the keymap initialization and event delivery.
+ */
+static char32_t codepointFromKey(Key key) {
+  // Letters A-Z -> 'a'-'z' (lowercase)
+  if (key >= Key::A && key <= Key::Z) {
+    return static_cast<char32_t>(
+        'a' + (static_cast<int>(key) - static_cast<int>(Key::A)));
+  }
+  // Numbers 0-9
+  if (key >= Key::Num0 && key <= Key::Num9) {
+    return static_cast<char32_t>(
+        '0' + (static_cast<int>(key) - static_cast<int>(Key::Num0)));
+  }
+  // Numpad 0-9
+  if (key >= Key::Numpad0 && key <= Key::Numpad9) {
+    return static_cast<char32_t>(
+        '0' + (static_cast<int>(key) - static_cast<int>(Key::Numpad0)));
+  }
+  return 0;
+}
+
 } // namespace
 
 struct Listener::Impl {
@@ -231,6 +260,18 @@ private:
     // Modifiers
     CGEventFlags flags = CGEventGetFlags(event);
     Modifier mods = flagsToModifier(flags);
+
+    // For letter and number keys, derive the codepoint from the Key enum
+    // rather than trusting CGEventKeyboardGetUnicodeString. This ensures
+    // consistent output regardless of keyboard layout mismatches between
+    // keymap initialization and event delivery (e.g., AZERTY vs QWERTY).
+    // Only override when Shift is not pressed (to get lowercase letters).
+    if (mapped != Key::Unknown && !hasModifier(mods, Modifier::Shift)) {
+      char32_t derivedCp = codepointFromKey(mapped);
+      if (derivedCp != 0) {
+        codepoint = derivedCp;
+      }
+    }
 
     // Treat Enter and Backspace as control keys (non-printable). If we pass a
     // non-zero codepoint for these keys the test callback will append that

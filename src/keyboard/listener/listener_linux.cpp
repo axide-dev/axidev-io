@@ -83,6 +83,35 @@ static const struct libinput_interface kInterface = {
     .close_restricted = close_restricted,
 };
 
+/**
+ * @brief Derive the canonical lowercase codepoint for a Key enum value.
+ *
+ * For letter keys (A-Z), returns the lowercase ASCII codepoint ('a'-'z').
+ * For number keys (Num0-Num9), returns the ASCII digit ('0'-'9').
+ * For other keys, returns 0 (caller should use the system-provided codepoint).
+ *
+ * This ensures consistent character output regardless of keyboard layout
+ * mismatches between the keymap initialization and event delivery.
+ */
+static char32_t codepointFromKey(Key key) {
+  // Letters A-Z -> 'a'-'z' (lowercase)
+  if (key >= Key::A && key <= Key::Z) {
+    return static_cast<char32_t>(
+        'a' + (static_cast<int>(key) - static_cast<int>(Key::A)));
+  }
+  // Numbers 0-9
+  if (key >= Key::Num0 && key <= Key::Num9) {
+    return static_cast<char32_t>(
+        '0' + (static_cast<int>(key) - static_cast<int>(Key::Num0)));
+  }
+  // Numpad 0-9
+  if (key >= Key::Numpad0 && key <= Key::Numpad9) {
+    return static_cast<char32_t>(
+        '0' + (static_cast<int>(key) - static_cast<int>(Key::Numpad0)));
+  }
+  return 0;
+}
+
 } // namespace
 
 /**
@@ -381,6 +410,23 @@ private:
     if (xkb_state_mod_name_is_active(xkbState, XKB_MOD_NAME_SHIFT,
                                      XKB_STATE_MODS_EFFECTIVE))
       mods = mods | Modifier::Shift;
+
+    // For letter and number keys, derive the codepoint from the Key enum
+    // rather than trusting xkb_keysym_to_utf32. This ensures consistent output
+    // regardless of keyboard layout mismatches between keymap initialization
+    // and event delivery (e.g., AZERTY vs QWERTY).
+    // Only override when Shift is not pressed (to get lowercase letters).
+    if (mapped != Key::Unknown && !hasModifier(mods, Modifier::Shift)) {
+      char32_t derivedCp = codepointFromKey(mapped);
+      if (derivedCp != 0) {
+        codepoint = derivedCp;
+        // Update pendingCodepoints for release event consistency
+        if (pressed) {
+          pendingCodepoints[keycode] = derivedCp;
+        }
+      }
+    }
+
     if (xkb_state_mod_name_is_active(xkbState, XKB_MOD_NAME_CTRL,
                                      XKB_STATE_MODS_EFFECTIVE))
       mods = mods | Modifier::Ctrl;

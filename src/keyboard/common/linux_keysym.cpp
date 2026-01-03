@@ -175,6 +175,46 @@ void fillLinuxFallbackMappings(LinuxKeyMap &keyMap) {
   set(Key::PageDown, KEY_PAGEDOWN);
   set(Key::Insert, KEY_INSERT);
 
+  // Letter keys (physical evdev codes - layout independent)
+  set(Key::A, KEY_A);
+  set(Key::B, KEY_B);
+  set(Key::C, KEY_C);
+  set(Key::D, KEY_D);
+  set(Key::E, KEY_E);
+  set(Key::F, KEY_F);
+  set(Key::G, KEY_G);
+  set(Key::H, KEY_H);
+  set(Key::I, KEY_I);
+  set(Key::J, KEY_J);
+  set(Key::K, KEY_K);
+  set(Key::L, KEY_L);
+  set(Key::M, KEY_M);
+  set(Key::N, KEY_N);
+  set(Key::O, KEY_O);
+  set(Key::P, KEY_P);
+  set(Key::Q, KEY_Q);
+  set(Key::R, KEY_R);
+  set(Key::S, KEY_S);
+  set(Key::T, KEY_T);
+  set(Key::U, KEY_U);
+  set(Key::V, KEY_V);
+  set(Key::W, KEY_W);
+  set(Key::X, KEY_X);
+  set(Key::Y, KEY_Y);
+  set(Key::Z, KEY_Z);
+
+  // Number keys (physical evdev codes - layout independent)
+  set(Key::Num0, KEY_0);
+  set(Key::Num1, KEY_1);
+  set(Key::Num2, KEY_2);
+  set(Key::Num3, KEY_3);
+  set(Key::Num4, KEY_4);
+  set(Key::Num5, KEY_5);
+  set(Key::Num6, KEY_6);
+  set(Key::Num7, KEY_7);
+  set(Key::Num8, KEY_8);
+  set(Key::Num9, KEY_9);
+
   // Function keys
   set(Key::F1, KEY_F1);
   set(Key::F2, KEY_F2);
