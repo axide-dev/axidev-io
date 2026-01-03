@@ -1,6 +1,6 @@
 {
   "name": "axidev-io",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Cross-platform layout-aware input/output library for accessibility.",
   "homepage": "https://github.com/ziedyousfi/axidev-io",
   "license": "MIT",
