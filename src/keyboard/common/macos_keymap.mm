@@ -177,11 +177,33 @@ MacOSKeyMap initMacOSKeyMap() {
   const auto *keyboardLayout = static_cast<const UCKeyboardLayout *>(
       static_cast<const void *>(CFDataGetBytePtr(layoutData)));
 
-  UInt32 keysDown = 0;
   static constexpr int kMaxKeyCode = 128;
   static constexpr size_t kUnicodeStringSize = 4;
 
+  // Define modifier combinations to scan.
+  // UCKeyTranslate uses Carbon modifier bit masks.
+  struct ModifierScan {
+    UInt32 carbonModMask; // Carbon modifier mask for UCKeyTranslate
+    Modifier axidevMods;  // Corresponding axidev Modifier flags
+  };
+
+  // Carbon modifier bits:
+  // shiftKey = 0x0200 (bit 9), optionKey = 0x0800 (bit 11)
+  // We shift right by 8 to get the modifier byte format UCKeyTranslate expects
+  static constexpr UInt32 kShiftModifier = (shiftKey >> 8) & 0xFF;
+  static constexpr UInt32 kOptionModifier = (optionKey >> 8) & 0xFF;
+
+  const ModifierScan modScans[] = {
+      {0, Modifier::None},               // No modifiers
+      {kShiftModifier, Modifier::Shift}, // Shift only
+      {kOptionModifier, Modifier::Alt},  // Option/Alt only
+      {kShiftModifier | kOptionModifier,
+       Modifier::Shift | Modifier::Alt}, // Shift + Option
+  };
+
   for (int keyCode = 0; keyCode < kMaxKeyCode; keyCode++) {
+    // First pass: unshifted character for Key enum mapping
+    UInt32 keysDown = 0;
     std::array<UniChar, kUnicodeStringSize> unicodeString{};
     UniCharCount actualStringLength = 0;
 
@@ -210,19 +232,64 @@ MacOSKeyMap initMacOSKeyMap() {
       } else if (firstUnicodeChar < kAsciiMax) {
         mappedKeyString = std::string(1, static_cast<char>(firstUnicodeChar));
       } else {
-        // Non-ASCII mapping isn't covered by `Key` enum; skip
-        continue;
+        // Non-ASCII mapping isn't covered by `Key` enum; skip Key mapping
+        mappedKeyString.clear();
       }
 
-      Key mappedKeyEnum = stringToKey(mappedKeyString);
-      if (mappedKeyEnum != Key::Unknown) {
-        CGKeyCode cgCode = static_cast<CGKeyCode>(keyCode);
-        // Only add if not already present (first mapping wins)
-        if (keyMap.keyToCode.find(mappedKeyEnum) == keyMap.keyToCode.end()) {
-          keyMap.keyToCode[mappedKeyEnum] = cgCode;
+      if (!mappedKeyString.empty()) {
+        Key mappedKeyEnum = stringToKey(mappedKeyString);
+        if (mappedKeyEnum != Key::Unknown) {
+          CGKeyCode cgCode = static_cast<CGKeyCode>(keyCode);
+          // Only add if not already present (first mapping wins)
+          if (keyMap.keyToCode.find(mappedKeyEnum) == keyMap.keyToCode.end()) {
+            keyMap.keyToCode[mappedKeyEnum] = cgCode;
+          }
+          if (keyMap.codeToKey.find(cgCode) == keyMap.codeToKey.end()) {
+            keyMap.codeToKey[cgCode] = mappedKeyEnum;
+          }
         }
-        if (keyMap.codeToKey.find(cgCode) == keyMap.codeToKey.end()) {
-          keyMap.codeToKey[cgCode] = mappedKeyEnum;
+      }
+    }
+
+    // Second pass: scan all modifier combinations for charToKeycode
+    for (const auto &scan : modScans) {
+      keysDown = 0;
+      unicodeString.fill(0);
+      actualStringLength = 0;
+
+      status = UCKeyTranslate(
+          keyboardLayout, keyCode, kUCKeyActionDisplay, scan.carbonModMask,
+          LMGetKbdType(), kUCKeyTranslateNoDeadKeysBit, &keysDown,
+          static_cast<UInt32>(unicodeString.size()), &actualStringLength,
+          static_cast<UniChar *>(unicodeString.data()));
+
+      if (status == noErr && actualStringLength > 0) {
+        // Handle both BMP characters and surrogate pairs
+        char32_t codepoint = 0;
+        if (actualStringLength == 1) {
+          codepoint = static_cast<char32_t>(unicodeString[0]);
+        } else if (actualStringLength == 2) {
+          // Check for surrogate pair
+          UniChar high = unicodeString[0];
+          UniChar low = unicodeString[1];
+          if (high >= 0xD800 && high <= 0xDBFF && low >= 0xDC00 &&
+              low <= 0xDFFF) {
+            codepoint =
+                0x10000 + ((static_cast<char32_t>(high - 0xD800) << 10) |
+                           static_cast<char32_t>(low - 0xDC00));
+          } else {
+            // Just use the first character if not a valid surrogate pair
+            codepoint = static_cast<char32_t>(unicodeString[0]);
+          }
+        }
+
+        if (codepoint != 0) {
+          // Only add if not already present (prefer simpler modifier combos)
+          if (keyMap.charToKeycode.find(codepoint) ==
+              keyMap.charToKeycode.end()) {
+            keyMap.charToKeycode[codepoint] =
+                KeyMapping(static_cast<int32_t>(keyCode), scan.axidevMods);
+          }
         }
       }
     }
@@ -233,9 +300,10 @@ MacOSKeyMap initMacOSKeyMap() {
   // Add fallback mappings for keys not covered by layout scan
   fillMacOSFallbackMappings(keyMap);
 
-  AXIDEV_IO_LOG_DEBUG("macOS keymap: initialized with %zu keyToCode and %zu "
-                      "codeToKey entries",
-                      keyMap.keyToCode.size(), keyMap.codeToKey.size());
+  AXIDEV_IO_LOG_DEBUG("macOS keymap: initialized with %zu keyToCode, %zu "
+                      "codeToKey, and %zu charToKeycode entries",
+                      keyMap.keyToCode.size(), keyMap.codeToKey.size(),
+                      keyMap.charToKeycode.size());
 
   return keyMap;
 }

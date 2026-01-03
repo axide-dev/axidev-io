@@ -8,6 +8,7 @@
 #include "keyboard/common/linux_keysym.hpp"
 
 #include <axidev-io/log.hpp>
+#include <vector>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 namespace axidev::io::keyboard::detail {
@@ -260,16 +261,51 @@ LinuxKeyMap initLinuxKeyMap(struct xkb_keymap *keymap,
   xkb_keycode_t minKey = xkb_keymap_min_keycode(keymap);
   xkb_keycode_t maxKey = xkb_keymap_max_keycode(keymap);
 
+  // Get modifier indices
   xkb_mod_index_t shiftMod =
       xkb_keymap_mod_get_index(keymap, XKB_MOD_NAME_SHIFT);
+  xkb_mod_index_t ctrlMod = xkb_keymap_mod_get_index(keymap, XKB_MOD_NAME_CTRL);
+  xkb_mod_index_t altMod = xkb_keymap_mod_get_index(keymap, XKB_MOD_NAME_ALT);
+
   const bool hasShift = (shiftMod != XKB_MOD_INVALID);
+  const bool hasCtrl = (ctrlMod != XKB_MOD_INVALID);
+  const bool hasAlt = (altMod != XKB_MOD_INVALID);
+
+  // Define modifier combinations to scan
+  struct ModifierScan {
+    xkb_mod_mask_t mask;
+    Modifier axidevMods;
+  };
+
+  std::vector<ModifierScan> modScans;
+  modScans.push_back({0, Modifier::None}); // No modifiers
+
+  if (hasShift) {
+    modScans.push_back({1u << shiftMod, Modifier::Shift});
+  }
+  if (hasCtrl) {
+    modScans.push_back({1u << ctrlMod, Modifier::Ctrl});
+  }
+  if (hasAlt) {
+    modScans.push_back({1u << altMod, Modifier::Alt});
+  }
+  // Ctrl+Alt combination (sometimes used as AltGr equivalent)
+  if (hasCtrl && hasAlt) {
+    modScans.push_back(
+        {(1u << ctrlMod) | (1u << altMod), Modifier::Ctrl | Modifier::Alt});
+  }
+  // Shift+Ctrl+Alt combination
+  if (hasShift && hasCtrl && hasAlt) {
+    modScans.push_back({(1u << shiftMod) | (1u << ctrlMod) | (1u << altMod),
+                        Modifier::Shift | Modifier::Ctrl | Modifier::Alt});
+  }
 
   for (xkb_keycode_t xkbKey = minKey; xkbKey <= maxKey; ++xkbKey) {
     int evdevCode = static_cast<int>(xkbKey) - 8; // XKB offset
     if (evdevCode <= 0)
       continue;
 
-    // Unshifted character
+    // Unshifted character for Key enum mapping
     uint32_t unshifted = xkb_state_key_get_utf32(state, xkbKey);
 
     // Key enum mapping from keysym (prefer unshifted, try shifted fallback)
@@ -288,20 +324,18 @@ LinuxKeyMap initLinuxKeyMap(struct xkb_keymap *keymap,
       out.keyToEvdev[mappedKey] = evdevCode;
     }
 
-    if (unshifted != 0 && out.charToKeycode.find(static_cast<char32_t>(
-                              unshifted)) == out.charToKeycode.end()) {
-      out.charToKeycode[static_cast<char32_t>(unshifted)] = {evdevCode, false};
-    }
-
-    if (hasShift) {
-      xkb_state_update_mask(state, (1u << shiftMod), 0, 0, 0, 0, 0);
-      uint32_t shifted = xkb_state_key_get_utf32(state, xkbKey);
+    // Scan all modifier combinations for charToKeycode
+    for (const auto &scan : modScans) {
+      xkb_state_update_mask(state, scan.mask, 0, 0, 0, 0, 0);
+      uint32_t character = xkb_state_key_get_utf32(state, xkbKey);
       xkb_state_update_mask(state, 0, 0, 0, 0, 0, 0);
 
-      if (shifted != 0 && shifted != unshifted &&
-          out.charToKeycode.find(static_cast<char32_t>(shifted)) ==
-              out.charToKeycode.end()) {
-        out.charToKeycode[static_cast<char32_t>(shifted)] = {evdevCode, true};
+      if (character != 0) {
+        char32_t cp = static_cast<char32_t>(character);
+        // Only add if not already present (prefer simpler modifier combos)
+        if (out.charToKeycode.find(cp) == out.charToKeycode.end()) {
+          out.charToKeycode[cp] = KeyMapping(evdevCode, scan.axidevMods);
+        }
       }
     }
   }

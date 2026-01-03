@@ -33,6 +33,7 @@ struct Sender::Impl {
   bool ready{true};
   HKL layout{nullptr};
   std::unordered_map<Key, WORD> keyMap;
+  std::unordered_map<char32_t, KeyMapping> charToKeycode;
 
   Impl() : layout(GetKeyboardLayout(0)) {
     initKeyMap();
@@ -54,8 +55,11 @@ struct Sender::Impl {
   void initKeyMap() {
     auto km = ::axidev::io::keyboard::detail::initWindowsKeyMap(layout);
     keyMap = std::move(km.keyToVk);
+    charToKeycode = std::move(km.charToKeycode);
     AXIDEV_IO_LOG_DEBUG("Sender (Windows): initKeyMap populated %zu entries",
                       keyMap.size());
+    AXIDEV_IO_LOG_DEBUG("Sender (Windows): charToKeycode populated %zu entries",
+                      charToKeycode.size());
   }
 
   /**

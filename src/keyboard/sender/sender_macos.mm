@@ -64,6 +64,8 @@ struct Sender::Impl {
 
   // Map from our Key enum to macOS keycodes
   std::unordered_map<Key, CGKeyCode> keyMap;
+  // Map from character to keycode and modifiers
+  std::unordered_map<char32_t, KeyMapping> charToKeycode;
 
   Impl()
       : eventSource(CGEventSourceCreate(kCGEventSourceStateHIDSystemState)),
@@ -74,6 +76,8 @@ struct Sender::Impl {
     AXIDEV_IO_LOG_DEBUG("Sender (macOS): eventSource=%p", eventSource);
     AXIDEV_IO_LOG_DEBUG("Sender (macOS): keyMap initialized with %zu entries",
                       keyMap.size());
+    AXIDEV_IO_LOG_DEBUG("Sender (macOS): charToKeycode initialized with %zu entries",
+                      charToKeycode.size());
   }
 
   ~Impl() {
@@ -88,7 +92,8 @@ struct Sender::Impl {
   Impl(Impl &&other) noexcept
       : eventSource(other.eventSource), currentMods(other.currentMods),
         keyDelayUs(other.keyDelayUs), ready(other.ready),
-        keyMap(std::move(other.keyMap)) {
+        keyMap(std::move(other.keyMap)),
+        charToKeycode(std::move(other.charToKeycode)) {
     other.eventSource = nullptr;
     other.currentMods = Modifier::None;
     other.keyDelayUs = 0;
@@ -107,6 +112,7 @@ struct Sender::Impl {
     keyDelayUs = other.keyDelayUs;
     ready = other.ready;
     keyMap = std::move(other.keyMap);
+    charToKeycode = std::move(other.charToKeycode);
 
     other.eventSource = nullptr;
     other.currentMods = Modifier::None;
@@ -119,6 +125,7 @@ struct Sender::Impl {
   void initKeyMap() {
     auto km = ::axidev::io::keyboard::detail::initMacOSKeyMap();
     keyMap = std::move(km.keyToCode);
+    charToKeycode = std::move(km.charToKeycode);
   }
 
   [[nodiscard]] CGKeyCode macKeyCodeFor(Key key) const {

@@ -32,8 +32,9 @@ struct LinuxKeyMap {
   /// Map from logical Key enum to evdev keycode (for Sender)
   std::unordered_map<Key, int> keyToEvdev;
 
-  /// Map for character to keycode + shift requirement (for text typing)
-  std::unordered_map<char32_t, std::pair<int, bool>> charToKeycode;
+  /// Map for character to keycode + modifier requirements (for text typing)
+  /// Uses KeyMapping to track which modifiers are needed to produce each char.
+  std::unordered_map<char32_t, KeyMapping> charToKeycode;
 };
 
 /**

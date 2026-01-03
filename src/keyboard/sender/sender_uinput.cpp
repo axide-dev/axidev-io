@@ -48,9 +48,10 @@ struct Sender::Impl {
   Modifier currentMods{Modifier::None};
   uint32_t keyDelayUs{1000};
 
-  // Layout-aware mappings: character/Key -> (evdev keycode, needs shift)
+  // Layout-aware mappings: character/Key -> evdev keycode with required
+  // modifiers
   std::unordered_map<Key, int> keyMap;
-  std::unordered_map<char32_t, std::pair<int, bool>> charToKeycode;
+  std::unordered_map<char32_t, KeyMapping> charToKeycode;
 
   // XKB context for layout detection
   struct xkb_context *xkbCtx{nullptr};
@@ -310,8 +311,8 @@ struct Sender::Impl {
    * @internal
    * @brief Type a single Unicode codepoint using layout-derived keycodes.
    *
-   * Looks up the provided codepoint in `charToKeycode`, optionally holds
-   * shift if the character requires it, emits press/release for the resolved
+   * Looks up the provided codepoint in `charToKeycode`, applies the required
+   * modifiers (Shift, Ctrl, Alt), emits press/release for the resolved
    * evdev keycode, and synchronizes the event stream.
    *
    * @param cp Unicode codepoint (UTF-32).
@@ -325,11 +326,21 @@ struct Sender::Impl {
       return false;
     }
 
-    int evdevCode = it->second.first;
-    bool needsShift = it->second.second;
+    const KeyMapping &mapping = it->second;
+    int evdevCode = mapping.keycode;
+    Modifier requiredMods = mapping.requiredMods;
 
-    if (needsShift) {
+    // Press required modifiers
+    if (hasModifier(requiredMods, Modifier::Shift)) {
       sendKey(KEY_LEFTSHIFT, true);
+      delay();
+    }
+    if (hasModifier(requiredMods, Modifier::Ctrl)) {
+      sendKey(KEY_LEFTCTRL, true);
+      delay();
+    }
+    if (hasModifier(requiredMods, Modifier::Alt)) {
+      sendKey(KEY_LEFTALT, true);
       delay();
     }
 
@@ -337,7 +348,16 @@ struct Sender::Impl {
     delay();
     sendKey(evdevCode, false);
 
-    if (needsShift) {
+    // Release modifiers in reverse order
+    if (hasModifier(requiredMods, Modifier::Alt)) {
+      delay();
+      sendKey(KEY_LEFTALT, false);
+    }
+    if (hasModifier(requiredMods, Modifier::Ctrl)) {
+      delay();
+      sendKey(KEY_LEFTCTRL, false);
+    }
+    if (hasModifier(requiredMods, Modifier::Shift)) {
       delay();
       sendKey(KEY_LEFTSHIFT, false);
     }

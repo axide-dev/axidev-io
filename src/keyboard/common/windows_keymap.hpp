@@ -34,6 +34,10 @@ struct WindowsKeyMap {
 
   /// Map from Windows VK code to logical Key enum (for Listener)
   std::unordered_map<WORD, Key> vkToKey;
+
+  /// Map for character to VK code + modifier requirements (for text typing)
+  /// Uses KeyMapping to track which modifiers are needed to produce each char.
+  std::unordered_map<char32_t, KeyMapping> charToKeycode;
 };
 
 /**

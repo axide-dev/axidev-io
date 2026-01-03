@@ -199,8 +199,26 @@ WindowsKeyMap initWindowsKeyMap(HKL layout) {
     layout = GetKeyboardLayout(0);
   }
 
-  // Attempt layout-aware discovery via scan code enumeration
-  BYTE keyState[256]{}; // All keys up
+  // Define modifier combinations to scan.
+  // Windows uses VK_SHIFT (index 0x10), VK_CONTROL (0x11), VK_MENU/ALT (0x12)
+  struct ModifierScan {
+    bool shift;
+    bool ctrl;
+    bool alt;
+    Modifier axidevMods;
+  };
+
+  const ModifierScan modScans[] = {
+      {false, false, false, Modifier::None}, // No modifiers
+      {true, false, false, Modifier::Shift}, // Shift only
+      {false, true, false, Modifier::Ctrl},  // Ctrl only
+      {false, false, true, Modifier::Alt},   // Alt only
+      {false, true, true,
+       Modifier::Ctrl | Modifier::Alt}, // Ctrl+Alt (AltGr on some layouts)
+      {true, true, true,
+       Modifier::Shift | Modifier::Ctrl | Modifier::Alt}, // Shift+Ctrl+Alt
+  };
+
   wchar_t buf[4];
   static constexpr int kMaxScanCode = 128;
 
@@ -209,6 +227,8 @@ WindowsKeyMap initWindowsKeyMap(HKL layout) {
     if (vk == 0)
       continue;
 
+    // First pass: unmodified for Key enum mapping
+    BYTE keyState[256]{};
     int ret =
         ToUnicodeEx(vk, sc, keyState, buf,
                     static_cast<int>(sizeof(buf) / sizeof(buf[0])), 0, layout);
@@ -224,19 +244,67 @@ WindowsKeyMap initWindowsKeyMap(HKL layout) {
         mappedKeyString = "enter";
       } else if (first < 0x80) {
         mappedKeyString = std::string(1, static_cast<char>(first));
-      } else {
-        continue; // Non-ASCII/complex; skip for now
       }
 
-      Key mapped = stringToKey(mappedKeyString);
-      if (mapped != Key::Unknown) {
-        WORD vkWord = static_cast<WORD>(vk);
-        // Only add if not already present (first mapping wins)
-        if (keyMap.keyToVk.find(mapped) == keyMap.keyToVk.end()) {
-          keyMap.keyToVk[mapped] = vkWord;
+      if (!mappedKeyString.empty()) {
+        Key mapped = stringToKey(mappedKeyString);
+        if (mapped != Key::Unknown) {
+          WORD vkWord = static_cast<WORD>(vk);
+          // Only add if not already present (first mapping wins)
+          if (keyMap.keyToVk.find(mapped) == keyMap.keyToVk.end()) {
+            keyMap.keyToVk[mapped] = vkWord;
+          }
+          if (keyMap.vkToKey.find(vkWord) == keyMap.vkToKey.end()) {
+            keyMap.vkToKey[vkWord] = mapped;
+          }
         }
-        if (keyMap.vkToKey.find(vkWord) == keyMap.vkToKey.end()) {
-          keyMap.vkToKey[vkWord] = mapped;
+      }
+    }
+
+    // Second pass: scan all modifier combinations for charToKeycode
+    for (const auto &scan : modScans) {
+      BYTE modKeyState[256]{};
+      if (scan.shift) {
+        modKeyState[VK_SHIFT] = 0x80;
+      }
+      if (scan.ctrl) {
+        modKeyState[VK_CONTROL] = 0x80;
+      }
+      if (scan.alt) {
+        modKeyState[VK_MENU] = 0x80;
+      }
+
+      ret = ToUnicodeEx(vk, sc, modKeyState, buf,
+                        static_cast<int>(sizeof(buf) / sizeof(buf[0])), 0,
+                        layout);
+
+      if (ret > 0) {
+        // Handle both BMP characters and surrogate pairs
+        char32_t codepoint = 0;
+        if (ret == 1) {
+          codepoint = static_cast<char32_t>(buf[0]);
+        } else if (ret >= 2) {
+          // Check for surrogate pair
+          wchar_t high = buf[0];
+          wchar_t low = buf[1];
+          if (high >= 0xD800 && high <= 0xDBFF && low >= 0xDC00 &&
+              low <= 0xDFFF) {
+            codepoint =
+                0x10000 + ((static_cast<char32_t>(high - 0xD800) << 10) |
+                           static_cast<char32_t>(low - 0xDC00));
+          } else {
+            // Just use the first character if not a valid surrogate pair
+            codepoint = static_cast<char32_t>(buf[0]);
+          }
+        }
+
+        if (codepoint != 0) {
+          // Only add if not already present (prefer simpler modifier combos)
+          if (keyMap.charToKeycode.find(codepoint) ==
+              keyMap.charToKeycode.end()) {
+            keyMap.charToKeycode[codepoint] =
+                KeyMapping(static_cast<int32_t>(vk), scan.axidevMods);
+          }
         }
       }
     }
@@ -245,9 +313,10 @@ WindowsKeyMap initWindowsKeyMap(HKL layout) {
   // Add fallback mappings for keys not covered by layout scan
   fillWindowsFallbackMappings(keyMap);
 
-  AXIDEV_IO_LOG_DEBUG("Windows keymap: initialized with %zu keyToVk and %zu "
-                      "vkToKey entries",
-                      keyMap.keyToVk.size(), keyMap.vkToKey.size());
+  AXIDEV_IO_LOG_DEBUG("Windows keymap: initialized with %zu keyToVk, %zu "
+                      "vkToKey, and %zu charToKeycode entries",
+                      keyMap.keyToVk.size(), keyMap.vkToKey.size(),
+                      keyMap.charToKeycode.size());
 
   return keyMap;
 }

@@ -363,6 +363,41 @@ inline bool hasModifier(Modifier state, Modifier flag) {
   return (static_cast<uint8_t>(state) & static_cast<uint8_t>(flag)) != 0;
 }
 
+/**
+ * @struct KeyMapping
+ * @brief Associates a platform keycode with the modifiers required to produce
+ *        a specific character or Key.
+ *
+ * When discovering keyboard layout mappings, characters like '!' or '@' require
+ * holding Shift (and sometimes other modifiers). This structure captures both
+ * the base keycode and the required modifier state, allowing the Sender to
+ * correctly synthesize keystrokes and enabling the Listener to understand
+ * which modifiers were needed to produce a given input.
+ *
+ * The `keycode` field is platform-specific:
+ * - macOS: CGKeyCode (uint16_t)
+ * - Windows: Virtual-key code (WORD, uint16_t)
+ * - Linux: evdev keycode (int, stored as int32_t for consistency)
+ *
+ * @note This structure is used internally by the keymap initialization
+ *       functions on each platform.
+ */
+struct KeyMapping {
+  int32_t keycode{-1}; ///< Platform-specific keycode (-1 = invalid)
+  Modifier requiredMods{
+      Modifier::None}; ///< Modifiers needed to produce the character
+
+  /// Returns true if the mapping is valid (has a non-negative keycode).
+  bool isValid() const { return keycode >= 0; }
+
+  /// Default constructor creates an invalid mapping.
+  KeyMapping() = default;
+
+  /// Construct a mapping with a keycode and optional modifiers.
+  KeyMapping(int32_t code, Modifier mods = Modifier::None)
+      : keycode(code), requiredMods(mods) {}
+};
+
 // Backend capabilities description - describes what a backend / sender can do.
 /**
  * @struct Capabilities

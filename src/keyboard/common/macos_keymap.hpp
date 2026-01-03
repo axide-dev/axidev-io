@@ -33,6 +33,10 @@ struct MacOSKeyMap {
 
   /// Map from macOS CGKeyCode to logical Key enum (for Listener)
   std::unordered_map<CGKeyCode, Key> codeToKey;
+
+  /// Map for character to keycode + modifier requirements (for text typing)
+  /// Uses KeyMapping to track which modifiers are needed to produce each char.
+  std::unordered_map<char32_t, KeyMapping> charToKeycode;
 };
 
 /**
