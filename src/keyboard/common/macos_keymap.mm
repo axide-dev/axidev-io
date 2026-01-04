@@ -7,6 +7,7 @@
  * the Sender and Listener implementations to ensure consistent key translation.
  */
 
+#include "axidev-io/keyboard/common.hpp"
 #ifdef __APPLE__
 
 #include "keyboard/common/macos_keymap.hpp"
@@ -24,9 +25,15 @@ void fillMacOSFallbackMappings(MacOSKeyMap &keyMap) {
   auto setIfMissing = [&keyMap](Key key, CGKeyCode code) {
     if (keyMap.keyToCode.find(key) == keyMap.keyToCode.end()) {
       keyMap.keyToCode[key] = code;
+      AXIDEV_IO_LOG_DEBUG(
+          "macOS keymap: adding fallback mapping for %s to code %d",
+          keyToString(key).c_str(), code);
     }
     if (keyMap.codeToKey.find(code) == keyMap.codeToKey.end()) {
       keyMap.codeToKey[code] = key;
+      AXIDEV_IO_LOG_DEBUG(
+          "macOS keymap: adding fallback mapping for code %d to %s", code,
+          keyToString(key).c_str());
     }
   };
 
