@@ -53,8 +53,9 @@ Basic usage (C):
 static void my_cb(uint32_t codepoint, axidev_io_keyboard_key_t key,
                   axidev_io_keyboard_modifier_t mods, bool pressed, void *ud) {
   (void)ud;
+  (void)codepoint; /* Prioritize key/mods for portability */
   char *name = axidev_io_keyboard_key_to_string(key);
-  printf("key=%s codepoint=%u mods=0x%02x %s\n", name ? name : "?", (unsigned)codepoint,
+  printf("key=%s mods=0x%02x %s\n", name ? name : "?",
          (unsigned)mods, pressed ? "pressed" : "released");
   if (name) axidev_io_free_string(name);
 }

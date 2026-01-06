@@ -150,6 +150,9 @@ typedef struct axidev_io_keyboard_capabilities_t {
  * event detected on the system.
  *
  * @param codepoint Unicode codepoint produced by the key event (0 if none).
+ *                  This value is provided for convenience but is often not
+ *                  needed; usage of @p key and @p mods is generally preferred
+ *                  for consistency and portability across backends.
  * @param key Logical key id (axidev_io_keyboard_key_t; 0 if unknown).
  * @param mods Current modifier bitmask (axidev_io_modifier_t).
  * @param pressed True for key press, false for key release.

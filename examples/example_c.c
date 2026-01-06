@@ -40,17 +40,16 @@ static void my_listener_cb(uint32_t codepoint, axidev_io_keyboard_key_t key,
                            axidev_io_keyboard_modifier_t mods, bool pressed,
                            void *user_data) {
   (void)user_data;
+  (void)codepoint; /* Often not needed; prefer using logical keys/mods */
   char *kname = axidev_io_keyboard_key_to_string(key);
   if (kname) {
-    printf("Listener event: codepoint=%u key=%s mods=0x%02x %s\n",
-           (unsigned)codepoint, kname, (unsigned)mods,
+    printf("Listener event: key=%s mods=0x%02x %s\n", kname, (unsigned)mods,
            pressed ? "PRESSED" : "RELEASED");
     axidev_io_free_string(kname);
   } else {
     /* Fallback if key->string failed for some reason */
-    printf("Listener event: codepoint=%u key=%u mods=0x%02x %s\n",
-           (unsigned)codepoint, (unsigned)key, (unsigned)mods,
-           pressed ? "PRESSED" : "RELEASED");
+    printf("Listener event: key_id=%u mods=0x%02x %s\n", (unsigned)key,
+           (unsigned)mods, pressed ? "PRESSED" : "RELEASED");
     print_last_error_if_any("axidev_io_keyboard_key_to_string");
   }
 }
@@ -70,19 +69,19 @@ int main(void) {
 
   printf("Emitting sample log messages:\n");
   axidev_io_log_message(AXIDEV_IO_LOG_LEVEL_DEBUG, __FILE__, __LINE__,
-                      "Debug message with value: %d", 42);
+                        "Debug message with value: %d", 42);
   axidev_io_log_message(AXIDEV_IO_LOG_LEVEL_INFO, __FILE__, __LINE__,
-                      "Info message: %s", "example");
+                        "Info message: %s", "example");
   axidev_io_log_message(AXIDEV_IO_LOG_LEVEL_WARN, __FILE__, __LINE__,
-                      "Warning message");
+                        "Warning message");
 
   /* Change log level to suppress debug/info messages */
   printf("\nSetting log level to WARN...\n");
   axidev_io_log_set_level(AXIDEV_IO_LOG_LEVEL_WARN);
   axidev_io_log_message(AXIDEV_IO_LOG_LEVEL_DEBUG, __FILE__, __LINE__,
-                      "This debug message should NOT appear");
+                        "This debug message should NOT appear");
   axidev_io_log_message(AXIDEV_IO_LOG_LEVEL_WARN, __FILE__, __LINE__,
-                      "This warning SHOULD appear");
+                        "This warning SHOULD appear");
 
   /* Reset to debug for testing */
   axidev_io_log_set_level(AXIDEV_IO_LOG_LEVEL_DEBUG);
@@ -121,8 +120,8 @@ int main(void) {
 
   if (caps.can_inject_text) {
     printf("Typing text via sender: \"Hello from axidev-io C API\\n\"\n");
-    if (!axidev_io_keyboard_sender_type_text_utf8(sender,
-                                                "Hello from axidev-io C API\n")) {
+    if (!axidev_io_keyboard_sender_type_text_utf8(
+            sender, "Hello from axidev-io C API\n")) {
       fprintf(stderr, "axidev_io_keyboard_sender_type_text_utf8 failed\n");
       print_last_error_if_any("axidev_io_keyboard_sender_type_text_utf8");
     }

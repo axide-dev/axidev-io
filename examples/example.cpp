@@ -111,17 +111,18 @@ int main(int argc, char **argv) {
       int seconds = std::stoi(argv[++i]);
       AXIDEV_IO_LOG_INFO("example: starting listener for %d seconds", seconds);
       axidev::io::keyboard::Listener listener;
-      bool started = listener.start([](char32_t codepoint, axidev::io::keyboard::Key key,
+      bool started = listener.start([](char32_t /*unused*/, axidev::io::keyboard::Key key,
                                        axidev::io::keyboard::Modifier mods, bool pressed) {
+        // We prefer using 'key' and 'mods' as they are more portable and
+        // reliable across different OS backends than raw codepoints.
         std::cout << (pressed ? "[press]  " : "[release] ")
                   << "Key=" << axidev::io::keyboard::keyToString(key)
-                  << " CP=" << static_cast<unsigned>(codepoint) << " Mods=0x"
+                  << " Mods=0x"
                   << std::hex << static_cast<int>(static_cast<uint8_t>(mods))
                   << std::dec << "\n";
-        AXIDEV_IO_LOG_DEBUG("example: listener %s key=%s cp=%u mods=0x%02x",
+        AXIDEV_IO_LOG_DEBUG("example: listener %s key=%s mods=0x%02x",
                           pressed ? "press" : "release",
                           axidev::io::keyboard::keyToString(key).c_str(),
-                          static_cast<unsigned>(codepoint),
                           static_cast<int>(static_cast<uint8_t>(mods)));
       });
       if (!started) {
