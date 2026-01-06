@@ -872,6 +872,83 @@ AXIDEV_IO_API Key stringToKey(const std::string &input) {
   return Key::Unknown;
 }
 
+/**
+ * @brief Convert a Key with its required modifiers to a human-readable string.
+ *
+ * @param key Logical key to convert.
+ * @param mods Modifiers required to produce this key.
+ * @return std::string Human-readable string with modifiers and key.
+ */
+AXIDEV_IO_API std::string keyToStringWithModifier(Key key, Modifier mods) {
+  std::string result;
+
+  if (hasModifier(mods, Modifier::Super)) {
+    result += "Super+";
+  }
+  if (hasModifier(mods, Modifier::Ctrl)) {
+    result += "Ctrl+";
+  }
+  if (hasModifier(mods, Modifier::Alt)) {
+    result += "Alt+";
+  }
+  if (hasModifier(mods, Modifier::Shift)) {
+    result += "Shift+";
+  }
+
+  result += keyToString(key);
+  return result;
+}
+
+/**
+ * @brief Parse a textual key name that may include modifier prefixes.
+ *
+ * @param str Input string (case-insensitive; accepts modifier prefixes).
+ * @return KeyWithModifier Parsed key and required modifiers.
+ */
+AXIDEV_IO_API KeyWithModifier stringToKeyWithModifier(const std::string &str) {
+  if (str.empty()) {
+    return KeyWithModifier(Key::Unknown, Modifier::None);
+  }
+
+  Modifier mods = Modifier::None;
+  std::string remaining = str;
+
+  // Parse modifier prefixes (case-insensitive)
+  // We repeatedly look for known modifier prefixes followed by '+' or '-'
+  bool foundModifier = true;
+  while (foundModifier && !remaining.empty()) {
+    foundModifier = false;
+    std::string lower = toLower(remaining);
+
+    // Check for each modifier prefix
+    static const std::pair<const char *, Modifier> modPrefixes[] = {
+        {"super+", Modifier::Super},  {"super-", Modifier::Super},
+        {"cmd+", Modifier::Super},    {"cmd-", Modifier::Super},
+        {"win+", Modifier::Super},    {"win-", Modifier::Super},
+        {"meta+", Modifier::Super},   {"meta-", Modifier::Super},
+        {"ctrl+", Modifier::Ctrl},    {"ctrl-", Modifier::Ctrl},
+        {"control+", Modifier::Ctrl}, {"control-", Modifier::Ctrl},
+        {"alt+", Modifier::Alt},      {"alt-", Modifier::Alt},
+        {"opt+", Modifier::Alt},      {"opt-", Modifier::Alt},
+        {"option+", Modifier::Alt},   {"option-", Modifier::Alt},
+        {"shift+", Modifier::Shift},  {"shift-", Modifier::Shift},
+    };
+
+    for (const auto &[prefix, mod] : modPrefixes) {
+      if (lower.rfind(prefix, 0) == 0) {
+        mods = mods | mod;
+        remaining = remaining.substr(std::strlen(prefix));
+        foundModifier = true;
+        break;
+      }
+    }
+  }
+
+  // Parse the remaining key name
+  Key key = stringToKey(remaining);
+  return KeyWithModifier(key, mods);
+}
+
 } // namespace keyboard
 } // namespace io
 } // namespace axidev

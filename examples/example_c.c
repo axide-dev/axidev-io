@@ -41,16 +41,18 @@ static void my_listener_cb(uint32_t codepoint, axidev_io_keyboard_key_t key,
                            void *user_data) {
   (void)user_data;
   (void)codepoint; /* Often not needed; prefer using logical keys/mods */
-  char *kname = axidev_io_keyboard_key_to_string(key);
+
+  /* Use the modifier-aware key-to-string function for cleaner output.
+   * This will show "Shift+A" instead of "key=A mods=0x01" */
+  char *kname = axidev_io_keyboard_key_to_string_with_modifier(key, mods);
   if (kname) {
-    printf("Listener event: key=%s mods=0x%02x %s\n", kname, (unsigned)mods,
-           pressed ? "PRESSED" : "RELEASED");
+    printf("Listener event: %s %s\n", kname, pressed ? "PRESSED" : "RELEASED");
     axidev_io_free_string(kname);
   } else {
     /* Fallback if key->string failed for some reason */
     printf("Listener event: key_id=%u mods=0x%02x %s\n", (unsigned)key,
            (unsigned)mods, pressed ? "PRESSED" : "RELEASED");
-    print_last_error_if_any("axidev_io_keyboard_key_to_string");
+    print_last_error_if_any("axidev_io_keyboard_key_to_string_with_modifier");
   }
 }
 
@@ -87,6 +89,46 @@ int main(void) {
   axidev_io_log_set_level(AXIDEV_IO_LOG_LEVEL_DEBUG);
 
   printf("\n--- Keyboard Sender/Listener Demo ---\n");
+
+  /* Demonstrate the new modifier-aware parsing API */
+  printf("\n--- Modifier-Aware Key Parsing Demo ---\n");
+  {
+    const char *combo_str = "Ctrl+Shift+S";
+    axidev_io_keyboard_key_t parsed_key;
+    axidev_io_keyboard_modifier_t parsed_mods;
+
+    if (axidev_io_keyboard_string_to_key_with_modifier(combo_str, &parsed_key,
+                                                       &parsed_mods)) {
+      char *key_name = axidev_io_keyboard_key_to_string(parsed_key);
+      printf("Parsed \"%s\":\n", combo_str);
+      printf("  Key: %s\n", key_name ? key_name : "(unknown)");
+      printf("  Modifiers: 0x%02x", (unsigned)parsed_mods);
+      if (parsed_mods & AXIDEV_IO_MOD_SHIFT)
+        printf(" [Shift]");
+      if (parsed_mods & AXIDEV_IO_MOD_CTRL)
+        printf(" [Ctrl]");
+      if (parsed_mods & AXIDEV_IO_MOD_ALT)
+        printf(" [Alt]");
+      if (parsed_mods & AXIDEV_IO_MOD_SUPER)
+        printf(" [Super]");
+      printf("\n");
+
+      /* Round-trip: convert back to string */
+      char *canonical = axidev_io_keyboard_key_to_string_with_modifier(
+          parsed_key, parsed_mods);
+      if (canonical) {
+        printf("  Canonical form: %s\n", canonical);
+        axidev_io_free_string(canonical);
+      }
+      if (key_name)
+        axidev_io_free_string(key_name);
+    } else {
+      fprintf(stderr, "Failed to parse combo: %s\n", combo_str);
+      print_last_error_if_any("axidev_io_keyboard_string_to_key_with_modifier");
+    }
+  }
+
+  printf("\n--- Sender/Listener Demo ---\n");
 
   axidev_io_keyboard_sender_t sender = axidev_io_keyboard_sender_create();
   if (!sender) {

@@ -252,14 +252,34 @@ private:
 
     // Map CGKeyCode to our Key enum
     Key mapped = Key::Unknown;
-    auto it = self->cgKeyToKey.find(keyCode);
-    if (it != self->cgKeyToKey.end()) {
+    auto it = self->keyMap.codeToKey.find(keyCode);
+    if (it != self->keyMap.codeToKey.end()) {
       mapped = it->second;
     }
 
     // Modifiers
     CGEventFlags flags = CGEventGetFlags(event);
     Modifier mods = flagsToModifier(flags);
+
+    // Try modifier-aware key resolution to get the correct Key for shifted
+    // characters. For example, Shift+1 on US keyboard produces '!' which maps
+    // to Key::Exclamation.
+    Key modifierAwareKey =
+        ::axidev::io::keyboard::detail::resolveKeyFromCodeAndMods(
+            self->keyMap, keyCode, mods);
+    if (modifierAwareKey != Key::Unknown) {
+      // Use the modifier-aware key, but keep the base key in 'mapped' for
+      // control/navigation keys where we want the physical key identity.
+      // For printable characters, prefer the modifier-aware resolution.
+      if (modifierAwareKey != mapped) {
+        AXIDEV_IO_LOG_DEBUG(
+            "Listener (macOS): modifier-aware resolution: keycode=%u "
+            "mods=0x%02X -> Key::%s (base was Key::%s)",
+            static_cast<unsigned>(keyCode), static_cast<unsigned>(mods),
+            keyToString(modifierAwareKey).c_str(), keyToString(mapped).c_str());
+        mapped = modifierAwareKey;
+      }
+    }
 
     // For letter and number keys, derive the codepoint from the Key enum
     // rather than trusting CGEventKeyboardGetUnicodeString. This ensures
@@ -313,10 +333,7 @@ private:
         if (elapsed < kReleaseDebounceMs && sigIt->second.first == codepoint &&
             sigIt->second.second == mods) {
           if (output_debug_enabled()) {
-            std::string kname = "Unknown";
-            auto kIt = self->cgKeyToKey.find(keyCode);
-            if (kIt != self->cgKeyToKey.end())
-              kname = keyToString(kIt->second);
+            std::string kname = keyToString(mapped);
             AXIDEV_IO_LOG_DEBUG(
                 "Listener (macOS): ignoring duplicate release (same cp+mods) "
                 "for keycode=%u key=%s cp=%u mods=%u",
@@ -366,10 +383,7 @@ private:
     }
 
     {
-      std::string kname = "Unknown";
-      auto kIt = self->cgKeyToKey.find(keyCode);
-      if (kIt != self->cgKeyToKey.end())
-        kname = keyToString(kIt->second);
+      std::string kname = keyToString(mapped);
       AXIDEV_IO_LOG_DEBUG("Listener (macOS) %s: keycode=%u key=%s cp=%u mods=%u",
                         pressed ? "press" : "release", (unsigned)keyCode,
                         kname.c_str(), (unsigned)codepoint, (unsigned)mods);
@@ -379,12 +393,10 @@ private:
     return event;
   }
 
-  // Build a reverse mapping CGKeyCode -> Key using the same discovery logic
-  // used by the InputBackend on macOS.
+  // Build key map using the same discovery logic used by the InputBackend on
+  // macOS. Store the full key map so we can use modifier-aware key resolution.
   void initKeyMap() {
-    cgKeyToKey.clear();
-    auto km = ::axidev::io::keyboard::detail::initMacOSKeyMap();
-    cgKeyToKey = std::move(km.codeToKey);
+    keyMap = ::axidev::io::keyboard::detail::initMacOSKeyMap();
   }
 
   // Safely invoke user callback
@@ -410,8 +422,8 @@ private:
   CFRunLoopSourceRef runLoopSource;
   CFRunLoopRef runLoop;
 
-  // Reverse mapping
-  std::unordered_map<CGKeyCode, Key> cgKeyToKey;
+  // Full key map for modifier-aware key resolution
+  ::axidev::io::keyboard::detail::MacOSKeyMap keyMap;
 
   // Last-seen unicode codepoint for keycodes (press -> release fallback).
   // Some macOS configurations produce keyup events without a Unicode string

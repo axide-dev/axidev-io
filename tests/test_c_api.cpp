@@ -39,6 +39,57 @@ TEST(CApiTest, KeyStringConversion) {
   axidev_io_free_string(unk_s);
 }
 
+TEST(CApiTest, KeyStringWithModifierConversion) {
+  axidev_io_clear_last_error();
+
+  /* Test keyToStringWithModifier */
+  char *s = axidev_io_keyboard_key_to_string_with_modifier(
+      axidev_io_keyboard_string_to_key("A"), AXIDEV_IO_MOD_SHIFT);
+  ASSERT_NE(s, nullptr);
+  EXPECT_NE(std::string(s).find("Shift"), std::string::npos);
+  EXPECT_NE(std::string(s).find("A"), std::string::npos);
+  axidev_io_free_string(s);
+
+  /* Test with multiple modifiers */
+  s = axidev_io_keyboard_key_to_string_with_modifier(
+      axidev_io_keyboard_string_to_key("C"),
+      AXIDEV_IO_MOD_CTRL | AXIDEV_IO_MOD_SHIFT);
+  ASSERT_NE(s, nullptr);
+  EXPECT_NE(std::string(s).find("Ctrl"), std::string::npos);
+  EXPECT_NE(std::string(s).find("Shift"), std::string::npos);
+  EXPECT_NE(std::string(s).find("C"), std::string::npos);
+  axidev_io_free_string(s);
+
+  /* Test stringToKeyWithModifier */
+  axidev_io_keyboard_key_t key;
+  axidev_io_keyboard_modifier_t mods;
+  EXPECT_TRUE(
+      axidev_io_keyboard_string_to_key_with_modifier("Shift+A", &key, &mods));
+  EXPECT_NE(key, 0u);
+  EXPECT_TRUE((mods & AXIDEV_IO_MOD_SHIFT) != 0);
+
+  /* Verify the parsed key is correct */
+  char *key_name = axidev_io_keyboard_key_to_string(key);
+  ASSERT_NE(key_name, nullptr);
+  EXPECT_EQ(std::string(key_name), "A");
+  axidev_io_free_string(key_name);
+
+  /* Test with multiple modifier prefixes */
+  EXPECT_TRUE(axidev_io_keyboard_string_to_key_with_modifier("Ctrl+Shift+S",
+                                                             &key, &mods));
+  EXPECT_NE(key, 0u);
+  EXPECT_TRUE((mods & AXIDEV_IO_MOD_CTRL) != 0);
+  EXPECT_TRUE((mods & AXIDEV_IO_MOD_SHIFT) != 0);
+
+  /* Test NULL handling */
+  EXPECT_FALSE(
+      axidev_io_keyboard_string_to_key_with_modifier(NULL, &key, &mods));
+  EXPECT_FALSE(
+      axidev_io_keyboard_string_to_key_with_modifier("Shift+A", NULL, &mods));
+  EXPECT_FALSE(
+      axidev_io_keyboard_string_to_key_with_modifier("Shift+A", &key, NULL));
+}
+
 TEST(CApiTest, SenderCreationAndErrorHandling) {
   axidev_io_clear_last_error();
 

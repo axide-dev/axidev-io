@@ -51,6 +51,64 @@ int main() {
 - Use `combo(mods, key)` to safely perform shortcuts (it will hold modifiers, tap the key, then release modifiers).
 - Use `setKeyDelay()` to tune the timing of `tap`/`combo` if necessary for fragile apps.
 
+### Modifier-aware key handling
+
+The library provides modifier-aware APIs for working with key combinations:
+
+- **`keyToStringWithModifier(key, mods)`** - Convert a key and modifiers to a human-readable string like `"Shift+A"` or `"Ctrl+C"`.
+- **`stringToKeyWithModifier(str)`** - Parse strings like `"Shift+A"` or `"Ctrl+Shift+C"` into a `KeyWithModifier` struct containing both the key and required modifiers.
+- **`KeyWithModifier`** struct - Pairs a `Key` with its required `Modifier` flags.
+
+Example usage:
+
+```cpp
+#include <axidev-io/keyboard/common.hpp>
+#include <iostream>
+
+using namespace axidev::io::keyboard;
+
+// Parse a combo string
+auto kwm = stringToKeyWithModifier("Ctrl+Shift+S");
+std::cout << "Key: " << keyToString(kwm.key) << "\n";        // "S"
+std::cout << "Has Ctrl: " << hasModifier(kwm.requiredMods, Modifier::Ctrl) << "\n";  // true
+std::cout << "Has Shift: " << hasModifier(kwm.requiredMods, Modifier::Shift) << "\n"; // true
+
+// Convert back to string
+std::string combo = keyToStringWithModifier(kwm.key, kwm.requiredMods);
+std::cout << "Combo: " << combo << "\n";  // "Shift+Ctrl+S"
+
+// Execute the combo
+sender.combo(kwm.requiredMods, kwm.key);
+```
+
+### Layout-aware key mapping
+
+The library discovers keyboard layout mappings at runtime from the operating system. The `KeyMap` singleton provides access to these mappings:
+
+```cpp
+#include "keyboard/common/keymap.hpp"  // Internal header
+
+using namespace axidev::io::keyboard;
+
+// Get the singleton instance (auto-initializes on first use)
+auto& km = KeyMap::instance();
+
+// Look up what key+modifiers produce a character
+auto kwm = km.keyForCharacter('!');  // Returns Key::Num1 + Modifier::Shift on US layout
+
+// Check if a character can be typed
+if (km.canTypeCharacter('@')) {
+  auto mapping = km.mappingForCharacter('@');
+  // mapping contains keycode and required modifiers
+}
+```
+
+This is particularly useful for:
+
+- Determining what key combination produces a given character on the current layout
+- Building layout-independent text input systems
+- Understanding modifier requirements for symbols that vary by keyboard layout
+
 ## Examples
 
 - Look at `examples/` for small example programs demonstrating typical usage.

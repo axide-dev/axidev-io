@@ -312,6 +312,14 @@ private:
       return;
     }
 
+    // Initialize our keymap for modifier-aware key resolution using the
+    // xkb keymap and state that was just set up.
+    linuxKeyMap = detail::initLinuxKeyMap(xkbKeymap, xkbState);
+    AXIDEV_IO_LOG_DEBUG(
+        "Listener (Linux/libinput): Initialized keymap with %zu "
+        "evdev->Key mappings and %zu char->keycode mappings",
+        linuxKeyMap.evdevToKey.size(), linuxKeyMap.charToKeycode.size());
+
     ready.store(true);
     AXIDEV_IO_LOG_INFO("Listener (Linux/libinput): Monitoring started");
 
@@ -371,6 +379,26 @@ private:
     // Update xkb state
     xkb_state_update_key(xkbState, xkbKey, pressed ? XKB_KEY_DOWN : XKB_KEY_UP);
 
+    // Extract modifiers via xkb state FIRST (needed for modifier-aware key
+    // resolution)
+    Modifier mods = Modifier::None;
+    if (xkb_state_mod_name_is_active(xkbState, XKB_MOD_NAME_SHIFT,
+                                     XKB_STATE_MODS_EFFECTIVE))
+      mods = mods | Modifier::Shift;
+    if (xkb_state_mod_name_is_active(xkbState, XKB_MOD_NAME_CTRL,
+                                     XKB_STATE_MODS_EFFECTIVE))
+      mods = mods | Modifier::Ctrl;
+    if (xkb_state_mod_name_is_active(xkbState, XKB_MOD_NAME_ALT,
+                                     XKB_STATE_MODS_EFFECTIVE))
+      mods = mods | Modifier::Alt;
+    if (xkb_state_mod_name_is_active(xkbState, XKB_MOD_NAME_LOGO,
+                                     XKB_STATE_MODS_EFFECTIVE))
+      mods = mods | Modifier::Super;
+    // CapsLock is typically exposed as the "Lock" modifier name
+    if (xkb_state_mod_name_is_active(xkbState, "Lock",
+                                     XKB_STATE_MODS_EFFECTIVE))
+      mods = mods | Modifier::CapsLock;
+
     // Determine keysym and unicode codepoint (best-effort)
     xkb_keysym_t sym = xkb_state_key_get_one_sym(xkbState, xkbKey);
     char32_t codepoint = 0;
@@ -402,14 +430,15 @@ private:
       }
     }
 
-    // Map keysym -> Key
-    Key mapped = mapKeysymToKey(sym);
+    // Use modifier-aware key resolution to get the correct logical key
+    // based on the evdev keycode and active modifiers.
+    Key mapped = detail::resolveKeyFromEvdevAndMods(linuxKeyMap, keycode, mods);
 
-    // Extract modifiers via xkb state
-    Modifier mods = Modifier::None;
-    if (xkb_state_mod_name_is_active(xkbState, XKB_MOD_NAME_SHIFT,
-                                     XKB_STATE_MODS_EFFECTIVE))
-      mods = mods | Modifier::Shift;
+    // Fall back to keysym-based mapping if modifier-aware lookup didn't find
+    // anything
+    if (mapped == Key::Unknown) {
+      mapped = mapKeysymToKey(sym);
+    }
 
     // For letter and number keys, derive the codepoint from the Key enum
     // rather than trusting xkb_keysym_to_utf32. This ensures consistent output
@@ -426,20 +455,6 @@ private:
         }
       }
     }
-
-    if (xkb_state_mod_name_is_active(xkbState, XKB_MOD_NAME_CTRL,
-                                     XKB_STATE_MODS_EFFECTIVE))
-      mods = mods | Modifier::Ctrl;
-    if (xkb_state_mod_name_is_active(xkbState, XKB_MOD_NAME_ALT,
-                                     XKB_STATE_MODS_EFFECTIVE))
-      mods = mods | Modifier::Alt;
-    if (xkb_state_mod_name_is_active(xkbState, XKB_MOD_NAME_LOGO,
-                                     XKB_STATE_MODS_EFFECTIVE))
-      mods = mods | Modifier::Super;
-    // CapsLock is typically exposed as the "Lock" modifier name
-    if (xkb_state_mod_name_is_active(xkbState, "Lock",
-                                     XKB_STATE_MODS_EFFECTIVE))
-      mods = mods | Modifier::CapsLock;
 
     // Copy/dispatch callback under lock
     Callback cbCopy;
@@ -486,6 +501,9 @@ private:
   // Store unicode codepoints computed at key-press time so they can be
   // delivered on key-release events.
   std::unordered_map<uint32_t, char32_t> pendingCodepoints;
+
+  // Full keymap for modifier-aware key resolution
+  detail::LinuxKeyMap linuxKeyMap;
 
   struct libinput *li = nullptr;
   struct xkb_context *xkbCtx = nullptr;

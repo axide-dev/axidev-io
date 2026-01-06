@@ -225,7 +225,8 @@ WindowsKeyMap initWindowsKeyMap(HKL layout) {
       }
     }
 
-    // Second pass: scan all modifier combinations for charToKeycode
+    // Second pass: scan all modifier combinations for charToKeycode and
+    // vkAndModsToKey
     for (const auto &scan : modScans) {
       BYTE modKeyState[256]{};
       if (scan.shift) {
@@ -263,11 +264,32 @@ WindowsKeyMap initWindowsKeyMap(HKL layout) {
         }
 
         if (codepoint != 0) {
-          // Only add if not already present (prefer simpler modifier combos)
+          // Map codepoint -> character string -> Key
+          std::string charStr;
+          if (codepoint < 0x80) {
+            charStr = std::string(1, static_cast<char>(codepoint));
+          }
+
+          Key mappedKey = Key::Unknown;
+          if (!charStr.empty()) {
+            mappedKey = stringToKey(charStr);
+          }
+
+          // Register in charToKeycode (only if not already present)
           if (keyMap.charToKeycode.find(codepoint) ==
               keyMap.charToKeycode.end()) {
-            keyMap.charToKeycode[codepoint] =
-                KeyMapping(static_cast<int32_t>(vk), scan.axidevMods);
+            keyMap.charToKeycode[codepoint] = KeyMapping(
+                static_cast<int32_t>(vk), scan.axidevMods, mappedKey);
+          }
+
+          // Register in vkAndModsToKey for reverse lookup
+          if (mappedKey != Key::Unknown) {
+            uint32_t lookupKey =
+                encodeVkMods(static_cast<WORD>(vk), scan.axidevMods);
+            if (keyMap.vkAndModsToKey.find(lookupKey) ==
+                keyMap.vkAndModsToKey.end()) {
+              keyMap.vkAndModsToKey[lookupKey] = mappedKey;
+            }
           }
         }
       }
@@ -278,11 +300,31 @@ WindowsKeyMap initWindowsKeyMap(HKL layout) {
   fillWindowsFallbackMappings(keyMap);
 
   AXIDEV_IO_LOG_DEBUG("Windows keymap: initialized with %zu keyToVk, %zu "
-                      "vkToKey, and %zu charToKeycode entries",
+                      "vkToKey, %zu charToKeycode, and %zu vkAndModsToKey "
+                      "entries",
                       keyMap.keyToVk.size(), keyMap.vkToKey.size(),
-                      keyMap.charToKeycode.size());
+                      keyMap.charToKeycode.size(),
+                      keyMap.vkAndModsToKey.size());
 
   return keyMap;
+}
+
+Key resolveKeyFromVkAndMods(const WindowsKeyMap &keyMap, WORD vk,
+                            Modifier mods) {
+  // First, try to find an exact match with the modifiers
+  uint32_t lookupKey = encodeVkMods(vk, mods);
+  auto it = keyMap.vkAndModsToKey.find(lookupKey);
+  if (it != keyMap.vkAndModsToKey.end()) {
+    return it->second;
+  }
+
+  // Fall back to the base key mapping (no modifiers)
+  auto baseIt = keyMap.vkToKey.find(vk);
+  if (baseIt != keyMap.vkToKey.end()) {
+    return baseIt->second;
+  }
+
+  return Key::Unknown;
 }
 
 } // namespace axidev::io::keyboard::detail

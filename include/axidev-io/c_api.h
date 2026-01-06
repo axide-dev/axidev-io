@@ -412,6 +412,34 @@ AXIDEV_IO_API char *axidev_io_keyboard_key_to_string(axidev_io_keyboard_key_t ke
 AXIDEV_IO_API axidev_io_keyboard_key_t axidev_io_keyboard_string_to_key(const char *name);
 
 /**
+ * @brief Convert a Key and modifiers to a heap-allocated, null-terminated
+ * string.
+ *
+ * Returns a string that includes modifier prefixes, e.g., "Shift+A" or
+ * "Ctrl+C".
+ *
+ * @param key Key to convert.
+ * @param mods Modifier bitmask to include in the output.
+ * @return char* Heap-allocated string with modifiers and key (caller must free
+ * with `axidev_io_free_string`), or NULL on allocation failure.
+ */
+AXIDEV_IO_API char *axidev_io_keyboard_key_to_string_with_modifier(
+    axidev_io_keyboard_key_t key, axidev_io_keyboard_modifier_t mods);
+
+/**
+ * @brief Parse a key combo string (e.g., "Shift+A", "Ctrl+Shift+C") into key
+ * and modifiers.
+ *
+ * @param combo Null-terminated string with optional modifier prefixes.
+ * @param out_key Output pointer for the parsed key (must not be NULL).
+ * @param out_mods Output pointer for the parsed modifiers (must not be NULL).
+ * @return true on successful parse; false if combo is NULL or parsing fails.
+ */
+AXIDEV_IO_API bool axidev_io_keyboard_string_to_key_with_modifier(
+    const char *combo, axidev_io_keyboard_key_t *out_key,
+    axidev_io_keyboard_modifier_t *out_mods);
+
+/**
  * @brief Get the library version string.
  * @return const char* Pointer to an internal, null-terminated version string
  * (do not free).

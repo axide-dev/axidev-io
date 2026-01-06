@@ -104,9 +104,10 @@ static void handleListenerEvent(TestState &state, char32_t /*cp*/, Key key,
   } else if (key == Key::Minus) {
     state.observed += '-';
   } else {
+    // Use modifier-aware key-to-string for clearer debug output
     AXIDEV_IO_LOG_DEBUG(
         "Listener test cb: non-printable or unhandled key=%s observed='%s'",
-        keyToString(key).c_str(), state.observed.c_str());
+        keyToStringWithModifier(key, mods).c_str(), state.observed.c_str());
   }
 }
 

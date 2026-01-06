@@ -258,7 +258,8 @@ MacOSKeyMap initMacOSKeyMap() {
       }
     }
 
-    // Second pass: scan all modifier combinations for charToKeycode
+    // Second pass: scan all modifier combinations for charToKeycode and
+    // codeAndModsToKey
     for (const auto &scan : modScans) {
       keysDown = 0;
       unicodeString.fill(0);
@@ -291,11 +292,37 @@ MacOSKeyMap initMacOSKeyMap() {
         }
 
         if (codepoint != 0) {
-          // Only add if not already present (prefer simpler modifier combos)
+          // Map codepoint -> character string -> Key
+          std::string charStr;
+          static constexpr UniChar kAsciiMax = 0x80;
+          if (codepoint < kAsciiMax) {
+            charStr = std::string(1, static_cast<char>(codepoint));
+          }
+
+          Key mappedKey = Key::Unknown;
+          if (!charStr.empty()) {
+            mappedKey = stringToKey(charStr);
+          }
+
+          // Register in charToKeycode (only if not already present)
           if (keyMap.charToKeycode.find(codepoint) ==
               keyMap.charToKeycode.end()) {
-            keyMap.charToKeycode[codepoint] =
-                KeyMapping(static_cast<int32_t>(keyCode), scan.axidevMods);
+            keyMap.charToKeycode[codepoint] = KeyMapping(
+                static_cast<int32_t>(keyCode), scan.axidevMods, mappedKey);
+          }
+
+          // Register in codeAndModsToKey for reverse lookup
+          if (mappedKey != Key::Unknown) {
+            uint32_t lookupKey = encodeKeycodeMods(
+                static_cast<CGKeyCode>(keyCode), scan.axidevMods);
+            if (keyMap.codeAndModsToKey.find(lookupKey) ==
+                keyMap.codeAndModsToKey.end()) {
+              keyMap.codeAndModsToKey[lookupKey] = mappedKey;
+              AXIDEV_IO_LOG_DEBUG(
+                  "macOS keymap: registered code=%d + mods=0x%02X -> Key::%s",
+                  keyCode, static_cast<unsigned>(scan.axidevMods),
+                  keyToString(mappedKey).c_str());
+            }
           }
         }
       }
@@ -308,11 +335,31 @@ MacOSKeyMap initMacOSKeyMap() {
   fillMacOSFallbackMappings(keyMap);
 
   AXIDEV_IO_LOG_DEBUG("macOS keymap: initialized with %zu keyToCode, %zu "
-                      "codeToKey, and %zu charToKeycode entries",
+                      "codeToKey, %zu charToKeycode, and %zu codeAndModsToKey "
+                      "entries",
                       keyMap.keyToCode.size(), keyMap.codeToKey.size(),
-                      keyMap.charToKeycode.size());
+                      keyMap.charToKeycode.size(),
+                      keyMap.codeAndModsToKey.size());
 
   return keyMap;
+}
+
+Key resolveKeyFromCodeAndMods(const MacOSKeyMap &keyMap, CGKeyCode keycode,
+                              Modifier mods) {
+  // First, try to find an exact match with the modifiers
+  uint32_t lookupKey = encodeKeycodeMods(keycode, mods);
+  auto it = keyMap.codeAndModsToKey.find(lookupKey);
+  if (it != keyMap.codeAndModsToKey.end()) {
+    return it->second;
+  }
+
+  // Fall back to the base key mapping (no modifiers)
+  auto baseIt = keyMap.codeToKey.find(keycode);
+  if (baseIt != keyMap.codeToKey.end()) {
+    return baseIt->second;
+  }
+
+  return Key::Unknown;
 }
 
 } // namespace axidev::io::keyboard::detail

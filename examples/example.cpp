@@ -51,6 +51,10 @@ int main(int argc, char **argv) {
         << "Usage:\n"
         << "  --type \"text\"    : inject text (if supported by backend)\n"
         << "  --tap KEYNAME     : tap the named key (e.g., A, Enter, F1)\n"
+        << "  --combo COMBO     : parse and execute a key combo (e.g., "
+           "Shift+A, Ctrl+C)\n"
+        << "  --parse COMBO     : parse a key combo string and show its "
+           "components\n"
         << "  --listen N        : listen for global key events for N seconds\n"
         << "  --help            : show this text\n";
     return 0;
@@ -103,6 +107,79 @@ int main(int argc, char **argv) {
       AXIDEV_IO_LOG_INFO("example: tap result=%u", static_cast<unsigned>(ok));
       std::cout << (ok ? "-> Success\n" : "-> Failed\n");
 
+    } else if (arg == "--combo") {
+      if (i + 1 >= argc) {
+        std::cerr
+            << "--combo requires a combo string (e.g., Shift+A, Ctrl+C)\n";
+        return 1;
+      }
+      std::string comboStr = argv[++i];
+      // Parse the combo string into key + modifiers using the new API
+      auto kwm = axidev::io::keyboard::stringToKeyWithModifier(comboStr);
+      if (kwm.key == axidev::io::keyboard::Key::Unknown) {
+        std::cerr << "Unknown key in combo: " << comboStr << "\n";
+        continue;
+      }
+      if (!caps.canInjectKeys) {
+        std::cerr << "Sender cannot inject physical keys on this platform\n";
+        continue;
+      }
+      std::cout << "Executing combo: "
+                << axidev::io::keyboard::keyToStringWithModifier(
+                       kwm.key, kwm.requiredMods)
+                << "\n";
+      AXIDEV_IO_LOG_INFO(
+          "example: combo key=%s mods=0x%02x",
+          axidev::io::keyboard::keyToString(kwm.key).c_str(),
+          static_cast<int>(static_cast<uint8_t>(kwm.requiredMods)));
+      bool ok = sender.combo(kwm.requiredMods, kwm.key);
+      AXIDEV_IO_LOG_INFO("example: combo result=%u", static_cast<unsigned>(ok));
+      std::cout << (ok ? "-> Success\n" : "-> Failed\n");
+
+    } else if (arg == "--parse") {
+      if (i + 1 >= argc) {
+        std::cerr << "--parse requires a combo string (e.g., Shift+A, "
+                     "Ctrl+Shift+C)\n";
+        return 1;
+      }
+      std::string comboStr = argv[++i];
+      // Demonstrate the stringToKeyWithModifier API
+      auto kwm = axidev::io::keyboard::stringToKeyWithModifier(comboStr);
+      std::cout << "Parsed \"" << comboStr << "\":\n";
+      std::cout << "  Key: " << axidev::io::keyboard::keyToString(kwm.key)
+                << "\n";
+      std::cout << "  Modifiers: ";
+      if (kwm.requiredMods == axidev::io::keyboard::Modifier::None) {
+        std::cout << "None";
+      } else {
+        bool first = true;
+        if (axidev::io::keyboard::hasModifier(
+                kwm.requiredMods, axidev::io::keyboard::Modifier::Shift)) {
+          std::cout << (first ? "" : "+") << "Shift";
+          first = false;
+        }
+        if (axidev::io::keyboard::hasModifier(
+                kwm.requiredMods, axidev::io::keyboard::Modifier::Ctrl)) {
+          std::cout << (first ? "" : "+") << "Ctrl";
+          first = false;
+        }
+        if (axidev::io::keyboard::hasModifier(
+                kwm.requiredMods, axidev::io::keyboard::Modifier::Alt)) {
+          std::cout << (first ? "" : "+") << "Alt";
+          first = false;
+        }
+        if (axidev::io::keyboard::hasModifier(
+                kwm.requiredMods, axidev::io::keyboard::Modifier::Super)) {
+          std::cout << (first ? "" : "+") << "Super";
+          first = false;
+        }
+      }
+      std::cout << "\n";
+      std::cout << "  Canonical form: "
+                << axidev::io::keyboard::keyToStringWithModifier(
+                       kwm.key, kwm.requiredMods)
+                << "\n";
+
     } else if (arg == "--listen") {
       if (i + 1 >= argc) {
         std::cerr << "--listen requires a duration in seconds\n";
@@ -111,20 +188,21 @@ int main(int argc, char **argv) {
       int seconds = std::stoi(argv[++i]);
       AXIDEV_IO_LOG_INFO("example: starting listener for %d seconds", seconds);
       axidev::io::keyboard::Listener listener;
-      bool started = listener.start([](char32_t /*unused*/, axidev::io::keyboard::Key key,
-                                       axidev::io::keyboard::Modifier mods, bool pressed) {
-        // We prefer using 'key' and 'mods' as they are more portable and
-        // reliable across different OS backends than raw codepoints.
-        std::cout << (pressed ? "[press]  " : "[release] ")
-                  << "Key=" << axidev::io::keyboard::keyToString(key)
-                  << " Mods=0x"
-                  << std::hex << static_cast<int>(static_cast<uint8_t>(mods))
-                  << std::dec << "\n";
-        AXIDEV_IO_LOG_DEBUG("example: listener %s key=%s mods=0x%02x",
-                          pressed ? "press" : "release",
-                          axidev::io::keyboard::keyToString(key).c_str(),
-                          static_cast<int>(static_cast<uint8_t>(mods)));
-      });
+      bool started =
+          listener.start([](char32_t /*unused*/, axidev::io::keyboard::Key key,
+                            axidev::io::keyboard::Modifier mods, bool pressed) {
+            // Use the modifier-aware key-to-string conversion to get a
+            // human-readable representation that includes modifier state.
+            // For example, if Shift+A is pressed, this will show "Shift+A"
+            // rather than just "A" with a separate hex modifier dump.
+            std::string keyWithMods =
+                axidev::io::keyboard::keyToStringWithModifier(key, mods);
+            std::cout << (pressed ? "[press]  " : "[release] ") << keyWithMods
+                      << "\n";
+            AXIDEV_IO_LOG_DEBUG("example: listener %s key=%s",
+                                pressed ? "press" : "release",
+                                keyWithMods.c_str());
+          });
       if (!started) {
         AXIDEV_IO_LOG_ERROR("example: listener failed to start");
         std::cerr

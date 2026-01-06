@@ -145,6 +145,9 @@ void fillLinuxFallbackMappings(LinuxKeyMap &keyMap) {
   auto set = [&keyMap](Key k, int v) {
     if (keyMap.keyToEvdev.find(k) == keyMap.keyToEvdev.end())
       keyMap.keyToEvdev[k] = v;
+    // Also populate evdevToKey for base key lookups
+    if (keyMap.evdevToKey.find(v) == keyMap.evdevToKey.end())
+      keyMap.evdevToKey[v] = k;
   };
 
   // Modifiers
@@ -324,7 +327,13 @@ LinuxKeyMap initLinuxKeyMap(struct xkb_keymap *keymap,
       out.keyToEvdev[mappedKey] = evdevCode;
     }
 
-    // Scan all modifier combinations for charToKeycode
+    // Also register the base evdevToKey mapping
+    if (mappedKey != Key::Unknown &&
+        out.evdevToKey.find(evdevCode) == out.evdevToKey.end()) {
+      out.evdevToKey[evdevCode] = mappedKey;
+    }
+
+    // Scan all modifier combinations for charToKeycode and codeAndModsToKey
     for (const auto &scan : modScans) {
       xkb_state_update_mask(state, scan.mask, 0, 0, 0, 0, 0);
       uint32_t character = xkb_state_key_get_utf32(state, xkbKey);
@@ -332,9 +341,31 @@ LinuxKeyMap initLinuxKeyMap(struct xkb_keymap *keymap,
 
       if (character != 0) {
         char32_t cp = static_cast<char32_t>(character);
-        // Only add if not already present (prefer simpler modifier combos)
+
+        // Map character -> Key
+        std::string charStr;
+        if (cp < 0x80) {
+          charStr = std::string(1, static_cast<char>(cp));
+        }
+
+        Key charMappedKey = Key::Unknown;
+        if (!charStr.empty()) {
+          charMappedKey = stringToKey(charStr);
+        }
+
+        // Register in charToKeycode (only if not already present)
         if (out.charToKeycode.find(cp) == out.charToKeycode.end()) {
-          out.charToKeycode[cp] = KeyMapping(evdevCode, scan.axidevMods);
+          out.charToKeycode[cp] =
+              KeyMapping(evdevCode, scan.axidevMods, charMappedKey);
+        }
+
+        // Register in codeAndModsToKey for reverse lookup
+        if (charMappedKey != Key::Unknown) {
+          uint32_t lookupKey = encodeEvdevMods(evdevCode, scan.axidevMods);
+          if (out.codeAndModsToKey.find(lookupKey) ==
+              out.codeAndModsToKey.end()) {
+            out.codeAndModsToKey[lookupKey] = charMappedKey;
+          }
         }
       }
     }
@@ -342,11 +373,31 @@ LinuxKeyMap initLinuxKeyMap(struct xkb_keymap *keymap,
 
   fillLinuxFallbackMappings(out);
 
-  AXIDEV_IO_LOG_DEBUG("Linux keymap: initialized with %zu keyToEvdev and %zu "
-                      "charToKeycode entries",
-                      out.keyToEvdev.size(), out.charToKeycode.size());
+  AXIDEV_IO_LOG_DEBUG("Linux keymap: initialized with %zu keyToEvdev, %zu "
+                      "evdevToKey, %zu charToKeycode, and %zu codeAndModsToKey "
+                      "entries",
+                      out.keyToEvdev.size(), out.evdevToKey.size(),
+                      out.charToKeycode.size(), out.codeAndModsToKey.size());
 
   return out;
+}
+
+Key resolveKeyFromEvdevAndMods(const LinuxKeyMap &keyMap, int evdevCode,
+                               Modifier mods) {
+  // First, try to find an exact match with the modifiers
+  uint32_t lookupKey = encodeEvdevMods(evdevCode, mods);
+  auto it = keyMap.codeAndModsToKey.find(lookupKey);
+  if (it != keyMap.codeAndModsToKey.end()) {
+    return it->second;
+  }
+
+  // Fall back to the base key mapping (no modifiers)
+  auto baseIt = keyMap.evdevToKey.find(evdevCode);
+  if (baseIt != keyMap.evdevToKey.end()) {
+    return baseIt->second;
+  }
+
+  return Key::Unknown;
 }
 
 } // namespace axidev::io::keyboard::detail

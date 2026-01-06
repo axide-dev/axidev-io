@@ -698,6 +698,58 @@ axidev_io_keyboard_string_to_key(const char *name) {
   }
 }
 
+AXIDEV_IO_API char *axidev_io_keyboard_key_to_string_with_modifier(
+    axidev_io_keyboard_key_t key, axidev_io_keyboard_modifier_t mods) {
+  try {
+    clear_last_error();
+    std::string s = axidev::io::keyboard::keyToStringWithModifier(
+        static_cast<axidev::io::keyboard::Key>(key),
+        static_cast<axidev::io::keyboard::Modifier>(mods));
+    return duplicate_c_string(s);
+  } catch (const std::exception &e) {
+    set_last_error(e.what());
+    return nullptr;
+  } catch (...) {
+    set_last_error(
+        "Unknown exception in axidev_io_keyboard_key_to_string_with_modifier");
+    return nullptr;
+  }
+}
+
+AXIDEV_IO_API bool axidev_io_keyboard_string_to_key_with_modifier(
+    const char *combo, axidev_io_keyboard_key_t *out_key,
+    axidev_io_keyboard_modifier_t *out_mods) {
+  if (!combo) {
+    set_last_error("combo is NULL");
+    return false;
+  }
+  if (!out_key || !out_mods) {
+    set_last_error("out_key or out_mods is NULL");
+    return false;
+  }
+  try {
+    clear_last_error();
+    auto kwm =
+        axidev::io::keyboard::stringToKeyWithModifier(std::string(combo));
+    *out_key = static_cast<axidev_io_keyboard_key_t>(kwm.key);
+    *out_mods = static_cast<axidev_io_keyboard_modifier_t>(kwm.requiredMods);
+    return true;
+  } catch (const std::exception &e) {
+    set_last_error(e.what());
+    *out_key = static_cast<axidev_io_keyboard_key_t>(
+        axidev::io::keyboard::Key::Unknown);
+    *out_mods = 0;
+    return false;
+  } catch (...) {
+    set_last_error(
+        "Unknown exception in axidev_io_keyboard_string_to_key_with_modifier");
+    *out_key = static_cast<axidev_io_keyboard_key_t>(
+        axidev::io::keyboard::Key::Unknown);
+    *out_mods = 0;
+    return false;
+  }
+}
+
 AXIDEV_IO_API const char *axidev_io_library_version(void) {
   try {
     clear_last_error();

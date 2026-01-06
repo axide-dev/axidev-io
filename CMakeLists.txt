@@ -26,7 +26,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(AXIDEV_SOURCES src/keyboard/common/key_utils.cpp src/c_api.cpp)
+set(AXIDEV_SOURCES src/keyboard/common/key_utils.cpp
+                   src/keyboard/common/keymap.cpp src/c_api.cpp)
 
 if(APPLE)
   list(APPEND AXIDEV_SOURCES src/keyboard/common/macos_keymap.mm

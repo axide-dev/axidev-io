@@ -325,3 +325,164 @@ TEST(CapabilitiesTest, DefaultsToFalse) {
   EXPECT_FALSE(c.needsInputMonitoringPerm);
   EXPECT_FALSE(c.needsUinputAccess);
 }
+
+TEST(KeyWithModifierTest, KeyToStringWithModifier) {
+  AXIDEV_IO_LOG_INFO("test_key_utils: keyToStringWithModifier start");
+
+  // No modifiers - should just return the key name
+  EXPECT_EQ(keyToStringWithModifier(Key::A, Modifier::None), "A");
+  EXPECT_EQ(keyToStringWithModifier(Key::Num1, Modifier::None), "1");
+  EXPECT_EQ(keyToStringWithModifier(Key::Enter, Modifier::None), "Enter");
+
+  // Single modifier
+  EXPECT_EQ(keyToStringWithModifier(Key::A, Modifier::Shift), "Shift+A");
+  EXPECT_EQ(keyToStringWithModifier(Key::C, Modifier::Ctrl), "Ctrl+C");
+  EXPECT_EQ(keyToStringWithModifier(Key::Tab, Modifier::Alt), "Alt+Tab");
+  EXPECT_EQ(keyToStringWithModifier(Key::S, Modifier::Super), "Super+S");
+
+  // Multiple modifiers - should appear in consistent order
+  Modifier shiftCtrl = Modifier::Shift | Modifier::Ctrl;
+  std::string result = keyToStringWithModifier(Key::C, shiftCtrl);
+  EXPECT_TRUE(result.find("Shift") != std::string::npos);
+  EXPECT_TRUE(result.find("Ctrl") != std::string::npos);
+  EXPECT_TRUE(result.find("+C") != std::string::npos);
+
+  // Shift + number key (like producing '!' on US keyboard)
+  EXPECT_EQ(keyToStringWithModifier(Key::Num1, Modifier::Shift), "Shift+1");
+
+  // All modifiers
+  Modifier all =
+      Modifier::Shift | Modifier::Ctrl | Modifier::Alt | Modifier::Super;
+  result = keyToStringWithModifier(Key::A, all);
+  EXPECT_TRUE(result.find("Shift") != std::string::npos);
+  EXPECT_TRUE(result.find("Ctrl") != std::string::npos);
+  EXPECT_TRUE(result.find("Alt") != std::string::npos);
+  EXPECT_TRUE(result.find("Super") != std::string::npos);
+}
+
+TEST(KeyWithModifierTest, StringToKeyWithModifier) {
+  AXIDEV_IO_LOG_INFO("test_key_utils: stringToKeyWithModifier start");
+
+  // Plain key names (no modifiers)
+  auto result = stringToKeyWithModifier("A");
+  EXPECT_EQ(result.key, Key::A);
+  EXPECT_EQ(result.requiredMods, Modifier::None);
+
+  result = stringToKeyWithModifier("Enter");
+  EXPECT_EQ(result.key, Key::Enter);
+  EXPECT_EQ(result.requiredMods, Modifier::None);
+
+  // Single modifier prefix
+  result = stringToKeyWithModifier("Shift+A");
+  EXPECT_EQ(result.key, Key::A);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Shift));
+
+  result = stringToKeyWithModifier("Ctrl+C");
+  EXPECT_EQ(result.key, Key::C);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Ctrl));
+
+  result = stringToKeyWithModifier("Alt+Tab");
+  EXPECT_EQ(result.key, Key::Tab);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Alt));
+
+  result = stringToKeyWithModifier("Super+S");
+  EXPECT_EQ(result.key, Key::S);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Super));
+
+  // Multiple modifier prefixes
+  result = stringToKeyWithModifier("Ctrl+Shift+C");
+  EXPECT_EQ(result.key, Key::C);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Ctrl));
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Shift));
+
+  result = stringToKeyWithModifier("Shift+Ctrl+Alt+A");
+  EXPECT_EQ(result.key, Key::A);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Shift));
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Ctrl));
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Alt));
+
+  // Case insensitivity for modifiers
+  result = stringToKeyWithModifier("shift+a");
+  EXPECT_EQ(result.key, Key::A);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Shift));
+
+  result = stringToKeyWithModifier("CTRL+SHIFT+c");
+  EXPECT_EQ(result.key, Key::C);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Ctrl));
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Shift));
+
+  // Aliases for modifiers
+  result = stringToKeyWithModifier("Control+A");
+  EXPECT_EQ(result.key, Key::A);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Ctrl));
+
+  result = stringToKeyWithModifier("Meta+A");
+  EXPECT_EQ(result.key, Key::A);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Super));
+
+  result = stringToKeyWithModifier("Win+A");
+  EXPECT_EQ(result.key, Key::A);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Super));
+
+  result = stringToKeyWithModifier("Cmd+A");
+  EXPECT_EQ(result.key, Key::A);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Super));
+
+  // Unknown key should return Key::Unknown
+  result = stringToKeyWithModifier("Shift+NotAKey");
+  EXPECT_EQ(result.key, Key::Unknown);
+  EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Shift));
+
+  // Empty string
+  result = stringToKeyWithModifier("");
+  EXPECT_EQ(result.key, Key::Unknown);
+  EXPECT_EQ(result.requiredMods, Modifier::None);
+}
+
+TEST(KeyWithModifierTest, RoundTrip) {
+  AXIDEV_IO_LOG_INFO("test_key_utils: KeyWithModifier roundtrip start");
+
+  // Test that keyToStringWithModifier -> stringToKeyWithModifier round-trips
+  auto testRoundTrip = [](Key key, Modifier mods) {
+    std::string str = keyToStringWithModifier(key, mods);
+    auto result = stringToKeyWithModifier(str);
+    EXPECT_EQ(result.key, key) << "Key mismatch for: " << str;
+    // Check that all original modifiers are present
+    if (hasModifier(mods, Modifier::Shift))
+      EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Shift)) << str;
+    if (hasModifier(mods, Modifier::Ctrl))
+      EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Ctrl)) << str;
+    if (hasModifier(mods, Modifier::Alt))
+      EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Alt)) << str;
+    if (hasModifier(mods, Modifier::Super))
+      EXPECT_TRUE(hasModifier(result.requiredMods, Modifier::Super)) << str;
+  };
+
+  testRoundTrip(Key::A, Modifier::None);
+  testRoundTrip(Key::A, Modifier::Shift);
+  testRoundTrip(Key::C, Modifier::Ctrl);
+  testRoundTrip(Key::Tab, Modifier::Alt);
+  testRoundTrip(Key::S, Modifier::Super);
+  testRoundTrip(Key::C, Modifier::Ctrl | Modifier::Shift);
+  testRoundTrip(Key::A, Modifier::Shift | Modifier::Ctrl | Modifier::Alt);
+}
+
+TEST(KeyWithModifierTest, StructConstruction) {
+  AXIDEV_IO_LOG_INFO(
+      "test_key_utils: KeyWithModifier struct construction start");
+
+  // Default construction
+  KeyWithModifier kwm1;
+  EXPECT_EQ(kwm1.key, Key::Unknown);
+  EXPECT_EQ(kwm1.requiredMods, Modifier::None);
+
+  // Explicit construction
+  KeyWithModifier kwm2(Key::A, Modifier::Shift);
+  EXPECT_EQ(kwm2.key, Key::A);
+  EXPECT_EQ(kwm2.requiredMods, Modifier::Shift);
+
+  // Key-only construction
+  KeyWithModifier kwm3(Key::Enter);
+  EXPECT_EQ(kwm3.key, Key::Enter);
+  EXPECT_EQ(kwm3.requiredMods, Modifier::None);
+}

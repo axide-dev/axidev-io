@@ -173,9 +173,8 @@ struct Listener::Impl {
    * consistent mapping across Windows systems.
    */
   void initKeyMap() {
-    auto km =
+    keyMap =
         ::axidev::io::keyboard::detail::initWindowsKeyMap(GetKeyboardLayout(0));
-    vkToKey = std::move(km.vkToKey);
   }
 
 private:
@@ -193,8 +192,8 @@ private:
   // installed and the listener is active.
   std::atomic<bool> ready{false};
 
-  // Reverse map VK -> Key
-  std::unordered_map<WORD, Key> vkToKey;
+  // Full keymap for modifier-aware key resolution
+  ::axidev::io::keyboard::detail::WindowsKeyMap keyMap;
 
   // Debounce & release handling (works on the hook thread only).
   // - Record the last codepoint seen on press to use as a fallback on release
@@ -259,10 +258,21 @@ private:
       return;
 
     WORD vk = static_cast<WORD>(kbd->vkCode);
-    Key mappedKey = Key::Unknown;
-    auto it = vkToKey.find(vk);
-    if (it != vkToKey.end())
-      mappedKey = it->second;
+
+    // Capture modifiers first so we can use them for key resolution
+    Modifier mods = deriveModifiers();
+
+    // Use modifier-aware key resolution to get the correct logical key
+    // based on the VK code and active modifiers.
+    Key mappedKey = ::axidev::io::keyboard::detail::resolveKeyFromVkAndMods(
+        keyMap, vk, mods);
+
+    // Fall back to base vkToKey if modifier-aware lookup didn't find anything
+    if (mappedKey == Key::Unknown) {
+      auto it = keyMap.vkToKey.find(vk);
+      if (it != keyMap.vkToKey.end())
+        mappedKey = it->second;
+    }
 
     // Determine Unicode character (simple BMP handling). ToUnicodeEx can
     // return 1 or 2 WCHARs (surrogate pair), or negative for dead keys.
@@ -304,9 +314,6 @@ private:
       // simple listener. We ignore dead-key composition for now.
       codepoint = 0;
     }
-
-    // Capture modifiers once and reuse them
-    Modifier mods = deriveModifiers();
 
     // For letter and number keys, derive the codepoint from the Key enum
     // rather than trusting ToUnicodeEx. This ensures consistent output

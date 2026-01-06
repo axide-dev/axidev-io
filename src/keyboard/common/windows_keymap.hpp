@@ -32,13 +32,38 @@ struct WindowsKeyMap {
   /// Map from logical Key enum to Windows VK code (for Sender)
   std::unordered_map<Key, WORD> keyToVk;
 
-  /// Map from Windows VK code to logical Key enum (for Listener)
+  /// Map from Windows VK code to logical Key enum (for Listener - base keys)
   std::unordered_map<WORD, Key> vkToKey;
 
   /// Map for character to VK code + modifier requirements (for text typing)
   /// Uses KeyMapping to track which modifiers are needed to produce each char.
   std::unordered_map<char32_t, KeyMapping> charToKeycode;
+
+  /// Map from (VK code, modifiers) to the Key produced.
+  /// This enables the Listener to resolve the correct Key based on what
+  /// modifiers were active when the key was pressed.
+  /// The key is encoded as: (vk << 8) | modifier_bits
+  std::unordered_map<uint32_t, Key> vkAndModsToKey;
 };
+
+/**
+ * @brief Encode a VK code and modifier combination into a single lookup key.
+ * @param vk The Windows virtual key code.
+ * @param mods The modifier flags (only Shift, Ctrl, Alt are typically
+ * relevant).
+ * @return uint32_t Encoded lookup key for vkAndModsToKey map.
+ */
+inline uint32_t encodeVkMods(WORD vk, Modifier mods) {
+  // We care about Shift, Ctrl, and Alt for character production
+  uint8_t modBits = 0;
+  if (hasModifier(mods, Modifier::Shift))
+    modBits |= 0x01;
+  if (hasModifier(mods, Modifier::Ctrl))
+    modBits |= 0x02;
+  if (hasModifier(mods, Modifier::Alt))
+    modBits |= 0x04;
+  return (static_cast<uint32_t>(vk) << 8) | modBits;
+}
 
 /**
  * @brief Initialize Windows key mappings using the specified keyboard layout.
@@ -67,6 +92,22 @@ WindowsKeyMap initWindowsKeyMap(HKL layout = nullptr);
  * @param keyMap Reference to the key map to populate with fallback entries.
  */
 void fillWindowsFallbackMappings(WindowsKeyMap &keyMap);
+
+/**
+ * @brief Resolve a Key from a VK code and active modifiers.
+ *
+ * This function looks up the Key that would be produced by pressing the given
+ * VK code with the specified modifiers active. This is useful for the Listener
+ * to determine which character/key the user intended based on the modifier
+ * state.
+ *
+ * @param keyMap The initialized key map.
+ * @param vk The Windows VK code that was pressed.
+ * @param mods The modifiers that were active when the key was pressed.
+ * @return Key The logical Key produced, or Key::Unknown if not found.
+ */
+Key resolveKeyFromVkAndMods(const WindowsKeyMap &keyMap, WORD vk,
+                            Modifier mods);
 
 /**
  * @brief Check if a virtual-key code represents an extended key.

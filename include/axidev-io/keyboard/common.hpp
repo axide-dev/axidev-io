@@ -364,6 +364,44 @@ inline bool hasModifier(Modifier state, Modifier flag) {
 }
 
 /**
+ * @struct KeyWithModifier
+ * @brief Associates a logical Key with the modifiers required to produce it.
+ *
+ * This structure is used to represent keys that require modifiers to produce
+ * a specific character. For example, on a US keyboard:
+ * - '!' requires Shift + Num1
+ * - '@' requires Shift + Num2
+ * - 'A' (uppercase) requires Shift + Key::A
+ *
+ * This allows the Listener to correctly identify which character was intended
+ * when a key is pressed with modifiers, and enables the Sender to know which
+ * modifiers to apply when typing a specific character.
+ */
+struct KeyWithModifier {
+  Key key{Key::Unknown};                 ///< The base key
+  Modifier requiredMods{Modifier::None}; ///< Modifiers needed to produce this
+
+  /// Returns true if the key is valid (not Unknown).
+  bool isValid() const { return key != Key::Unknown; }
+
+  /// Default constructor creates an invalid key.
+  KeyWithModifier() = default;
+
+  /// Construct with a key and optional modifiers.
+  KeyWithModifier(Key k, Modifier mods = Modifier::None)
+      : key(k), requiredMods(mods) {}
+
+  /// Equality comparison.
+  bool operator==(const KeyWithModifier &other) const {
+    return key == other.key && requiredMods == other.requiredMods;
+  }
+
+  bool operator!=(const KeyWithModifier &other) const {
+    return !(*this == other);
+  }
+};
+
+/**
  * @struct KeyMapping
  * @brief Associates a platform keycode with the modifiers required to produce
  *        a specific character or Key.
@@ -379,6 +417,9 @@ inline bool hasModifier(Modifier state, Modifier flag) {
  * - Windows: Virtual-key code (WORD, uint16_t)
  * - Linux: evdev keycode (int, stored as int32_t for consistency)
  *
+ * Additionally, `producedKey` stores the logical Key that this mapping
+ * produces. This allows reverse lookups from (keycode, modifiers) -> Key.
+ *
  * @note This structure is used internally by the keymap initialization
  *       functions on each platform.
  */
@@ -386,6 +427,7 @@ struct KeyMapping {
   int32_t keycode{-1}; ///< Platform-specific keycode (-1 = invalid)
   Modifier requiredMods{
       Modifier::None}; ///< Modifiers needed to produce the character
+  Key producedKey{Key::Unknown}; ///< The logical Key this mapping produces
 
   /// Returns true if the mapping is valid (has a non-negative keycode).
   bool isValid() const { return keycode >= 0; }
@@ -395,7 +437,11 @@ struct KeyMapping {
 
   /// Construct a mapping with a keycode and optional modifiers.
   KeyMapping(int32_t code, Modifier mods = Modifier::None)
-      : keycode(code), requiredMods(mods) {}
+      : keycode(code), requiredMods(mods), producedKey(Key::Unknown) {}
+
+  /// Construct a mapping with a keycode, modifiers, and produced key.
+  KeyMapping(int32_t code, Modifier mods, Key key)
+      : keycode(code), requiredMods(mods), producedKey(key) {}
 };
 
 // Backend capabilities description - describes what a backend / sender can do.
@@ -448,6 +494,31 @@ AXIDEV_IO_API std::string keyToString(Key key);
  * @return Key Parsed key value or Key::Unknown for unrecognized strings.
  */
 AXIDEV_IO_API Key stringToKey(const std::string &str);
+
+/**
+ * @brief Convert a Key with its required modifiers to a human-readable string.
+ *
+ * For keys that require modifiers (like '!' which needs Shift+1), this returns
+ * a string that includes the modifier prefix. For example:
+ * - Key::A with Modifier::None -> "A" (or "a" for lowercase)
+ * - Key::Num1 with Modifier::Shift -> "Shift+1" (produces '!')
+ *
+ * @param key Logical key to convert.
+ * @param mods Modifiers required to produce this key.
+ * @return std::string Human-readable string with modifiers and key.
+ */
+AXIDEV_IO_API std::string keyToStringWithModifier(Key key, Modifier mods);
+
+/**
+ * @brief Parse a textual key name that may include modifier prefixes.
+ *
+ * This function accepts strings like "Shift+A", "Ctrl+Shift+B", or plain "A".
+ * The modifiers are parsed and returned along with the base key.
+ *
+ * @param str Input string (case-insensitive; accepts modifier prefixes).
+ * @return KeyWithModifier Parsed key and required modifiers.
+ */
+AXIDEV_IO_API KeyWithModifier stringToKeyWithModifier(const std::string &str);
 
 } // namespace keyboard
 } // namespace io
