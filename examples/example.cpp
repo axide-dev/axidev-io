@@ -114,7 +114,6 @@ int main(int argc, char **argv) {
         return 1;
       }
       std::string comboStr = argv[++i];
-      // Parse the combo string into key + modifiers using the new API
       auto kwm = axidev::io::keyboard::stringToKeyWithModifier(comboStr);
       if (kwm.key == axidev::io::keyboard::Key::Unknown) {
         std::cerr << "Unknown key in combo: " << comboStr << "\n";
