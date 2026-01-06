@@ -11,6 +11,9 @@
  * a release (false).
  *
  * Note on timing and character delivery:
+ * - Users are encouraged to use the logical `key` and `mods` (modifiers) for
+ *   most use cases as they are more reliable and portable. The `codepoint`
+ *   is provided as additional context but is often not needed.
  * - The delivered `codepoint` is computed from raw key events and represents
  *   the Unicode character produced at the time of that low-level event. On
  *   some platforms (notably Windows low-level hooks) the character computed
@@ -34,9 +37,9 @@
  *
  * int main() {
  *   axidev::io::keyboard::Listener l;
- *   bool ok = l.start([](char32_t cp, axidev::io::keyboard::Key k,
+ *   bool ok = l.start([](char32_t _cp, axidev::io::keyboard::Key k,
  *                        axidev::io::keyboard::Modifier m, bool pressed) {
- *     // handle event
+ *     // Use k and m for most logic; codepoint is often unnecessary.
  *   });
  *   if (!ok) {
  *     // Listener couldn't be started (missing permissions/platform support)
@@ -71,8 +74,9 @@ public:
    * @brief Callback invoked for each observed key event.
    *
    * @param codepoint Unicode codepoint produced by the event (0 if none).
-   *                  This value is computed from the low-level event and may
-   *                  differ between press and release on some platforms.
+   *                  This value is provided for convenience but is often not
+   *                  needed for most applications. Usage of @p key and @p mods
+   *                  is generally preferred for consistency and portability.
    * @param key Logical key identifier (Key::Unknown if unknown).
    * @param mods Current modifier state (Modifiers bitmask).
    * @param pressed True for key press, false for key release.

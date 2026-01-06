@@ -8,6 +8,7 @@
  * permissions, the tests are skipped.
  */
 
+#include "axidev-io/keyboard/common.hpp"
 #include <axidev-io/core.hpp>
 #include <axidev-io/keyboard/listener.hpp>
 #include <axidev-io/log.hpp>
@@ -54,6 +55,61 @@ static void popLastUtf8Char(std::string &s) {
     s.pop_back();
 }
 
+/**
+ * @brief State shared between the listener callback and the test main thread.
+ */
+struct TestState {
+  std::mutex mtx;
+  std::condition_variable cv;
+  std::string observed;
+  bool saw_enter = false;
+};
+
+/**
+ * @brief Global listener callback handler.
+ *
+ * This function processes keyboard events and updates the provided TestState.
+ * It favors logical Key and Modifier information over codepoints to show
+ * that listeners can be implemented without relying on potentially brittle
+ * codepoint mapping.
+ */
+static void handleListenerEvent(TestState &state, char32_t /*cp*/, Key key,
+                                Modifier mods, bool pressed) {
+  // Collect characters on key release (pressed == false) to better match
+  // the character delivered to the terminal/STDIN on most platforms.
+  if (pressed) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> lk(state.mtx);
+  if (key == Key::Backspace) {
+    popLastUtf8Char(state.observed);
+    AXIDEV_IO_LOG_DEBUG("Listener test cb: backspace - observed='%s'",
+                        state.observed.c_str());
+  } else if (key == Key::Enter) {
+    state.saw_enter = true;
+    AXIDEV_IO_LOG_DEBUG("Listener test cb: enter - observed='%s'",
+                        state.observed.c_str());
+    state.cv.notify_one();
+  } else if (key >= Key::A && key <= Key::Z) {
+    std::string s = keyToString(key);
+    char c = s[0];
+    if (!hasModifier(mods, Modifier::Shift) &&
+        !hasModifier(mods, Modifier::CapsLock)) {
+      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+    state.observed += c;
+  } else if (key >= Key::Num0 && key <= Key::Num9) {
+    state.observed += keyToString(key);
+  } else if (key == Key::Minus) {
+    state.observed += '-';
+  } else {
+    AXIDEV_IO_LOG_DEBUG(
+        "Listener test cb: non-printable or unhandled key=%s observed='%s'",
+        keyToString(key).c_str(), state.observed.c_str());
+  }
+}
+
 class ListenerIntegrationTest : public ::testing::Test {
 protected:
   void SetUp() {
@@ -85,41 +141,11 @@ TEST_F(ListenerIntegrationTest, ExactMatchTypedInputObserved) {
                "edits."
             << std::endl;
 
-  std::mutex mtx;
-  std::condition_variable cv;
-  std::string observed;
-  bool saw_enter = false;
-
+  TestState state;
   Listener listener;
-  auto cb = [&](char32_t cp, Key key, Modifier /*mods*/, bool pressed) {
-    // Collect characters on key release (pressed == false) to better match
-    // the character delivered to the terminal/STDIN on most platforms.
-    if (pressed) {
-      AXIDEV_IO_LOG_DEBUG("Listener test cb: ignoring press event key=%s cp=%u",
-                          keyToString(key).c_str(), static_cast<unsigned>(cp));
-      return;
-    }
-    std::lock_guard<std::mutex> lk(mtx);
-    if (cp != 0) {
-      appendUtf8(observed, cp);
-      AXIDEV_IO_LOG_DEBUG(
-          "Listener test cb: appended cp=%u key=%s observed='%s'",
-          static_cast<unsigned>(cp), keyToString(key).c_str(),
-          observed.c_str());
-    } else if (key == Key::Backspace) {
-      popLastUtf8Char(observed);
-      AXIDEV_IO_LOG_DEBUG("Listener test cb: backspace - observed='%s'",
-                          observed.c_str());
-    } else if (key == Key::Enter) {
-      saw_enter = true;
-      AXIDEV_IO_LOG_DEBUG("Listener test cb: enter - observed='%s'",
-                          observed.c_str());
-      cv.notify_one();
-    } else {
-      AXIDEV_IO_LOG_DEBUG(
-          "Listener test cb: non-printable key=%s cp=0 observed='%s'",
-          keyToString(key).c_str(), observed.c_str());
-    }
+
+  auto cb = [&](char32_t /*cp*/, Key key, Modifier mods, bool pressed) {
+    handleListenerEvent(state, 0, key, mods, pressed);
   };
 
   bool ok = listener.start(cb);
@@ -134,22 +160,22 @@ TEST_F(ListenerIntegrationTest, ExactMatchTypedInputObserved) {
 
   // Wait for the listener to observe Enter (timeout).
   {
-    std::unique_lock<std::mutex> lk(mtx);
-    cv.wait_for(lk, 2s, [&] { return saw_enter; });
+    std::unique_lock<std::mutex> lk(state.mtx);
+    state.cv.wait_for(lk, 2s, [&] { return state.saw_enter; });
   }
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   listener.stop();
 
   {
-    std::lock_guard<std::mutex> lk(mtx);
+    std::lock_guard<std::mutex> lk(state.mtx);
     AXIDEV_IO_LOG_INFO(
         "Integration test: expected='%s' typed='%s' observed='%s'",
-        expected.c_str(), typed.c_str(), observed.c_str());
+        expected.c_str(), typed.c_str(), state.observed.c_str());
     ASSERT_EQ(typed, expected)
         << "Expected: " << expected << ", Typed: " << typed;
-    EXPECT_EQ(observed, expected)
-        << "Expected: " << expected << ", Observed: " << observed;
+    EXPECT_EQ(state.observed, expected)
+        << "Expected: " << expected << ", Observed: " << state.observed;
   }
 }
 
@@ -166,40 +192,11 @@ TEST_F(ListenerIntegrationTest, BackspaceHandling) {
             << "Follow the sequence exactly (avoid additional edits)."
             << std::endl;
 
-  std::mutex mtx;
-  std::condition_variable cv;
-  std::string observed;
-  bool saw_enter = false;
-
+  TestState state;
   Listener listener;
-  auto cb = [&](char32_t cp, Key key, Modifier /*mods*/, bool pressed) {
-    // Use key release events to observe characters and edits.
-    if (pressed) {
-      AXIDEV_IO_LOG_DEBUG("Listener test cb: ignoring press event key=%s cp=%u",
-                          keyToString(key).c_str(), static_cast<unsigned>(cp));
-      return;
-    }
-    std::lock_guard<std::mutex> lk(mtx);
-    if (cp != 0) {
-      appendUtf8(observed, cp);
-      AXIDEV_IO_LOG_DEBUG(
-          "Listener test cb: appended cp=%u key=%s observed='%s'",
-          static_cast<unsigned>(cp), keyToString(key).c_str(),
-          observed.c_str());
-    } else if (key == Key::Backspace) {
-      popLastUtf8Char(observed);
-      AXIDEV_IO_LOG_DEBUG("Listener test cb: backspace - observed='%s'",
-                          observed.c_str());
-    } else if (key == Key::Enter) {
-      saw_enter = true;
-      AXIDEV_IO_LOG_DEBUG("Listener test cb: enter - observed='%s'",
-                          observed.c_str());
-      cv.notify_one();
-    } else {
-      AXIDEV_IO_LOG_DEBUG(
-          "Listener test cb: non-printable key=%s cp=0 observed='%s'",
-          keyToString(key).c_str(), observed.c_str());
-    }
+
+  auto cb = [&](char32_t /*cp*/, Key key, Modifier mods, bool pressed) {
+    handleListenerEvent(state, 0, key, mods, pressed);
   };
 
   bool ok = listener.start(cb);
@@ -213,22 +210,22 @@ TEST_F(ListenerIntegrationTest, BackspaceHandling) {
   std::getline(std::cin, typed);
 
   {
-    std::unique_lock<std::mutex> lk(mtx);
-    cv.wait_for(lk, 2s, [&] { return saw_enter; });
+    std::unique_lock<std::mutex> lk(state.mtx);
+    state.cv.wait_for(lk, 2s, [&] { return state.saw_enter; });
   }
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   listener.stop();
 
   {
-    std::lock_guard<std::mutex> lk(mtx);
+    std::lock_guard<std::mutex> lk(state.mtx);
     AXIDEV_IO_LOG_INFO(
         "Integration test: expected='%s' typed='%s' observed='%s'",
-        expected.c_str(), typed.c_str(), observed.c_str());
+        expected.c_str(), typed.c_str(), state.observed.c_str());
     ASSERT_EQ(typed, expected)
         << "Expected: " << expected << ", Typed: " << typed;
-    EXPECT_EQ(observed, expected)
-        << "Expected: " << expected << ", Observed: " << observed;
+    EXPECT_EQ(state.observed, expected)
+        << "Expected: " << expected << ", Observed: " << state.observed;
   }
 }
 
@@ -242,41 +239,11 @@ TEST_F(ListenerIntegrationTest, ModifiersAndShiftState) {
             << "Type it exactly (use SHIFT to produce uppercase letters)."
             << std::endl;
 
-  std::mutex mtx;
-  std::condition_variable cv;
-  std::string observed;
-  bool saw_enter = false;
-
+  TestState state;
   Listener listener;
-  auto cb = [&](char32_t cp, Key key, Modifier /*mods*/, bool pressed) {
-    // Prefer release events for observed characters to avoid mismatches
-    // between low-level hook timing and terminal input.
-    if (pressed) {
-      AXIDEV_IO_LOG_DEBUG("Listener test cb: ignoring press event key=%s cp=%u",
-                          keyToString(key).c_str(), static_cast<unsigned>(cp));
-      return;
-    }
-    std::lock_guard<std::mutex> lk(mtx);
-    if (cp != 0) {
-      appendUtf8(observed, cp);
-      AXIDEV_IO_LOG_DEBUG(
-          "Listener test cb: appended cp=%u key=%s observed='%s'",
-          static_cast<unsigned>(cp), keyToString(key).c_str(),
-          observed.c_str());
-    } else if (key == Key::Backspace) {
-      popLastUtf8Char(observed);
-      AXIDEV_IO_LOG_DEBUG("Listener test cb: backspace - observed='%s'",
-                          observed.c_str());
-    } else if (key == Key::Enter) {
-      saw_enter = true;
-      AXIDEV_IO_LOG_DEBUG("Listener test cb: enter - observed='%s'",
-                          observed.c_str());
-      cv.notify_one();
-    } else {
-      AXIDEV_IO_LOG_DEBUG(
-          "Listener test cb: non-printable key=%s cp=0 observed='%s'",
-          keyToString(key).c_str(), observed.c_str());
-    }
+
+  auto cb = [&](char32_t /*cp*/, Key key, Modifier mods, bool pressed) {
+    handleListenerEvent(state, 0, key, mods, pressed);
   };
 
   bool ok = listener.start(cb);
@@ -290,21 +257,21 @@ TEST_F(ListenerIntegrationTest, ModifiersAndShiftState) {
   std::getline(std::cin, typed);
 
   {
-    std::unique_lock<std::mutex> lk(mtx);
-    cv.wait_for(lk, 2s, [&] { return saw_enter; });
+    std::unique_lock<std::mutex> lk(state.mtx);
+    state.cv.wait_for(lk, 2s, [&] { return state.saw_enter; });
   }
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   listener.stop();
 
   {
-    std::lock_guard<std::mutex> lk(mtx);
+    std::lock_guard<std::mutex> lk(state.mtx);
     AXIDEV_IO_LOG_INFO(
         "Integration test: expected='%s' typed='%s' observed='%s'",
-        expected.c_str(), typed.c_str(), observed.c_str());
+        expected.c_str(), typed.c_str(), state.observed.c_str());
     ASSERT_EQ(typed, expected)
         << "Expected: " << expected << ", Typed: " << typed;
-    EXPECT_EQ(observed, expected)
-        << "Expected: " << expected << ", Observed: " << observed;
+    EXPECT_EQ(state.observed, expected)
+        << "Expected: " << expected << ", Observed: " << state.observed;
   }
 }
