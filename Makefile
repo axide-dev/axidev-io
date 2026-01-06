@@ -27,6 +27,7 @@ EXE_EXT :=
 endif
 
 RUN_UNIT_TESTS := $(BUILD_DIR)/tests/axidev-io-unit-tests$(EXE_EXT)
+RUN_INTEGRATION_TESTS := $(BUILD_DIR)/tests/axidev-io-integration-tests$(EXE_EXT)
 
 .PHONY: all configure configure-release build test integration-test run-unit-tests export-compile-commands clean help
 
@@ -55,7 +56,7 @@ integration-test:
 	@echo "Running integration tests (interactive)..."
 	$(CMAKE) -S . -B $(BUILD_DIR) -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
 	$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS)
-	AXIDEV_IO_RUN_INTEGRATION_TESTS=1 AXIDEV_IO_INTERACTIVE=1 $(CTEST) --test-dir $(BUILD_DIR) -R axidev-io-integration-tests -C Debug --output-on-failure -V
+	AXIDEV_IO_RUN_INTEGRATION_TESTS=1 AXIDEV_IO_INTERACTIVE=1 $(RUN_INTEGRATION_TESTS)
 
 run-unit-tests:
 	@if [ ! -x "$(RUN_UNIT_TESTS)" ]; then \
