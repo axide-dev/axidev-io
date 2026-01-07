@@ -60,22 +60,22 @@ KeyMap::KeyMap() {
 
   // Copy charToKeycode
   for (const auto &[cp, mapping] : km.charToKeycode) {
-    m_charToMapping[cp] = mapping;
+    charToMapping_[cp] = mapping;
   }
 
   // Copy codeToKey
   for (const auto &[code, key] : km.codeToKey) {
-    m_codeToKey[static_cast<int32_t>(code)] = key;
+    codeToKey_[static_cast<int32_t>(code)] = key;
   }
 
   // Copy codeAndModsToKey
   for (const auto &[encoded, key] : km.codeAndModsToKey) {
-    m_codeAndModsToKey[encoded] = key;
+    codeAndModsToKey_[encoded] = key;
   }
 
   // Copy keyToCode
   for (const auto &[key, code] : km.keyToCode) {
-    m_keyToCode[key] = static_cast<int32_t>(code);
+    keyToCode_[key] = static_cast<int32_t>(code);
   }
 
 #elif defined(_WIN32)
@@ -132,22 +132,22 @@ KeyMap::KeyMap() {
   AXIDEV_IO_LOG_DEBUG(
       "KeyMap: initialized with %zu char mappings, %zu code->key, "
       "%zu code+mods->key, %zu key->code",
-      m_charToMapping.size(), m_codeToKey.size(), m_codeAndModsToKey.size(),
-      m_keyToCode.size());
+      charToMapping_.size(), codeToKey_.size(), codeAndModsToKey_.size(),
+      keyToCode_.size());
 }
 
 std::optional<KeyWithModifier>
 KeyMap::keyForCharacter(char32_t codepoint) const {
-  auto it = m_charToMapping.find(codepoint);
-  if (it != m_charToMapping.end()) {
+  auto it = charToMapping_.find(codepoint);
+  if (it != charToMapping_.end()) {
     const KeyMapping &mapping = it->second;
     if (mapping.producedKey != Key::Unknown) {
       return KeyWithModifier(mapping.producedKey, mapping.requiredMods);
     }
     // If we have a keycode but no produced key, try to look up the base key
     if (mapping.keycode >= 0) {
-      auto baseIt = m_codeToKey.find(mapping.keycode);
-      if (baseIt != m_codeToKey.end()) {
+      auto baseIt = codeToKey_.find(mapping.keycode);
+      if (baseIt != codeToKey_.end()) {
         return KeyWithModifier(baseIt->second, mapping.requiredMods);
       }
     }
@@ -158,8 +158,8 @@ KeyMap::keyForCharacter(char32_t codepoint) const {
 Key KeyMap::keyFromCode(int32_t keycode, Modifier mods) const {
   // First try exact match with modifiers
   uint32_t encoded = encodeCodeMods(keycode, mods);
-  auto it = m_codeAndModsToKey.find(encoded);
-  if (it != m_codeAndModsToKey.end()) {
+  auto it = codeAndModsToKey_.find(encoded);
+  if (it != codeAndModsToKey_.end()) {
     return it->second;
   }
 
@@ -168,16 +168,16 @@ Key KeyMap::keyFromCode(int32_t keycode, Modifier mods) const {
 }
 
 Key KeyMap::baseKeyFromCode(int32_t keycode) const {
-  auto it = m_codeToKey.find(keycode);
-  if (it != m_codeToKey.end()) {
+  auto it = codeToKey_.find(keycode);
+  if (it != codeToKey_.end()) {
     return it->second;
   }
   return Key::Unknown;
 }
 
 std::optional<int32_t> KeyMap::codeForKey(Key key) const {
-  auto it = m_keyToCode.find(key);
-  if (it != m_keyToCode.end()) {
+  auto it = keyToCode_.find(key);
+  if (it != keyToCode_.end()) {
     return it->second;
   }
   return std::nullopt;
@@ -185,15 +185,15 @@ std::optional<int32_t> KeyMap::codeForKey(Key key) const {
 
 std::optional<KeyMapping>
 KeyMap::mappingForCharacter(char32_t codepoint) const {
-  auto it = m_charToMapping.find(codepoint);
-  if (it != m_charToMapping.end()) {
+  auto it = charToMapping_.find(codepoint);
+  if (it != charToMapping_.end()) {
     return it->second;
   }
   return std::nullopt;
 }
 
 bool KeyMap::canTypeCharacter(char32_t codepoint) const {
-  return m_charToMapping.find(codepoint) != m_charToMapping.end();
+  return charToMapping_.find(codepoint) != charToMapping_.end();
 }
 
 } // namespace axidev::io::keyboard

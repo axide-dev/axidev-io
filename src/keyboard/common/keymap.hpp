@@ -116,10 +116,10 @@ private:
   KeyMap();
 
   // Internal storage - platform-specific
-  std::unordered_map<char32_t, KeyMapping> m_charToMapping;
-  std::unordered_map<int32_t, Key> m_codeToKey;
-  std::unordered_map<uint32_t, Key> m_codeAndModsToKey;
-  std::unordered_map<Key, int32_t> m_keyToCode;
+  std::unordered_map<char32_t, KeyMapping> charToMapping_;
+  std::unordered_map<int32_t, Key> codeToKey_;
+  std::unordered_map<uint32_t, Key> codeAndModsToKey_;
+  std::unordered_map<Key, int32_t> keyToCode_;
 };
 
 } // namespace axidev::io::keyboard
