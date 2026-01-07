@@ -83,22 +83,22 @@ KeyMap::KeyMap() {
 
   // Copy charToKeycode
   for (const auto &[cp, mapping] : km.charToKeycode) {
-    m_charToMapping[cp] = mapping;
+    charToMapping_[cp] = mapping;
   }
 
   // Copy vkToKey
   for (const auto &[vk, key] : km.vkToKey) {
-    m_codeToKey[static_cast<int32_t>(vk)] = key;
+    codeToKey_[static_cast<int32_t>(vk)] = key;
   }
 
   // Copy vkAndModsToKey
   for (const auto &[encoded, key] : km.vkAndModsToKey) {
-    m_codeAndModsToKey[encoded] = key;
+    codeAndModsToKey_[encoded] = key;
   }
 
   // Copy keyToVk
   for (const auto &[key, vk] : km.keyToVk) {
-    m_keyToCode[key] = static_cast<int32_t>(vk);
+    keyToCode_[key] = static_cast<int32_t>(vk);
   }
 
 #elif defined(__linux__)
@@ -107,22 +107,22 @@ KeyMap::KeyMap() {
 
   // Copy charToKeycode
   for (const auto &[cp, mapping] : km.charToKeycode) {
-    m_charToMapping[cp] = mapping;
+    charToMapping_[cp] = mapping;
   }
 
   // Copy evdevToKey
   for (const auto &[evdev, key] : km.evdevToKey) {
-    m_codeToKey[evdev] = key;
+    codeToKey_[evdev] = key;
   }
 
   // Copy codeAndModsToKey
   for (const auto &[encoded, key] : km.codeAndModsToKey) {
-    m_codeAndModsToKey[encoded] = key;
+    codeAndModsToKey_[encoded] = key;
   }
 
   // Copy keyToEvdev
   for (const auto &[key, evdev] : km.keyToEvdev) {
-    m_keyToCode[key] = evdev;
+    keyToCode_[key] = evdev;
   }
 
 #else
