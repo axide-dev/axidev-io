@@ -1,28 +1,24 @@
 name: Build (Linux)
-description: Configure, build, test, and optionally package axidev-io on Linux.
+description: Build, test, and optionally package axidev-io on Linux with build.py.
 
 inputs:
   arch:
     description: Architecture label used for artifact naming (e.g. x64, arm64)
     required: true
-  build-type:
-    description: CMake build type
-    required: false
-    default: Release
   build-tests:
-    description: Enable unit/integration test targets
+    description: Compatibility input retained for workflow callers
     required: false
     default: "false"
   build-integration-tests:
-    description: Enable integration tests (AXIDEV_IO_BUILD_INTEGRATION_TESTS)
+    description: Build the interactive integration binaries
     required: false
     default: "false"
   run-tests:
-    description: Run ctest after build
+    description: Run unit tests after building
     required: false
     default: "false"
   package-output:
-    description: Install to dist/ and package into packages/
+    description: Package headers and the static library into packages/
     required: false
     default: "false"
   upload-binaries:
@@ -32,10 +28,6 @@ inputs:
   artifact-name:
     description: Artifact name (required when upload-binaries=true)
     required: false
-  cmake-generator:
-    description: Optional CMake generator
-    required: false
-    default: ""
   version:
     description: Release version override (otherwise uses tag ref)
     required: false
@@ -44,62 +36,36 @@ inputs:
 runs:
   using: composite
   steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+
     - name: Install dependencies (Linux)
       shell: bash
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          build-essential cmake pkg-config \
-          libinput-dev libxkbcommon-dev libudev-dev \
-          libx11-dev libxi-dev libxtst-dev \
-          libxrandr-dev libxcursor-dev libxinerama-dev
+          build-essential pkg-config \
+          libinput-dev libxkbcommon-dev libudev-dev
 
     - name: Clean stale build directory
       shell: bash
-      run: rm -rf build dist packages
+      run: python build.py clean
 
-    - name: Configure (CMake)
+    - name: Build library
+      if: ${{ inputs.run-tests != 'true' && inputs.build-integration-tests != 'true' && inputs.package-output != 'true' }}
       shell: bash
-      run: |
-        set -euo pipefail
-        BUILD_TYPE='${{ inputs.build-type }}'
-        CMAKE_ARGS=(-S . -B build -DCMAKE_BUILD_TYPE="$BUILD_TYPE")
+      run: python build.py build
 
-        if [ '${{ inputs.build-tests }}' = 'true' ]; then
-          CMAKE_ARGS+=( -DAXIDEV_IO_BUILD_TESTS=ON )
-        fi
-
-        if [ '${{ inputs.build-integration-tests }}' = 'true' ]; then
-          CMAKE_ARGS+=( -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON )
-        fi
-
-        if [ -n '${{ inputs.cmake-generator }}' ]; then
-          CMAKE_ARGS+=( -G '${{ inputs.cmake-generator }}' )
-        fi
-
-        cmake "${CMAKE_ARGS[@]}"
-
-    - name: Build (CMake)
+    - name: Build integration binaries
+      if: ${{ inputs.build-integration-tests == 'true' }}
       shell: bash
-      run: |
-        set -euo pipefail
-        cmake --build build --config '${{ inputs.build-type }}' --parallel
+      run: python build.py integration-binaries
 
-    - name: Run tests (ctest)
+    - name: Run unit tests
       if: ${{ inputs.run-tests == 'true' }}
       shell: bash
-      env:
-        CTEST_OUTPUT_ON_FAILURE: 1
-      run: |
-        set -euo pipefail
-        ctest --test-dir build --output-on-failure -C '${{ inputs.build-type }}'
-
-    - name: Install
-      if: ${{ inputs.package-output == 'true' }}
-      shell: bash
-      run: |
-        set -euo pipefail
-        cmake --install build --prefix dist --config '${{ inputs.build-type }}'
+      run: python build.py test
 
     - name: Package (Linux)
       if: ${{ inputs.package-output == 'true' }}
@@ -110,8 +76,7 @@ runs:
         if [ -z "$TAG" ]; then
           TAG="${GITHUB_REF#refs/tags/}"
         fi
-        mkdir -p packages
-        tar -C dist -czf "packages/axidev-io-${TAG}-linux-${{ inputs.arch }}.tar.gz" .
+        python build.py package --version "$TAG" --arch '${{ inputs.arch }}'
 
     - name: Upload release package
       if: ${{ inputs.package-output == 'true' }}
@@ -126,5 +91,4 @@ runs:
       with:
         name: ${{ inputs.artifact-name }}
         path: |
-          build/tests/axidev-io-unit-tests*
-          build/tests/axidev-io-integration-tests*
+          build/linux/bin/test_*

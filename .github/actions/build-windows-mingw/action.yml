@@ -1,28 +1,24 @@
-name: Build (Windows / MinGW-GCC)
-description: Configure, build, test, and optionally package axidev-io on Windows using MinGW-w64 GCC (linked against libstdc++).
+name: Build (Windows)
+description: Build, test, and optionally package axidev-io on Windows with build.py.
 
 inputs:
   arch:
-    description: MinGW platform (x64 or x86)
+    description: Architecture label used for artifact naming (e.g. x64, arm64)
     required: true
-  build-type:
-    description: CMake build type
-    required: false
-    default: Release
   build-tests:
-    description: Enable unit/integration test targets
+    description: Compatibility input retained for workflow callers
     required: false
     default: "false"
   build-integration-tests:
-    description: Enable integration tests (AXIDEV_IO_BUILD_INTEGRATION_TESTS)
+    description: Build the interactive integration binaries
     required: false
     default: "false"
   run-tests:
-    description: Run ctest after build
+    description: Run unit tests after building
     required: false
     default: "false"
   package-output:
-    description: Install to dist/ and package into packages/
+    description: Package headers and the static library into packages/
     required: false
     default: "false"
   upload-binaries:
@@ -32,10 +28,6 @@ inputs:
   artifact-name:
     description: Artifact name (required when upload-binaries=true)
     required: false
-  cmake-generator:
-    description: Optional CMake generator override
-    required: false
-    default: ""
   version:
     description: Release version override (otherwise uses tag ref)
     required: false
@@ -44,81 +36,28 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Set MinGW-w64 environment
-      id: setup
-      shell: bash
-      run: |
-        if [ "${{ inputs.arch }}" = "x86" ]; then
-          echo "msystem=MINGW32" >> $GITHUB_OUTPUT
-          echo "prefix=mingw-w64-i686" >> $GITHUB_OUTPUT
-        else
-          echo "msystem=MINGW64" >> $GITHUB_OUTPUT
-          echo "prefix=mingw-w64-x86_64" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Setup MSYS2 with MinGW-w64 GCC
-      uses: msys2/setup-msys2@v2
+    - uses: actions/setup-python@v5
       with:
-        msystem: ${{ steps.setup.outputs.msystem }}
-        update: true
-        install: >-
-          ${{ steps.setup.outputs.prefix }}-gcc
-          ${{ steps.setup.outputs.prefix }}-cmake
-          ${{ steps.setup.outputs.prefix }}-ninja
-          make
+        python-version: "3.x"
 
     - name: Clean stale build directory
-      shell: msys2 {0}
-      run: rm -rf build dist packages
+      shell: pwsh
+      run: python build.py clean
 
-    - name: Configure (CMake)
-      shell: msys2 {0}
-      run: |
-        set -euo pipefail
-        BUILD_TYPE='${{ inputs.build-type }}'
+    - name: Build library
+      if: ${{ inputs.run-tests != 'true' && inputs.build-integration-tests != 'true' && inputs.package-output != 'true' }}
+      shell: pwsh
+      run: python build.py build
 
-        CMAKE_ARGS=(-S . -B build -DCMAKE_BUILD_TYPE="$BUILD_TYPE")
+    - name: Build integration binaries
+      if: ${{ inputs.build-integration-tests == 'true' }}
+      shell: pwsh
+      run: python build.py integration-binaries
 
-        if [ -z '${{ inputs.cmake-generator }}' ]; then
-          CMAKE_ARGS+=( -G 'Ninja' )
-        else
-          CMAKE_ARGS+=( -G '${{ inputs.cmake-generator }}' )
-        fi
-
-        if [ '${{ inputs.build-tests }}' = 'true' ]; then
-          CMAKE_ARGS+=( -DAXIDEV_IO_BUILD_TESTS=ON )
-        fi
-
-        if [ '${{ inputs.build-integration-tests }}' = 'true' ]; then
-          CMAKE_ARGS+=( -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON )
-        fi
-
-        # Statically link libstdc++/libgcc to avoid MinGW runtime DLL dependencies
-        CMAKE_ARGS+=( -DAXIDEV_IO_MINGW_STATIC_RUNTIME=ON )
-
-        cmake "${CMAKE_ARGS[@]}"
-
-    - name: Build (CMake)
-      shell: msys2 {0}
-      run: |
-        set -euo pipefail
-        cmake --build build --config '${{ inputs.build-type }}' --parallel
-
-    - name: Run tests (ctest)
+    - name: Run unit tests
       if: ${{ inputs.run-tests == 'true' }}
-      shell: msys2 {0}
-      env:
-        CTEST_OUTPUT_ON_FAILURE: 1
-      run: |
-        set -euo pipefail
-        ctest --test-dir build --output-on-failure -C '${{ inputs.build-type }}'
-
-    - name: Install
-      if: ${{ inputs.package-output == 'true' }}
-      shell: msys2 {0}
-      run: |
-        set -euo pipefail
-        cmake --install build --prefix dist --config '${{ inputs.build-type }}'
+      shell: pwsh
+      run: python build.py test
 
     - name: Package (Windows)
       if: ${{ inputs.package-output == 'true' }}
@@ -128,8 +67,7 @@ runs:
         if (-not $tag) {
           $tag = $env:GITHUB_REF -replace '^refs/tags/', ''
         }
-        New-Item -ItemType Directory -Path packages -Force | Out-Null
-        Compress-Archive -Path "dist\*" -DestinationPath "packages/axidev-io-$tag-windows-${{ inputs.arch }}.zip" -Force
+        python build.py package --version $tag --arch "${{ inputs.arch }}"
 
     - name: Upload release package
       if: ${{ inputs.package-output == 'true' }}
@@ -144,5 +82,4 @@ runs:
       with:
         name: ${{ inputs.artifact-name }}
         path: |
-          build/tests/axidev-io-unit-tests*
-          build/tests/axidev-io-integration-tests*
+          build/windows/bin/test_*.exe

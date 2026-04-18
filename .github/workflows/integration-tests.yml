@@ -1,27 +1,11 @@
 name: Integration tests (manual)
 
-# Manual workflow to run the integration tests. Integration tests are built
-# and executed from a dedicated test executable (`axidev-io-integration-tests`)
-# and are no longer bundled into the lightweight unit test binary. The
-# integration executable is produced when CMake is configured with:
-#
-#   -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON
-#
-# Integration tests are often interactive and may require GUI/device
-# permissions. The workflow exposes a few environment variables useful for
-# CI or local runs:
-#
-# - AXIDEV_IO_RUN_INTEGRATION_TESTS=1  : historically used to enable integration tests
-# - AXIDEV_IO_AUTO_CONFIRM=1           : auto-confirm prompts (non-interactive)
-# - AXIDEV_IO_INTERACTIVE=(true|yes|1) : enable interactive prompts
-#
-# By default this workflow sets `AXIDEV_IO_RUN_INTEGRATION_TESTS=1`,
-# `AXIDEV_IO_AUTO_CONFIRM=1` and `AXIDEV_IO_INTERACTIVE=1` so the integration
-# binaries are built in an interactive-friendly mode. The workflow is intended
-# to only build the binaries so they can be run/tested outside of CI.
+# Manual workflow to build the interactive integration test binaries for the
+# currently supported platforms. The tests themselves remain manual because
+# they depend on real focus, permissions, and device state.
 on:
   workflow_dispatch:
-    # no inputs; workflow is always interactive
+    # no inputs
 
 permissions:
   contents: write
@@ -35,39 +19,10 @@ jobs:
       - uses: ./.github/actions/build-linux
         with:
           arch: x64
-          build-type: Release
           build-tests: "true"
           build-integration-tests: "true"
           upload-binaries: "true"
           artifact-name: integration-test-binary-ubuntu-latest-x64
-
-  build-ubuntu-arm64:
-    name: Build integration binaries (Ubuntu arm64)
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-linux
-        with:
-          arch: arm64
-          build-type: Release
-          build-tests: "true"
-          build-integration-tests: "true"
-          upload-binaries: "true"
-          artifact-name: integration-test-binary-ubuntu-24.04-arm-arm64
-
-  build-macos-arm64:
-    name: Build integration binaries (macOS arm64)
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-macos
-        with:
-          arch: arm64
-          build-type: Release
-          build-tests: "true"
-          build-integration-tests: "true"
-          upload-binaries: "true"
-          artifact-name: integration-test-binary-macos-latest-arm64
 
   build-windows-x64:
     name: Build integration binaries (Windows x64)
@@ -77,35 +32,17 @@ jobs:
       - uses: ./.github/actions/build-windows-mingw
         with:
           arch: x64
-          build-type: Release
           build-tests: "true"
           build-integration-tests: "true"
           upload-binaries: "true"
           artifact-name: integration-test-binary-windows-latest-x64
-
-  build-windows-arm64:
-    name: Build integration binaries (Windows arm64)
-    runs-on: windows-11-arm
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-windows-mingw
-        with:
-          arch: arm64
-          build-type: Release
-          build-tests: "true"
-          build-integration-tests: "true"
-          upload-binaries: "true"
-          artifact-name: integration-test-binary-windows-11-arm-arm64
 
   release:
     name: Create integration test release
     runs-on: ubuntu-latest
     needs:
       - build-ubuntu-x64
-      - build-ubuntu-arm64
-      - build-macos-arm64
       - build-windows-x64
-      - build-windows-arm64
     if: ${{ always() }}
     permissions:
       contents: write
@@ -128,7 +65,7 @@ jobs:
           fi
           while IFS= read -r -d '' file; do
             artifact_dir=$(dirname "$file")
-            os_arch=$(basename "$artifact_dir" | sed 's/^integration-test-binary-//' | sed 's/^test-consumer-binary-//')
+            os_arch=$(basename "$artifact_dir" | sed 's/^integration-test-binary-//')
             if [ -z "$os_arch" ]; then
               os_arch=unknown
             fi
@@ -142,7 +79,7 @@ jobs:
               ext=".$ext"
             fi
             cp "$file" "release-assets/${base}-${os_arch}${ext}"
-          done < <(find artifacts -type f \( -name 'axidev-io-integration-tests*' -o -name 'axidev_io_consumer*' -o -name 'axidev-io-test-consumer*' \) ! -name '*.o' ! -name '*.obj' ! -name '*.cmake' -print0)
+          done < <(find artifacts -type f \( -name 'test_integration_*' -o -name 'test_integration_*.exe' \) ! -name '*.o' ! -name '*.obj' -print0)
 
       - name: Check for release assets
         id: check-assets

@@ -26,43 +26,6 @@ jobs:
       - uses: ./.github/actions/build-linux
         with:
           arch: x64
-          build-type: Release
-          package-output: "true"
-          version: ${{ github.event.inputs.version || '' }}
-
-  build-ubuntu-arm64:
-    name: Build & package (Ubuntu arm64)
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-linux
-        with:
-          arch: arm64
-          build-type: Release
-          package-output: "true"
-          version: ${{ github.event.inputs.version || '' }}
-
-  build-macos-x86_64:
-    name: Build & package (macOS x86_64)
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-macos
-        with:
-          arch: x86_64
-          build-type: Release
-          package-output: "true"
-          version: ${{ github.event.inputs.version || '' }}
-
-  build-macos-arm64:
-    name: Build & package (macOS arm64)
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-macos
-        with:
-          arch: arm64
-          build-type: Release
           package-output: "true"
           version: ${{ github.event.inputs.version || '' }}
 
@@ -74,31 +37,6 @@ jobs:
       - uses: ./.github/actions/build-windows-mingw
         with:
           arch: x64
-          build-type: Release
-          package-output: "true"
-          version: ${{ github.event.inputs.version || '' }}
-
-  build-windows-msvc-x64:
-    name: Build & package (Windows x64 / MSVC)
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-windows-msvc
-        with:
-          arch: x64
-          build-type: Release
-          package-output: "true"
-          version: ${{ github.event.inputs.version || '' }}
-
-  build-windows-arm64:
-    name: Build & package (Windows arm64)
-    runs-on: windows-11-arm
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/build-windows-mingw
-        with:
-          arch: arm64
-          build-type: Release
           package-output: "true"
           version: ${{ github.event.inputs.version || '' }}
 
@@ -107,12 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-ubuntu-x64
-      - build-ubuntu-arm64
-      - build-macos-x86_64
-      - build-macos-arm64
       - build-windows-x64
-      - build-windows-arm64
-      - build-windows-msvc-x64
     steps:
       - uses: actions/checkout@v4
 
@@ -134,12 +67,7 @@ jobs:
 
           expected=(
             "axidev-io-${TAG}-linux-x64.tar.gz"
-            "axidev-io-${TAG}-linux-arm64.tar.gz"
-            "axidev-io-${TAG}-macos-x86_64.tar.gz"
-            "axidev-io-${TAG}-macos-arm64.tar.gz"
             "axidev-io-${TAG}-windows-x64.zip"
-            "axidev-io-${TAG}-windows-arm64.zip"
-            "axidev-io-${TAG}-windows-msvc-x64.zip"
           )
 
           missing=0
@@ -178,36 +106,6 @@ jobs:
           asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-linux-x64.tar.gz
           asset_content_type: application/gzip
 
-      - name: Upload asset (linux arm64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-linux-arm64.tar.gz
-          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-linux-arm64.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload asset (macos x86_64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-macos-x86_64.tar.gz
-          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-macos-x86_64.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload asset (macos arm64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-macos-arm64.tar.gz
-          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-macos-arm64.tar.gz
-          asset_content_type: application/gzip
-
       - name: Upload asset (windows x64)
         uses: actions/upload-release-asset@v1
         env:
@@ -216,24 +114,4 @@ jobs:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
           asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-x64.zip
           asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-x64.zip
-          asset_content_type: application/zip
-
-      - name: Upload asset (windows arm64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-arm64.zip
-          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-arm64.zip
-          asset_content_type: application/zip
-
-      - name: Upload asset (windows msvc x64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-msvc-x64.zip
-          asset_name: axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-msvc-x64.zip
           asset_content_type: application/zip
