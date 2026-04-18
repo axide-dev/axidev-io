@@ -86,6 +86,23 @@ jobs:
             exit 1
           fi
 
+      - name: Verify packaged license files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          linux_asset="release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-linux-x64.tar.gz"
+          windows_asset="release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-x64.zip"
+
+          # Every release archive must carry the project license plus the full
+          # vendored license directory so downstream consumers receive the
+          # third-party notices with the packaged library.
+          tar -tzf "$linux_asset" | grep -Fx './LICENSE'
+          tar -tzf "$linux_asset" | grep -Fx './vendor/licenses/stb.txt'
+
+          unzip -Z1 "$windows_asset" | grep -Fx 'LICENSE'
+          unzip -Z1 "$windows_asset" | grep -Fx 'vendor/licenses/stb.txt'
+
       - name: Create GitHub release
         id: create-release
         uses: actions/create-release@v1

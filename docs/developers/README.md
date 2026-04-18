@@ -62,3 +62,8 @@ Additional targets:
 - No CMake, Conan, or vcpkg metadata remains.
 - The only vendored third-party code is `stb_ds.h`.
 - Linux dependencies are discovered through `pkg-config`.
+- Linux uses system shared libraries for `libinput`, `libudev`, and
+  `xkbcommon`; they must remain dynamically linked for legal/compliance
+  reasons.
+- `python build.py package` includes the project `LICENSE` and the full
+  `vendor/licenses/` directory in the release archive.

@@ -19,6 +19,7 @@ IS_WINDOWS = os.name == "nt"
 PLATFORM_TAG = "windows" if IS_WINDOWS else "linux"
 BUILD_ROOT = ROOT / "build"
 DEFAULT_BUILD_DIR = BUILD_ROOT / PLATFORM_TAG
+VENDOR_LICENSES_DIR = ROOT / "vendor" / "licenses"
 OBJ_DIR_NAME = "obj"
 BIN_DIR_NAME = "bin"
 LIB_DIR_NAME = "lib"
@@ -82,6 +83,33 @@ def pkg_config_flags(pkg_config: str, flag: str, packages: list[str]) -> list[st
     return split_flags(output)
 
 
+def ensure_linux_dynamic_link_flags(flags: list[str], source: str) -> None:
+    forbidden_prefixes = ("-Wl,-Bstatic", "-Wl,--whole-archive")
+    forbidden_exact = {"-static", "--static"}
+
+    for flag in flags:
+        if flag in forbidden_exact:
+            raise SystemExit(
+                f"{source} requested static linkage on Linux via {flag}. "
+                "Linux dependencies must stay dynamically linked for legal/compliance reasons."
+            )
+        if flag.startswith(forbidden_prefixes):
+            raise SystemExit(
+                f"{source} requested static linkage on Linux via {flag}. "
+                "Linux dependencies must stay dynamically linked for legal/compliance reasons."
+            )
+        if flag.endswith(".a") or ".a." in flag or flag.endswith(".a)"):
+            raise SystemExit(
+                f"{source} referenced a static archive on Linux via {flag}. "
+                "Linux dependencies must stay dynamically linked for legal/compliance reasons."
+            )
+        if flag.startswith("-l:") and flag.endswith(".a"):
+            raise SystemExit(
+                f"{source} requested a static archive on Linux via {flag}. "
+                "Linux dependencies must stay dynamically linked for legal/compliance reasons."
+            )
+
+
 @dataclass
 class BuildConfig:
     build_dir: Path
@@ -133,12 +161,23 @@ def make_config(build_dir: Path) -> BuildConfig:
     else:
         pkg_config = os.environ.get("PKG_CONFIG", "pkg-config")
         cppflags.append("-DAXIDEV_IO_STATIC")
+        ensure_linux_dynamic_link_flags(ldflags, "LDFLAGS")
+        ensure_linux_dynamic_link_flags(ldlibs, "LDLIBS")
+
+        # Legal/compliance policy:
+        # These Linux dependencies must remain dynamically linked. We only
+        # discover their compile/link flags from the system at build time and
+        # rely on the platform loader to resolve the shared libraries at
+        # runtime. Do not switch this to pkg-config --static, ship .a files, or
+        # force -static/-Wl,-Bstatic in environment overrides.
         cppflags.extend(
             pkg_config_flags(pkg_config, "--cflags", ["libinput", "libudev", "xkbcommon"])
         )
-        platform_libs.extend(
-            pkg_config_flags(pkg_config, "--libs", ["libinput", "libudev", "xkbcommon"])
+        linux_shared_libs = pkg_config_flags(
+            pkg_config, "--libs", ["libinput", "libudev", "xkbcommon"]
         )
+        ensure_linux_dynamic_link_flags(linux_shared_libs, "pkg-config --libs")
+        platform_libs.extend(linux_shared_libs)
         platform_libs.append("-pthread")
         library_sources.extend(
             [
@@ -259,6 +298,7 @@ def package_output(config: BuildConfig, version: str, arch: str) -> Path:
     packages_dir.mkdir(parents=True, exist_ok=True)
 
     copy_tree(ROOT / "include", dist_dir / "include")
+    copy_tree(VENDOR_LICENSES_DIR, dist_dir / "vendor" / "licenses")
     copy_file(library_path, dist_dir / "lib" / LIB_FILENAME)
     copy_file(ROOT / "README.md", dist_dir / "README.md")
     copy_file(ROOT / "LICENSE", dist_dir / "LICENSE")

@@ -18,7 +18,7 @@ inputs:
     required: false
     default: "false"
   package-output:
-    description: Package headers and the static library into packages/
+    description: Package headers, the static library, LICENSE, and vendor/licenses into packages/
     required: false
     default: "false"
   upload-binaries:
@@ -43,6 +43,10 @@ runs:
     - name: Install dependencies (Linux)
       shell: bash
       run: |
+        # Install shared-library development packages from the runner image.
+        # These Linux dependencies must stay dynamically linked for
+        # legal/compliance reasons. build.py enforces that policy and only uses
+        # pkg-config to discover system headers and shared-library link flags.
         sudo apt-get update
         sudo apt-get install -y \
           build-essential pkg-config \
@@ -62,16 +66,50 @@ runs:
       shell: bash
       run: python build.py integration-binaries
 
+    - name: Build Linux linkage probe binary
+      if: ${{ inputs.build-integration-tests != 'true' }}
+      shell: bash
+      run: python build.py integration-binaries
+
     - name: Run unit tests
       if: ${{ inputs.run-tests == 'true' }}
       shell: bash
       run: python build.py test
+
+    - name: Verify Linux dependencies stay dynamically linked
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        probe="build/linux/bin/test_integration_listener"
+        if [ ! -x "$probe" ]; then
+          echo "::error::Missing Linux linkage probe binary: $probe"
+          exit 1
+        fi
+
+        # This explicit runtime-loader check exists for legal/compliance
+        # reasons. These dependencies must resolve as shared libraries and must
+        # not be folded into the produced binaries as static archives.
+        ldd_output="$(ldd "$probe")"
+        printf '%s\n' "$ldd_output"
+
+        printf '%s\n' "$ldd_output" | grep -E 'libinput\.so'
+        printf '%s\n' "$ldd_output" | grep -E 'libudev\.so'
+        printf '%s\n' "$ldd_output" | grep -E 'libxkbcommon\.so'
+
+        if printf '%s\n' "$ldd_output" | grep -E 'not found'; then
+          echo "::error::One or more required shared libraries were not resolved by ldd."
+          exit 1
+        fi
 
     - name: Package (Linux)
       if: ${{ inputs.package-output == 'true' }}
       shell: bash
       run: |
         set -euo pipefail
+        # Release archives must carry the project license and vendored third-
+        # party license notices. build.py package is the single source of truth
+        # for that layout.
         TAG='${{ inputs.version }}'
         if [ -z "$TAG" ]; then
           TAG="${GITHUB_REF#refs/tags/}"
