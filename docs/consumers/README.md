@@ -13,11 +13,25 @@ python build.py
 python build.py example
 ```
 
-On Linux the project expects system packages for:
+On Linux, the project expects the following system packages:
 
-- `libinput`
-- `libudev`
-- `xkbcommon`
+* `libinput`
+* `libudev`
+* `xkbcommon`
+
+## Linking
+
+`axidev-io` itself may be linked statically or dynamically.
+
+On Linux, backend dependencies are expected to be provided by the system as shared libraries.
+
+When distributing applications, integrators are responsible for complying with the licenses of any third-party libraries they link against.
+
+Example:
+
+```sh
+cc main.c -laxidev-io -linput -ludev -lxkbcommon -lpthread
+```
 
 ## Basic Usage
 
