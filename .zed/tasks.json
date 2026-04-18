@@ -1,69 +1,54 @@
 [
   {
-    "label": "CMake: configure (Debug)",
-    "command": "make",
+    "label": "Build library",
+    "command": "python",
     "args": [
-      "configure",
-      "CMAKE_BUILD_TYPE=Debug",
-    ],
+      "build.py",
+      "build"
+    ]
   },
   {
-    "label": "CMake: configure (Release)",
-    "command": "make",
+    "label": "Run unit tests",
+    "command": "python",
     "args": [
-      "configure-release",
-    ],
+      "build.py",
+      "test"
+    ]
   },
   {
-    "label": "CMake: build",
-    "command": "make",
+    "label": "Build example",
+    "command": "python",
     "args": [
-      "build",
-    ],
-  },
-  {
-    "label": "CTest: run tests",
-    "command": "make",
-    "args": ["test"],
+      "build.py",
+      "example"
+    ]
   },
   {
     "label": "Run integration test (interactive)",
-    "command": "make",
+    "command": "python",
     "args": [
-      "integration-test",
+      "build.py",
+      "test-integration"
     ],
     "env": {
       "AXIDEV_IO_RUN_INTEGRATION_TESTS": "1",
-      "AXIDEV_IO_INTERACTIVE": "1",
-    },
+      "AXIDEV_IO_INTERACTIVE": "1"
+    }
   },
   {
-    "label": "Run consumer (help)",
-    "command": "make",
+    "label": "Package",
+    "command": "python",
     "args": [
-      "run-consumer",
-      "RUN_ARGS=--help",
-    ],
-  },
-  {
-    "label": "Run unit tests (binary)",
-    "command": "make",
-    "args": [
-      "run-unit-tests",
-    ],
-  },
-  {
-    "label": "Export compile_commands.json",
-    "command": "make",
-    "args": [
-      "export-compile-commands",
-    ],
+      "build.py",
+      "package"
+    ]
   },
   {
     "label": "Clean",
-    "command": "make",
+    "command": "python",
     "args": [
-      "clean",
-    ],
-  },
+      "build.py",
+      "clean"
+    ]
+  }
 ]

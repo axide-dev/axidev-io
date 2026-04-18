@@ -3,16 +3,17 @@
 ## Build
 
 ```sh
-make
-make test
-make example
+python build.py
+python build.py test
+python build.py example
 ```
 
 Additional targets:
 
-- `make test-unit`
-- `make test-integration`
-- `make clean`
+- `python build.py test-unit`
+- `python build.py test-integration`
+- `python build.py clean`
+- `python build.py package --version v1.2.3`
 
 ## Repo Layout
 
@@ -51,8 +52,8 @@ Additional targets:
 
 ## Testing
 
-- `make test` runs the non-interactive C unit tests.
-- `make test-integration` builds and runs the interactive integration tests.
+- `python build.py test` runs the non-interactive C unit tests.
+- `python build.py test-integration` builds and runs the interactive integration tests.
 - Integration tests are intentionally manual because they depend on real focus,
   permissions, and device state.
 

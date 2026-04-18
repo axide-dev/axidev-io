@@ -9,8 +9,8 @@ Optional logging macros live in `include/axidev-io/log.h`.
 ## Build
 
 ```sh
-make
-make example
+python build.py
+python build.py example
 ```
 
 On Linux the project expects system packages for:

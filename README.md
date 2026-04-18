@@ -3,24 +3,18 @@
 `axidev-io` is a C library for keyboard input injection and global keyboard
 listening on Windows and Linux.
 
-## Status
-
-- Language: C only
-- Supported platforms: Windows, Linux
-- Removed: macOS, CMake, Conan, vcpkg
-- Build entrypoint: `Makefile`
-- Primary public header: `include/axidev-io/c_api.h`
-
 ## Build
 
 ```sh
-make
-make test
-make example
+python build.py
+python build.py test
+python build.py example
 ```
 
 On Linux the build expects `libinput`, `libudev`, and `xkbcommon` through
 `pkg-config`.
+
+The primary public header is `include/axidev-io/c_api.h`.
 
 ## Public API
 
