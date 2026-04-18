@@ -18,7 +18,7 @@ inputs:
     required: false
     default: "false"
   package-output:
-    description: Package headers, the static library, LICENSE, and vendor/licenses into packages/
+    description: Package headers, the static library, consumer docs, LICENSE, and vendor/licenses into packages/
     required: false
     default: "false"
   upload-binaries:
@@ -63,9 +63,9 @@ runs:
       if: ${{ inputs.package-output == 'true' }}
       shell: pwsh
       run: |
-        # Release archives must carry the project license and vendored third-
-        # party license notices. build.py package is the single source of truth
-        # for that layout.
+        # Release archives must carry the consumer guide, project license, and
+        # vendored third-party license notices. build.py package is the single
+        # source of truth for that layout.
         $tag = "${{ inputs.version }}"
         if (-not $tag) {
           $tag = $env:GITHUB_REF -replace '^refs/tags/', ''

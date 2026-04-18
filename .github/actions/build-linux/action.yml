@@ -18,7 +18,7 @@ inputs:
     required: false
     default: "false"
   package-output:
-    description: Package headers, the static library, LICENSE, and vendor/licenses into packages/
+    description: Package headers, the static library, consumer docs, LICENSE, and vendor/licenses into packages/
     required: false
     default: "false"
   upload-binaries:
@@ -107,9 +107,9 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        # Release archives must carry the project license and vendored third-
-        # party license notices. build.py package is the single source of truth
-        # for that layout.
+        # Release archives must carry the consumer guide, project license, and
+        # vendored third-party license notices. build.py package is the single
+        # source of truth for that layout.
         TAG='${{ inputs.version }}'
         if [ -z "$TAG" ]; then
           TAG="${GITHUB_REF#refs/tags/}"

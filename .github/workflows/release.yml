@@ -94,12 +94,15 @@ jobs:
           linux_asset="release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-linux-x64.tar.gz"
           windows_asset="release-assets/axidev-io-${{ steps.collect-assets.outputs.tag }}-windows-x64.zip"
 
-          # Every release archive must carry the project license plus the full
-          # vendored license directory so downstream consumers receive the
-          # third-party notices with the packaged library.
+          # Every release archive must carry the consumer guide, the project
+          # license, and the full vendored license directory so downstream
+          # consumers receive both usage guidance and third-party notices with
+          # the packaged library.
+          tar -tzf "$linux_asset" | grep -Fx './docs/consumers/README.md'
           tar -tzf "$linux_asset" | grep -Fx './LICENSE'
           tar -tzf "$linux_asset" | grep -Fx './vendor/licenses/stb.txt'
 
+          unzip -Z1 "$windows_asset" | grep -Fx 'docs/consumers/README.md'
           unzip -Z1 "$windows_asset" | grep -Fx 'LICENSE'
           unzip -Z1 "$windows_asset" | grep -Fx 'vendor/licenses/stb.txt'
 

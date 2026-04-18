@@ -300,6 +300,7 @@ def package_output(config: BuildConfig, version: str, arch: str) -> Path:
     copy_tree(ROOT / "include", dist_dir / "include")
     copy_tree(VENDOR_LICENSES_DIR, dist_dir / "vendor" / "licenses")
     copy_file(library_path, dist_dir / "lib" / LIB_FILENAME)
+    copy_file(ROOT / "docs" / "consumers" / "README.md", dist_dir / "docs" / "consumers" / "README.md")
     copy_file(ROOT / "README.md", dist_dir / "README.md")
     copy_file(ROOT / "LICENSE", dist_dir / "LICENSE")
 

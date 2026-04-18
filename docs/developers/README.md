@@ -67,3 +67,5 @@ Additional targets:
   reasons.
 - `python build.py package` includes the project `LICENSE` and the full
   `vendor/licenses/` directory in the release archive.
+- `python build.py package` also includes `docs/consumers/README.md` in the
+  release archive for downstream integration guidance.
