@@ -31,6 +31,7 @@ static void test_conversion_helpers(void) {
 static void test_sender_lifecycle_and_errors(void) {
   char *error_text;
   axidev_io_keyboard_capabilities_t capabilities;
+  bool initialized;
 
   TEST_CHECK(!axidev_io_keyboard_tap((axidev_io_keyboard_key_with_modifier_t){
       AXIDEV_IO_KEY_A, AXIDEV_IO_MOD_NONE}));
@@ -38,7 +39,24 @@ static void test_sender_lifecycle_and_errors(void) {
   TEST_CHECK(error_text != NULL);
   axidev_io_free_string(error_text);
 
-  TEST_CHECK(axidev_io_keyboard_initialize());
+  initialized = axidev_io_keyboard_initialize();
+#if defined(__linux__)
+  if (!initialized) {
+    error_text = axidev_io_get_last_error();
+    TEST_CHECK(error_text != NULL);
+    TEST_CHECK(error_text != NULL &&
+               strstr(error_text, "permission_denied") != NULL);
+    if (error_text != NULL) {
+      axidev_io_free_string(error_text);
+    }
+    TEST_CHECK(!axidev_io_keyboard_is_ready());
+    axidev_io_keyboard_get_capabilities(&capabilities);
+    TEST_CHECK(!capabilities.can_inject_keys);
+    axidev_io_keyboard_free();
+    return;
+  }
+#endif
+  TEST_CHECK(initialized);
   TEST_CHECK(axidev_io_keyboard_is_ready());
   axidev_io_keyboard_get_capabilities(&capabilities);
   TEST_CHECK(capabilities.can_inject_keys);

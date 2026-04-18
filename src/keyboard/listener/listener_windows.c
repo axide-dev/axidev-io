@@ -165,7 +165,7 @@ static void axidev_io_listener_handle_event(
     if (codepoint != 0) {
       hmput(platform->last_press_cp, (uint32_t)vk, codepoint);
     } else {
-      hmdel(platform->last_press_cp, (uint32_t)vk);
+      (void)hmdel(platform->last_press_cp, (uint32_t)vk);
     }
   } else {
     ptrdiff_t press_index;
@@ -189,13 +189,13 @@ static void axidev_io_listener_handle_event(
         hmput(platform->last_release_time, (uint32_t)vk, now);
         hmput(platform->last_release_sig, (uint32_t)vk,
               ((axidev_io_vk_signature){codepoint, mods}));
-        hmdel(platform->last_press_cp, (uint32_t)vk);
+        (void)hmdel(platform->last_press_cp, (uint32_t)vk);
         return;
       }
       hmput(platform->last_release_time, (uint32_t)vk, now);
       hmput(platform->last_release_sig, (uint32_t)vk,
             ((axidev_io_vk_signature){codepoint, mods}));
-      hmdel(platform->last_press_cp, (uint32_t)vk);
+      (void)hmdel(platform->last_press_cp, (uint32_t)vk);
     }
   }
 

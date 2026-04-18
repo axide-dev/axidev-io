@@ -149,13 +149,13 @@ static void axidev_io_listener_handle_key_event(
     if (cp >= 0x20u && cp != 0x7Fu) {
       hmput(platform->pending_codepoints, keycode, cp);
     } else {
-      hmdel(platform->pending_codepoints, keycode);
+      (void)hmdel(platform->pending_codepoints, keycode);
     }
   } else {
     pending_index = hmgeti(platform->pending_codepoints, keycode);
     if (pending_index >= 0) {
       codepoint = platform->pending_codepoints[pending_index].value;
-      hmdel(platform->pending_codepoints, keycode);
+      (void)hmdel(platform->pending_codepoints, keycode);
     }
   }
 
