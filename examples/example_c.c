@@ -9,7 +9,9 @@
 static void sleep_ms(unsigned int milliseconds) { Sleep(milliseconds); }
 #else
 #include <unistd.h>
-static void sleep_ms(unsigned int milliseconds) { usleep(milliseconds * 1000u); }
+static void sleep_ms(unsigned int milliseconds) {
+  usleep(milliseconds * 1000u);
+}
 #endif
 
 static void print_last_error_if_any(const char *context) {

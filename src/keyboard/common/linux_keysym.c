@@ -176,8 +176,7 @@ void axidev_io_linux_keymap_fill_fallback(axidev_io_linux_keymap *keymap) {
                                  KEY_LEFTMETA);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_SUPER_RIGHT,
                                  KEY_RIGHTMETA);
-  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_CAPS_LOCK,
-                                 KEY_CAPSLOCK);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_CAPS_LOCK, KEY_CAPSLOCK);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_NUM_LOCK, KEY_NUMLOCK);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_SPACE, KEY_SPACE);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_ENTER, KEY_ENTER);
@@ -313,9 +312,9 @@ void axidev_io_linux_keymap_init(axidev_io_linux_keymap *out_keymap,
           (struct modifier_scan){1u << alt_mod, AXIDEV_IO_MOD_ALT};
     }
     if (ctrl_mod != XKB_MOD_INVALID && alt_mod != XKB_MOD_INVALID) {
-      scans[scan_count++] = (struct modifier_scan){
-          (1u << ctrl_mod) | (1u << alt_mod),
-          AXIDEV_IO_MOD_CTRL | AXIDEV_IO_MOD_ALT};
+      scans[scan_count++] =
+          (struct modifier_scan){(1u << ctrl_mod) | (1u << alt_mod),
+                                 AXIDEV_IO_MOD_CTRL | AXIDEV_IO_MOD_ALT};
     }
     if (shift_mod != XKB_MOD_INVALID && ctrl_mod != XKB_MOD_INVALID &&
         alt_mod != XKB_MOD_INVALID) {
@@ -373,7 +372,8 @@ void axidev_io_linux_keymap_init(axidev_io_linux_keymap *out_keymap,
         }
         if (char_key != AXIDEV_IO_KEY_UNKNOWN &&
             hmgeti(out_keymap->code_and_mods_to_key,
-                   axidev_io_encode_evdev_mods(evdev_code, scans[i].mods)) < 0) {
+                   axidev_io_encode_evdev_mods(evdev_code, scans[i].mods)) <
+                0) {
           hmput(out_keymap->code_and_mods_to_key,
                 axidev_io_encode_evdev_mods(evdev_code, scans[i].mods),
                 char_key);
@@ -397,8 +397,7 @@ void axidev_io_linux_keymap_free(axidev_io_linux_keymap *keymap) {
 }
 
 axidev_io_keyboard_key_t axidev_io_linux_resolve_key_from_evdev_and_mods(
-    const axidev_io_linux_keymap *keymap,
-    int evdev_code,
+    const axidev_io_linux_keymap *keymap, int evdev_code,
     axidev_io_keyboard_modifier_t mods) {
   axidev_io_keymap_uint_to_key_entry *code_and_mods_to_key;
   axidev_io_keymap_int_to_key_entry *evdev_to_key;
@@ -409,8 +408,8 @@ axidev_io_keyboard_key_t axidev_io_linux_resolve_key_from_evdev_and_mods(
   }
 
   code_and_mods_to_key = keymap->code_and_mods_to_key;
-  index =
-      hmgeti(code_and_mods_to_key, axidev_io_encode_evdev_mods(evdev_code, mods));
+  index = hmgeti(code_and_mods_to_key,
+                 axidev_io_encode_evdev_mods(evdev_code, mods));
   if (index >= 0) {
     return code_and_mods_to_key[index].value;
   }

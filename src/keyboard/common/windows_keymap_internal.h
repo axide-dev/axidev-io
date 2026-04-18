@@ -20,8 +20,7 @@ void axidev_io_windows_keymap_init(axidev_io_windows_keymap *out_keymap,
                                    HKL layout);
 void axidev_io_windows_keymap_free(axidev_io_windows_keymap *keymap);
 axidev_io_keyboard_key_t axidev_io_windows_resolve_key_from_vk_and_mods(
-    const axidev_io_windows_keymap *keymap,
-    WORD vk,
+    const axidev_io_windows_keymap *keymap, WORD vk,
     axidev_io_keyboard_modifier_t mods);
 bool axidev_io_is_windows_extended_key(WORD vk);
 

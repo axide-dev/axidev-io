@@ -25,8 +25,7 @@ bool axidev_io_utf8_decode_one(const char **cursor, uint32_t *out_codepoint) {
   }
 
   if ((ptr[0] & 0xE0u) == 0xC0u && ptr[1] != 0) {
-    codepoint = ((uint32_t)(ptr[0] & 0x1Fu) << 6) |
-                (uint32_t)(ptr[1] & 0x3Fu);
+    codepoint = ((uint32_t)(ptr[0] & 0x1Fu) << 6) | (uint32_t)(ptr[1] & 0x3Fu);
     *cursor += 2;
     *out_codepoint = codepoint;
     return true;
@@ -34,19 +33,16 @@ bool axidev_io_utf8_decode_one(const char **cursor, uint32_t *out_codepoint) {
 
   if ((ptr[0] & 0xF0u) == 0xE0u && ptr[1] != 0 && ptr[2] != 0) {
     codepoint = ((uint32_t)(ptr[0] & 0x0Fu) << 12) |
-                ((uint32_t)(ptr[1] & 0x3Fu) << 6) |
-                (uint32_t)(ptr[2] & 0x3Fu);
+                ((uint32_t)(ptr[1] & 0x3Fu) << 6) | (uint32_t)(ptr[2] & 0x3Fu);
     *cursor += 3;
     *out_codepoint = codepoint;
     return true;
   }
 
-  if ((ptr[0] & 0xF8u) == 0xF0u && ptr[1] != 0 && ptr[2] != 0 &&
-      ptr[3] != 0) {
+  if ((ptr[0] & 0xF8u) == 0xF0u && ptr[1] != 0 && ptr[2] != 0 && ptr[3] != 0) {
     codepoint = ((uint32_t)(ptr[0] & 0x07u) << 18) |
                 ((uint32_t)(ptr[1] & 0x3Fu) << 12) |
-                ((uint32_t)(ptr[2] & 0x3Fu) << 6) |
-                (uint32_t)(ptr[3] & 0x3Fu);
+                ((uint32_t)(ptr[2] & 0x3Fu) << 6) | (uint32_t)(ptr[3] & 0x3Fu);
     *cursor += 4;
     *out_codepoint = codepoint;
     return true;
@@ -59,7 +55,9 @@ bool axidev_io_utf8_decode_one(const char **cursor, uint32_t *out_codepoint) {
 
 bool axidev_io_utf8_append(uint32_t codepoint, char **buffer) {
   char bytes[4];
+  char *output;
   size_t count = 0;
+  ptrdiff_t old_length;
 
   if (buffer == NULL) {
     return false;
@@ -87,8 +85,13 @@ bool axidev_io_utf8_append(uint32_t codepoint, char **buffer) {
     return false;
   }
 
-  arrsetlen(*buffer, arrlen(*buffer) + (ptrdiff_t)count);
-  memcpy(*buffer + arrlen(*buffer) - (ptrdiff_t)count, bytes, count);
+  old_length = arrlen(*buffer);
+  arrsetlen(*buffer, old_length + (ptrdiff_t)count);
+  output = *buffer;
+  if (output == NULL) {
+    return false;
+  }
+  memcpy(output + old_length, bytes, count);
   return true;
 }
 

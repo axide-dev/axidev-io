@@ -37,8 +37,7 @@ _Static_assert(sizeof(axidev_io_keyboard_listener_impl) <=
 axidev_io_keyboard_listener_impl *axidev_io_listener_impl_get(void);
 
 axidev_io_result axidev_io_keyboard_listener_start_internal(
-    axidev_io_keyboard_listener_cb callback,
-    void *user_data);
+    axidev_io_keyboard_listener_cb callback, void *user_data);
 void axidev_io_keyboard_listener_stop_internal(void);
 
 #endif

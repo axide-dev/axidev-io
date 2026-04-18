@@ -353,10 +353,8 @@ typedef struct axidev_io_keyboard_capabilities_t {
 } axidev_io_keyboard_capabilities_t;
 
 typedef void (*axidev_io_keyboard_listener_cb)(
-    uint32_t codepoint,
-    axidev_io_keyboard_key_with_modifier_t key_mod,
-    bool pressed,
-    void *user_data);
+    uint32_t codepoint, axidev_io_keyboard_key_with_modifier_t key_mod,
+    bool pressed, void *user_data);
 
 typedef struct axidev_io_keyboard_sender_context {
   bool initialized;
@@ -411,39 +409,37 @@ AXIDEV_IO_API axidev_io_keyboard_backend_type_t axidev_io_keyboard_type(void);
 AXIDEV_IO_API void axidev_io_keyboard_get_capabilities(
     axidev_io_keyboard_capabilities_t *out_capabilities);
 AXIDEV_IO_API bool axidev_io_keyboard_request_permissions(void);
-AXIDEV_IO_API bool axidev_io_keyboard_key_down(
-    axidev_io_keyboard_key_with_modifier_t key_mod);
-AXIDEV_IO_API bool axidev_io_keyboard_key_up(
-    axidev_io_keyboard_key_with_modifier_t key_mod);
-AXIDEV_IO_API bool axidev_io_keyboard_tap(
-    axidev_io_keyboard_key_with_modifier_t key_mod);
+AXIDEV_IO_API bool
+axidev_io_keyboard_key_down(axidev_io_keyboard_key_with_modifier_t key_mod);
+AXIDEV_IO_API bool
+axidev_io_keyboard_key_up(axidev_io_keyboard_key_with_modifier_t key_mod);
+AXIDEV_IO_API bool
+axidev_io_keyboard_tap(axidev_io_keyboard_key_with_modifier_t key_mod);
 AXIDEV_IO_API axidev_io_keyboard_modifier_t
 axidev_io_keyboard_active_modifiers(void);
-AXIDEV_IO_API bool axidev_io_keyboard_hold_modifier(
-    axidev_io_keyboard_modifier_t mods);
-AXIDEV_IO_API bool axidev_io_keyboard_release_modifier(
-    axidev_io_keyboard_modifier_t mods);
+AXIDEV_IO_API bool
+axidev_io_keyboard_hold_modifier(axidev_io_keyboard_modifier_t mods);
+AXIDEV_IO_API bool
+axidev_io_keyboard_release_modifier(axidev_io_keyboard_modifier_t mods);
 AXIDEV_IO_API bool axidev_io_keyboard_release_all_modifiers(void);
 AXIDEV_IO_API bool axidev_io_keyboard_type_text(const char *text);
 AXIDEV_IO_API bool axidev_io_keyboard_type_character(uint32_t codepoint);
 AXIDEV_IO_API void axidev_io_keyboard_flush(void);
 AXIDEV_IO_API void axidev_io_keyboard_set_key_delay(uint32_t delay_us);
 
-AXIDEV_IO_API bool axidev_io_listener_start(
-    axidev_io_keyboard_listener_cb cb,
-    void *user_data);
+AXIDEV_IO_API bool axidev_io_listener_start(axidev_io_keyboard_listener_cb cb,
+                                            void *user_data);
 AXIDEV_IO_API void axidev_io_listener_stop(void);
 AXIDEV_IO_API bool axidev_io_listener_is_listening(void);
 
-AXIDEV_IO_API char *axidev_io_keyboard_key_to_string(
-    axidev_io_keyboard_key_t key);
-AXIDEV_IO_API axidev_io_keyboard_key_t axidev_io_keyboard_string_to_key(
-    const char *name);
+AXIDEV_IO_API char *
+axidev_io_keyboard_key_to_string(axidev_io_keyboard_key_t key);
+AXIDEV_IO_API axidev_io_keyboard_key_t
+axidev_io_keyboard_string_to_key(const char *name);
 AXIDEV_IO_API char *axidev_io_keyboard_key_to_string_with_modifier(
     axidev_io_keyboard_key_with_modifier_t key_mod);
 AXIDEV_IO_API bool axidev_io_keyboard_string_to_key_with_modifier(
-    const char *combo,
-    axidev_io_keyboard_key_with_modifier_t *out_key_mod);
+    const char *combo, axidev_io_keyboard_key_with_modifier_t *out_key_mod);
 
 AXIDEV_IO_API const char *axidev_io_library_version(void);
 AXIDEV_IO_API char *axidev_io_get_last_error(void);
@@ -453,12 +449,9 @@ AXIDEV_IO_API void axidev_io_free_string(char *s);
 AXIDEV_IO_API void axidev_io_log_set_level(axidev_io_log_level_t level);
 AXIDEV_IO_API axidev_io_log_level_t axidev_io_log_get_level(void);
 AXIDEV_IO_API bool axidev_io_log_is_enabled(axidev_io_log_level_t level);
-AXIDEV_IO_API void axidev_io_log_message(
-    axidev_io_log_level_t level,
-    const char *file,
-    int line,
-    const char *fmt,
-    ...);
+AXIDEV_IO_API void axidev_io_log_message(axidev_io_log_level_t level,
+                                         const char *file, int line,
+                                         const char *fmt, ...);
 
 #ifdef __cplusplus
 }

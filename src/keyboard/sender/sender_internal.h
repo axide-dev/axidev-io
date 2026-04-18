@@ -37,8 +37,8 @@ axidev_io_result axidev_io_keyboard_sender_hold_modifier_internal(
 axidev_io_result axidev_io_keyboard_sender_release_modifier_internal(
     axidev_io_keyboard_modifier_t mods);
 axidev_io_result axidev_io_keyboard_sender_release_all_modifiers_internal(void);
-axidev_io_result axidev_io_keyboard_sender_type_character_internal(
-    uint32_t codepoint);
+axidev_io_result
+axidev_io_keyboard_sender_type_character_internal(uint32_t codepoint);
 void axidev_io_keyboard_sender_flush_internal(void);
 void axidev_io_keyboard_sender_set_key_delay_internal(uint32_t delay_us);
 

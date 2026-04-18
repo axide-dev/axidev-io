@@ -90,10 +90,8 @@ static axidev_io_keyboard_modifier_t axidev_io_listener_derive_modifiers(void) {
 }
 
 static void axidev_io_listener_invoke_callback(
-    axidev_io_keyboard_listener_impl *impl,
-    uint32_t codepoint,
-    axidev_io_keyboard_key_with_modifier_t key_mod,
-    bool pressed) {
+    axidev_io_keyboard_listener_impl *impl, uint32_t codepoint,
+    axidev_io_keyboard_key_with_modifier_t key_mod, bool pressed) {
   axidev_io_keyboard_listener_cb callback = NULL;
   void *user_data = NULL;
 
@@ -107,12 +105,10 @@ static void axidev_io_listener_invoke_callback(
   }
 }
 
-static void axidev_io_listener_handle_event(
-    axidev_io_keyboard_listener_impl *impl,
-    const KBDLLHOOKSTRUCT *kbd,
-    bool pressed) {
-  struct axidev_io_windows_keymap_private *platform =
-      impl->platform;
+static void
+axidev_io_listener_handle_event(axidev_io_keyboard_listener_impl *impl,
+                                const KBDLLHOOKSTRUCT *kbd, bool pressed) {
+  struct axidev_io_windows_keymap_private *platform = impl->platform;
   WORD vk;
   axidev_io_keyboard_modifier_t mods;
   axidev_io_keyboard_key_t mapped_key;
@@ -127,8 +123,8 @@ static void axidev_io_listener_handle_event(
 
   vk = (WORD)kbd->vkCode;
   mods = axidev_io_listener_derive_modifiers();
-  mapped_key = axidev_io_windows_resolve_key_from_vk_and_mods(
-      &platform->keymap, vk, mods);
+  mapped_key = axidev_io_windows_resolve_key_from_vk_and_mods(&platform->keymap,
+                                                              vk, mods);
 
   if (!GetKeyboardState(keyboard_state)) {
     axidev_io_keyboard_key_with_modifier_t key_mod = {mapped_key, mods};
@@ -143,9 +139,8 @@ static void axidev_io_listener_handle_event(
     codepoint = (uint32_t)wbuf[0];
   } else if (ret >= 2 && wbuf[0] >= 0xD800 && wbuf[0] <= 0xDBFF &&
              wbuf[1] >= 0xDC00 && wbuf[1] <= 0xDFFF) {
-    codepoint = 0x10000u +
-                ((((uint32_t)wbuf[0] - 0xD800u) << 10) |
-                 ((uint32_t)wbuf[1] - 0xDC00u));
+    codepoint = 0x10000u + ((((uint32_t)wbuf[0] - 0xD800u) << 10) |
+                            ((uint32_t)wbuf[1] - 0xDC00u));
   }
 
   if (mapped_key != AXIDEV_IO_KEY_UNKNOWN &&
@@ -177,10 +172,8 @@ static void axidev_io_listener_handle_event(
     }
 
     {
-      ptrdiff_t time_index =
-          hmgeti(platform->last_release_time, (uint32_t)vk);
-      ptrdiff_t sig_index =
-          hmgeti(platform->last_release_sig, (uint32_t)vk);
+      ptrdiff_t time_index = hmgeti(platform->last_release_time, (uint32_t)vk);
+      ptrdiff_t sig_index = hmgeti(platform->last_release_sig, (uint32_t)vk);
       uint64_t now = axidev_io_monotonic_time_ms();
       if (time_index >= 0 && sig_index >= 0 &&
           (now - platform->last_release_time[time_index].value) < 50u &&
@@ -219,9 +212,9 @@ static LRESULT CALLBACK axidev_io_low_level_keyboard_proc(int nCode,
     return CallNextHookEx(NULL, nCode, wParam, lParam);
   }
 
-  axidev_io_listener_handle_event(
-      impl, (const KBDLLHOOKSTRUCT *)lParam,
-      wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN);
+  axidev_io_listener_handle_event(impl, (const KBDLLHOOKSTRUCT *)lParam,
+                                  wParam == WM_KEYDOWN ||
+                                      wParam == WM_SYSKEYDOWN);
   return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 
@@ -233,9 +226,9 @@ static int axidev_io_listener_thread_main(void *user_data) {
   impl->thread_id = GetCurrentThreadId();
   atomic_store(&g_active_listener, impl);
   axidev_io_windows_listener_reset_session_state(impl->platform);
-  impl->hook = SetWindowsHookEx(WH_KEYBOARD_LL,
-                                axidev_io_low_level_keyboard_proc,
-                                GetModuleHandle(NULL), 0);
+  impl->hook =
+      SetWindowsHookEx(WH_KEYBOARD_LL, axidev_io_low_level_keyboard_proc,
+                       GetModuleHandle(NULL), 0);
   if (impl->hook == NULL) {
     atomic_store(&g_active_listener, NULL);
     impl->thread_id = 0;
@@ -264,8 +257,7 @@ axidev_io_keyboard_listener_impl *axidev_io_listener_impl_get(void) {
 }
 
 axidev_io_result axidev_io_keyboard_listener_start_internal(
-    axidev_io_keyboard_listener_cb callback,
-    void *user_data) {
+    axidev_io_keyboard_listener_cb callback, void *user_data) {
   axidev_io_keyboard_listener_impl *impl = axidev_io_listener_impl_get();
 
   if (callback == NULL) {
@@ -287,7 +279,8 @@ axidev_io_result axidev_io_keyboard_listener_start_internal(
     if (impl->platform == NULL) {
       return AXIDEV_IO_RESULT_INTERNAL_ERROR;
     }
-    axidev_io_windows_keymap_init(&impl->platform->keymap, GetKeyboardLayout(0));
+    axidev_io_windows_keymap_init(&impl->platform->keymap,
+                                  GetKeyboardLayout(0));
   } else {
     axidev_io_windows_listener_reset_session_state(impl->platform);
   }

@@ -25,8 +25,7 @@ void axidev_io_linux_keymap_init(axidev_io_linux_keymap *out_keymap,
                                  struct xkb_state *state);
 void axidev_io_linux_keymap_free(axidev_io_linux_keymap *keymap);
 axidev_io_keyboard_key_t axidev_io_linux_resolve_key_from_evdev_and_mods(
-    const axidev_io_linux_keymap *keymap,
-    int evdev_code,
+    const axidev_io_linux_keymap *keymap, int evdev_code,
     axidev_io_keyboard_modifier_t mods);
 
 #endif

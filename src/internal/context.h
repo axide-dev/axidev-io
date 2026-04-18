@@ -4,10 +4,10 @@
 
 #include <axidev-io/c_api.h>
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdarg.h>
 
 #include "result.h"
 #include "thread.h"
@@ -63,21 +63,21 @@ axidev_io_keymap_public_context(void) {
   return &axidev_io_global->keyboard.keymap;
 }
 
-static inline bool axidev_io_keyboard_has_modifier(
-    axidev_io_keyboard_modifier_t state,
-    axidev_io_keyboard_modifier_t flag) {
+static inline bool
+axidev_io_keyboard_has_modifier(axidev_io_keyboard_modifier_t state,
+                                axidev_io_keyboard_modifier_t flag) {
   return (state & flag) != 0;
 }
 
-static inline axidev_io_keyboard_modifier_t axidev_io_keyboard_add_modifier(
-    axidev_io_keyboard_modifier_t state,
-    axidev_io_keyboard_modifier_t flag) {
+static inline axidev_io_keyboard_modifier_t
+axidev_io_keyboard_add_modifier(axidev_io_keyboard_modifier_t state,
+                                axidev_io_keyboard_modifier_t flag) {
   return (axidev_io_keyboard_modifier_t)(state | flag);
 }
 
-static inline axidev_io_keyboard_modifier_t axidev_io_keyboard_remove_modifier(
-    axidev_io_keyboard_modifier_t state,
-    axidev_io_keyboard_modifier_t flag) {
+static inline axidev_io_keyboard_modifier_t
+axidev_io_keyboard_remove_modifier(axidev_io_keyboard_modifier_t state,
+                                   axidev_io_keyboard_modifier_t flag) {
   return (axidev_io_keyboard_modifier_t)(state & (uint8_t)~flag);
 }
 

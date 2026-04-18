@@ -36,15 +36,13 @@ static void test_aliases_and_synonyms(void) {
                     AXIDEV_IO_KEY_CTRL_LEFT);
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("num1"),
                     AXIDEV_IO_KEY_NUM1);
-  TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("-"),
-                    AXIDEV_IO_KEY_MINUS);
+  TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("-"), AXIDEV_IO_KEY_MINUS);
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("grave"),
                     AXIDEV_IO_KEY_GRAVE);
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("@"), AXIDEV_IO_KEY_AT);
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("hash"),
                     AXIDEV_IO_KEY_HASHTAG);
-  TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("?"),
-                    AXIDEV_IO_KEY_SLASH);
+  TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("?"), AXIDEV_IO_KEY_SLASH);
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("Control_L"),
                     AXIDEV_IO_KEY_CTRL_LEFT);
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("KP_Decimal"),
@@ -76,19 +74,19 @@ static void test_key_with_modifier_helpers(void) {
   TEST_CHECK_STR(text, "Shift+A");
   axidev_io_free_string(text);
 
-  TEST_CHECK(axidev_io_keyboard_string_to_key_with_modifier("Ctrl+Shift+C",
-                                                            &parsed));
+  TEST_CHECK(
+      axidev_io_keyboard_string_to_key_with_modifier("Ctrl+Shift+C", &parsed));
   TEST_CHECK_EQ_INT(parsed.key, AXIDEV_IO_KEY_C);
   TEST_CHECK((parsed.mods & AXIDEV_IO_MOD_CTRL) != 0);
   TEST_CHECK((parsed.mods & AXIDEV_IO_MOD_SHIFT) != 0);
 
-  TEST_CHECK(axidev_io_keyboard_string_to_key_with_modifier("shift+a",
-                                                            &parsed));
+  TEST_CHECK(
+      axidev_io_keyboard_string_to_key_with_modifier("shift+a", &parsed));
   TEST_CHECK_EQ_INT(parsed.key, AXIDEV_IO_KEY_A);
   TEST_CHECK((parsed.mods & AXIDEV_IO_MOD_SHIFT) != 0);
 
-  TEST_CHECK(axidev_io_keyboard_string_to_key_with_modifier("Shift+NotAKey",
-                                                            &parsed));
+  TEST_CHECK(
+      axidev_io_keyboard_string_to_key_with_modifier("Shift+NotAKey", &parsed));
   TEST_CHECK_EQ_INT(parsed.key, AXIDEV_IO_KEY_UNKNOWN);
 }
 

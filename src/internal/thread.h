@@ -42,11 +42,9 @@ typedef struct axidev_io_once {
 } axidev_io_once;
 
 #ifdef _WIN32
-#define AXIDEV_IO_ONCE_INIT \
-  { INIT_ONCE_STATIC_INIT }
+#define AXIDEV_IO_ONCE_INIT {INIT_ONCE_STATIC_INIT}
 #else
-#define AXIDEV_IO_ONCE_INIT \
-  { PTHREAD_MUTEX_INITIALIZER, false }
+#define AXIDEV_IO_ONCE_INIT {PTHREAD_MUTEX_INITIALIZER, false}
 #endif
 
 bool axidev_io_mutex_init(axidev_io_mutex *mutex);
@@ -54,10 +52,8 @@ void axidev_io_mutex_destroy(axidev_io_mutex *mutex);
 void axidev_io_mutex_lock(axidev_io_mutex *mutex);
 void axidev_io_mutex_unlock(axidev_io_mutex *mutex);
 
-bool axidev_io_thread_create(
-    axidev_io_thread *thread,
-    axidev_io_thread_fn fn,
-    void *user_data);
+bool axidev_io_thread_create(axidev_io_thread *thread, axidev_io_thread_fn fn,
+                             void *user_data);
 void axidev_io_thread_join(axidev_io_thread *thread);
 
 void axidev_io_call_once(axidev_io_once *once, void (*fn)(void));

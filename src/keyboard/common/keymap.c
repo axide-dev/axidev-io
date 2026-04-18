@@ -18,9 +18,8 @@ axidev_io_keyboard_keymap_impl *axidev_io_keymap_impl_get(void) {
   return (axidev_io_keyboard_keymap_impl *)axidev_io_keymap_storage_ptr();
 }
 
-uint32_t axidev_io_keymap_encode_code_mods(
-    int32_t keycode,
-    axidev_io_keyboard_modifier_t mods) {
+uint32_t axidev_io_keymap_encode_code_mods(int32_t keycode,
+                                           axidev_io_keyboard_modifier_t mods) {
   uint8_t mod_bits = 0;
 
   if (axidev_io_keyboard_has_modifier(mods, AXIDEV_IO_MOD_SHIFT)) {
@@ -123,7 +122,8 @@ axidev_io_result axidev_io_keyboard_keymap_initialize(void) {
     memset(&linux_keymap, 0, sizeof(linux_keymap));
     xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     if (xkb_context != NULL) {
-      axidev_io_xkb_rule_names_strings names = axidev_io_detect_xkb_rule_names();
+      axidev_io_xkb_rule_names_strings names =
+          axidev_io_detect_xkb_rule_names();
       struct xkb_rule_names native_names;
       memset(&native_names, 0, sizeof(native_names));
       native_names.rules = names.rules[0] != '\0' ? names.rules : NULL;
@@ -183,8 +183,7 @@ void axidev_io_keyboard_keymap_free(void) {
 }
 
 axidev_io_result axidev_io_keymap_lookup_character(
-    uint32_t codepoint,
-    axidev_io_keyboard_key_with_modifier_t *out_key) {
+    uint32_t codepoint, axidev_io_keyboard_key_with_modifier_t *out_key) {
   axidev_io_keyboard_keymap_lookup mapping;
   axidev_io_result result;
 
@@ -202,9 +201,9 @@ axidev_io_result axidev_io_keymap_lookup_character(
   return AXIDEV_IO_RESULT_OK;
 }
 
-axidev_io_result axidev_io_keymap_lookup_mapping(
-    uint32_t codepoint,
-    axidev_io_keyboard_keymap_lookup *out_mapping) {
+axidev_io_result
+axidev_io_keymap_lookup_mapping(uint32_t codepoint,
+                                axidev_io_keyboard_keymap_lookup *out_mapping) {
   axidev_io_keyboard_keymap_impl *impl = axidev_io_keymap_impl_get();
   ptrdiff_t index;
 
@@ -222,8 +221,7 @@ axidev_io_result axidev_io_keymap_lookup_mapping(
   }
 
   out_mapping->keycode = impl->char_to_mapping[index].value.keycode;
-  out_mapping->required_mods =
-      impl->char_to_mapping[index].value.required_mods;
+  out_mapping->required_mods = impl->char_to_mapping[index].value.required_mods;
   out_mapping->produced_key = impl->char_to_mapping[index].value.produced_key;
 
   if (out_mapping->produced_key == AXIDEV_IO_KEY_UNKNOWN &&
@@ -238,10 +236,10 @@ axidev_io_result axidev_io_keymap_lookup_mapping(
   return AXIDEV_IO_RESULT_OK;
 }
 
-axidev_io_result axidev_io_keymap_key_from_code(
-    int32_t keycode,
-    axidev_io_keyboard_modifier_t mods,
-    axidev_io_keyboard_key_t *out_key) {
+axidev_io_result
+axidev_io_keymap_key_from_code(int32_t keycode,
+                               axidev_io_keyboard_modifier_t mods,
+                               axidev_io_keyboard_key_t *out_key) {
   axidev_io_keyboard_keymap_impl *impl = axidev_io_keymap_impl_get();
   ptrdiff_t index;
 
@@ -263,9 +261,9 @@ axidev_io_result axidev_io_keymap_key_from_code(
   return axidev_io_keymap_base_key_from_code(keycode, out_key);
 }
 
-axidev_io_result axidev_io_keymap_base_key_from_code(
-    int32_t keycode,
-    axidev_io_keyboard_key_t *out_key) {
+axidev_io_result
+axidev_io_keymap_base_key_from_code(int32_t keycode,
+                                    axidev_io_keyboard_key_t *out_key) {
   axidev_io_keyboard_keymap_impl *impl = axidev_io_keymap_impl_get();
   ptrdiff_t index;
 
@@ -286,9 +284,8 @@ axidev_io_result axidev_io_keymap_base_key_from_code(
   return AXIDEV_IO_RESULT_OK;
 }
 
-axidev_io_result axidev_io_keymap_code_for_key(
-    axidev_io_keyboard_key_t key,
-    int32_t *out_keycode) {
+axidev_io_result axidev_io_keymap_code_for_key(axidev_io_keyboard_key_t key,
+                                               int32_t *out_keycode) {
   axidev_io_keyboard_keymap_impl *impl = axidev_io_keymap_impl_get();
   ptrdiff_t index;
 
@@ -315,9 +312,8 @@ bool axidev_io_keymap_can_type_character(uint32_t codepoint) {
          hmgeti(impl->char_to_mapping, codepoint) >= 0;
 }
 
-bool axidev_io_keyboard_key_to_codepoint(
-    axidev_io_keyboard_key_t key,
-    uint32_t *out_codepoint) {
+bool axidev_io_keyboard_key_to_codepoint(axidev_io_keyboard_key_t key,
+                                         uint32_t *out_codepoint) {
   if (out_codepoint == NULL) {
     return false;
   }

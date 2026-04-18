@@ -17,16 +17,14 @@ static void axidev_io_trim_in_place(char *text) {
   }
 
   length = strlen(text);
-  while (start < length &&
-         (text[start] == ' ' || text[start] == '\t' || text[start] == '\r' ||
-          text[start] == '\n')) {
+  while (start < length && (text[start] == ' ' || text[start] == '\t' ||
+                            text[start] == '\r' || text[start] == '\n')) {
     ++start;
   }
 
   end = length;
-  while (end > start &&
-         (text[end - 1] == ' ' || text[end - 1] == '\t' ||
-          text[end - 1] == '\r' || text[end - 1] == '\n')) {
+  while (end > start && (text[end - 1] == ' ' || text[end - 1] == '\t' ||
+                         text[end - 1] == '\r' || text[end - 1] == '\n')) {
     --end;
   }
 
@@ -42,9 +40,8 @@ static void axidev_io_strip_quotes(char *text) {
     return;
   }
   length = strlen(text);
-  if (length >= 2 &&
-      ((text[0] == '"' && text[length - 1] == '"') ||
-       (text[0] == '\'' && text[length - 1] == '\''))) {
+  if (length >= 2 && ((text[0] == '"' && text[length - 1] == '"') ||
+                      (text[0] == '\'' && text[length - 1] == '\''))) {
     memmove(text, text + 1, length - 2);
     text[length - 2] = '\0';
   }
@@ -61,8 +58,7 @@ static void axidev_io_uppercase_in_place(char *text) {
 }
 
 static void axidev_io_copy_if_empty(char *destination, size_t destination_size,
-                                    const char *value,
-                                    bool *has_any) {
+                                    const char *value, bool *has_any) {
   if (destination[0] == '\0' && value != NULL && value[0] != '\0') {
     snprintf(destination, destination_size, "%s", value);
     if (has_any != NULL) {
@@ -141,7 +137,8 @@ axidev_io_xkb_rule_names_strings axidev_io_detect_xkb_rule_names(void) {
         continue;
       }
 
-      if (strcmp(key, "XKBRULES") == 0 || strcmp(key, "XKB_DEFAULT_RULES") == 0) {
+      if (strcmp(key, "XKBRULES") == 0 ||
+          strcmp(key, "XKB_DEFAULT_RULES") == 0) {
         axidev_io_copy_if_empty(result.rules, sizeof(result.rules), value,
                                 &result.has_any);
       } else if (strcmp(key, "XKBMODEL") == 0 ||

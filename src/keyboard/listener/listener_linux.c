@@ -43,7 +43,8 @@ static void axidev_io_linux_listener_reset_session_state(
   hmfree(platform->pending_codepoints);
 }
 
-static int axidev_io_open_restricted(const char *path, int flags, void *user_data) {
+static int axidev_io_open_restricted(const char *path, int flags,
+                                     void *user_data) {
   (void)user_data;
   {
     int fd = open(path, flags);
@@ -57,8 +58,7 @@ static void axidev_io_close_restricted(int fd, void *user_data) {
 }
 
 static const struct libinput_interface g_libinput_interface = {
-    axidev_io_open_restricted,
-    axidev_io_close_restricted};
+    axidev_io_open_restricted, axidev_io_close_restricted};
 
 static uint32_t axidev_io_codepoint_from_key(axidev_io_keyboard_key_t key) {
   if (key >= AXIDEV_IO_KEY_A && key <= AXIDEV_IO_KEY_Z) {
@@ -74,10 +74,8 @@ static uint32_t axidev_io_codepoint_from_key(axidev_io_keyboard_key_t key) {
 }
 
 static void axidev_io_listener_invoke_callback(
-    axidev_io_keyboard_listener_impl *impl,
-    uint32_t codepoint,
-    axidev_io_keyboard_key_with_modifier_t key_mod,
-    bool pressed) {
+    axidev_io_keyboard_listener_impl *impl, uint32_t codepoint,
+    axidev_io_keyboard_key_with_modifier_t key_mod, bool pressed) {
   axidev_io_keyboard_listener_cb callback;
   void *user_data;
 
@@ -91,8 +89,8 @@ static void axidev_io_listener_invoke_callback(
   }
 }
 
-static axidev_io_keyboard_modifier_t axidev_io_linux_current_mods(
-    struct xkb_state *state) {
+static axidev_io_keyboard_modifier_t
+axidev_io_linux_current_mods(struct xkb_state *state) {
   axidev_io_keyboard_modifier_t mods = AXIDEV_IO_MOD_NONE;
 
   if (xkb_state_mod_name_is_active(state, XKB_MOD_NAME_SHIFT,
@@ -320,8 +318,7 @@ axidev_io_keyboard_listener_impl *axidev_io_listener_impl_get(void) {
 }
 
 axidev_io_result axidev_io_keyboard_listener_start_internal(
-    axidev_io_keyboard_listener_cb callback,
-    void *user_data) {
+    axidev_io_keyboard_listener_cb callback, void *user_data) {
   axidev_io_keyboard_listener_impl *impl = axidev_io_listener_impl_get();
 
   if (callback == NULL) {
@@ -338,8 +335,8 @@ axidev_io_result axidev_io_keyboard_listener_start_internal(
   }
 
   if (impl->platform == NULL) {
-    impl->platform =
-        (struct axidev_io_linux_listener_platform *)calloc(1, sizeof(*impl->platform));
+    impl->platform = (struct axidev_io_linux_listener_platform *)calloc(
+        1, sizeof(*impl->platform));
     if (impl->platform == NULL) {
       return AXIDEV_IO_RESULT_INTERNAL_ERROR;
     }

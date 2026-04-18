@@ -80,7 +80,8 @@ static char *axidev_io_escape_for_log(const char *input) {
   return output;
 }
 
-static const axidev_io_key_name_pair *axidev_io_key_string_pairs(size_t *count) {
+static const axidev_io_key_name_pair *
+axidev_io_key_string_pairs(size_t *count) {
   static const axidev_io_key_name_pair pairs[] = {
       {AXIDEV_IO_KEY_UNKNOWN, "Unknown"},
       {AXIDEV_IO_KEY_A, "A"},
@@ -338,7 +339,8 @@ static const axidev_io_key_name_pair *axidev_io_key_string_pairs(size_t *count) 
   return pairs;
 }
 
-static void axidev_io_seed_alias(const char *key, axidev_io_keyboard_key_t value) {
+static void axidev_io_seed_alias(const char *key,
+                                 axidev_io_keyboard_key_t value) {
   shput(g_reverse_map, key, value);
 }
 
@@ -844,8 +846,7 @@ axidev_io_keyboard_key_t axidev_io_string_to_key_internal(const char *input) {
 }
 
 char *axidev_io_key_to_string_with_modifier_alloc(
-    axidev_io_keyboard_key_t key,
-    axidev_io_keyboard_modifier_t mods) {
+    axidev_io_keyboard_key_t key, axidev_io_keyboard_modifier_t mods) {
   char buffer[256];
   buffer[0] = '\0';
 
@@ -866,8 +867,7 @@ char *axidev_io_key_to_string_with_modifier_alloc(
 }
 
 bool axidev_io_string_to_key_with_modifier_internal(
-    const char *input,
-    axidev_io_keyboard_key_with_modifier_t *out_key_mod) {
+    const char *input, axidev_io_keyboard_key_with_modifier_t *out_key_mod) {
   const char *remaining;
   axidev_io_keyboard_modifier_t mods = AXIDEV_IO_MOD_NONE;
   bool found_modifier = true;
@@ -888,26 +888,17 @@ bool axidev_io_string_to_key_with_modifier_internal(
     static const struct {
       const char *prefix;
       axidev_io_keyboard_modifier_t modifier;
-    } prefixes[] = {{"super+", AXIDEV_IO_MOD_SUPER},
-                    {"super-", AXIDEV_IO_MOD_SUPER},
-                    {"cmd+", AXIDEV_IO_MOD_SUPER},
-                    {"cmd-", AXIDEV_IO_MOD_SUPER},
-                    {"win+", AXIDEV_IO_MOD_SUPER},
-                    {"win-", AXIDEV_IO_MOD_SUPER},
-                    {"meta+", AXIDEV_IO_MOD_SUPER},
-                    {"meta-", AXIDEV_IO_MOD_SUPER},
-                    {"ctrl+", AXIDEV_IO_MOD_CTRL},
-                    {"ctrl-", AXIDEV_IO_MOD_CTRL},
-                    {"control+", AXIDEV_IO_MOD_CTRL},
-                    {"control-", AXIDEV_IO_MOD_CTRL},
-                    {"alt+", AXIDEV_IO_MOD_ALT},
-                    {"alt-", AXIDEV_IO_MOD_ALT},
-                    {"opt+", AXIDEV_IO_MOD_ALT},
-                    {"opt-", AXIDEV_IO_MOD_ALT},
-                    {"option+", AXIDEV_IO_MOD_ALT},
-                    {"option-", AXIDEV_IO_MOD_ALT},
-                    {"shift+", AXIDEV_IO_MOD_SHIFT},
-                    {"shift-", AXIDEV_IO_MOD_SHIFT}};
+    } prefixes[] = {
+        {"super+", AXIDEV_IO_MOD_SUPER},  {"super-", AXIDEV_IO_MOD_SUPER},
+        {"cmd+", AXIDEV_IO_MOD_SUPER},    {"cmd-", AXIDEV_IO_MOD_SUPER},
+        {"win+", AXIDEV_IO_MOD_SUPER},    {"win-", AXIDEV_IO_MOD_SUPER},
+        {"meta+", AXIDEV_IO_MOD_SUPER},   {"meta-", AXIDEV_IO_MOD_SUPER},
+        {"ctrl+", AXIDEV_IO_MOD_CTRL},    {"ctrl-", AXIDEV_IO_MOD_CTRL},
+        {"control+", AXIDEV_IO_MOD_CTRL}, {"control-", AXIDEV_IO_MOD_CTRL},
+        {"alt+", AXIDEV_IO_MOD_ALT},      {"alt-", AXIDEV_IO_MOD_ALT},
+        {"opt+", AXIDEV_IO_MOD_ALT},      {"opt-", AXIDEV_IO_MOD_ALT},
+        {"option+", AXIDEV_IO_MOD_ALT},   {"option-", AXIDEV_IO_MOD_ALT},
+        {"shift+", AXIDEV_IO_MOD_SHIFT},  {"shift-", AXIDEV_IO_MOD_SHIFT}};
     char *lower = axidev_io_to_lower_copy(remaining);
 
     found_modifier = false;

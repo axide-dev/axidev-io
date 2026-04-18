@@ -56,28 +56,24 @@ axidev_io_result axidev_io_keyboard_keymap_initialize(void);
 void axidev_io_keyboard_keymap_free(void);
 
 axidev_io_result axidev_io_keymap_lookup_character(
-    uint32_t codepoint,
-    axidev_io_keyboard_key_with_modifier_t *out_key);
-axidev_io_result axidev_io_keymap_lookup_mapping(
-    uint32_t codepoint,
-    axidev_io_keyboard_keymap_lookup *out_mapping);
-axidev_io_result axidev_io_keymap_key_from_code(
-    int32_t keycode,
-    axidev_io_keyboard_modifier_t mods,
-    axidev_io_keyboard_key_t *out_key);
-axidev_io_result axidev_io_keymap_base_key_from_code(
-    int32_t keycode,
-    axidev_io_keyboard_key_t *out_key);
-axidev_io_result axidev_io_keymap_code_for_key(
-    axidev_io_keyboard_key_t key,
-    int32_t *out_keycode);
+    uint32_t codepoint, axidev_io_keyboard_key_with_modifier_t *out_key);
+axidev_io_result
+axidev_io_keymap_lookup_mapping(uint32_t codepoint,
+                                axidev_io_keyboard_keymap_lookup *out_mapping);
+axidev_io_result
+axidev_io_keymap_key_from_code(int32_t keycode,
+                               axidev_io_keyboard_modifier_t mods,
+                               axidev_io_keyboard_key_t *out_key);
+axidev_io_result
+axidev_io_keymap_base_key_from_code(int32_t keycode,
+                                    axidev_io_keyboard_key_t *out_key);
+axidev_io_result axidev_io_keymap_code_for_key(axidev_io_keyboard_key_t key,
+                                               int32_t *out_keycode);
 bool axidev_io_keymap_can_type_character(uint32_t codepoint);
-uint32_t axidev_io_keymap_encode_code_mods(
-    int32_t keycode,
-    axidev_io_keyboard_modifier_t mods);
+uint32_t axidev_io_keymap_encode_code_mods(int32_t keycode,
+                                           axidev_io_keyboard_modifier_t mods);
 
-bool axidev_io_keyboard_key_to_codepoint(
-    axidev_io_keyboard_key_t key,
-    uint32_t *out_codepoint);
+bool axidev_io_keyboard_key_to_codepoint(axidev_io_keyboard_key_t key,
+                                         uint32_t *out_codepoint);
 
 #endif

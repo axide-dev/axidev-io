@@ -22,8 +22,8 @@ static void test_conversion_helpers(void) {
   TEST_CHECK_STR(text, "A");
   axidev_io_free_string(text);
 
-  TEST_CHECK(axidev_io_keyboard_string_to_key_with_modifier("Shift+A",
-                                                            &parsed));
+  TEST_CHECK(
+      axidev_io_keyboard_string_to_key_with_modifier("Shift+A", &parsed));
   TEST_CHECK_EQ_INT(parsed.key, AXIDEV_IO_KEY_A);
   TEST_CHECK((parsed.mods & AXIDEV_IO_MOD_SHIFT) != 0);
 }

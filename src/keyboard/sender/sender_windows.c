@@ -22,9 +22,8 @@ static void axidev_io_sender_delay(void) {
   }
 }
 
-static void axidev_io_sender_update_modifier_state(
-    axidev_io_keyboard_key_t key,
-    bool down) {
+static void axidev_io_sender_update_modifier_state(axidev_io_keyboard_key_t key,
+                                                   bool down) {
   axidev_io_keyboard_sender_context *sender = axidev_io_sender_public_context();
   axidev_io_keyboard_modifier_t flag = AXIDEV_IO_MOD_NONE;
 
@@ -124,11 +123,11 @@ static axidev_io_result axidev_io_windows_send_unicode(uint32_t codepoint) {
   return AXIDEV_IO_RESULT_OK;
 }
 
-static axidev_io_result axidev_io_sender_resolve_mapping(
-    axidev_io_keyboard_key_with_modifier_t request,
-    int32_t *out_keycode,
-    axidev_io_keyboard_modifier_t *out_mods,
-    axidev_io_keyboard_key_t *out_resolved_key) {
+static axidev_io_result
+axidev_io_sender_resolve_mapping(axidev_io_keyboard_key_with_modifier_t request,
+                                 int32_t *out_keycode,
+                                 axidev_io_keyboard_modifier_t *out_mods,
+                                 axidev_io_keyboard_key_t *out_resolved_key) {
   axidev_io_result result;
   uint32_t codepoint;
 
@@ -154,17 +153,16 @@ static axidev_io_result axidev_io_sender_resolve_mapping(
       return result;
     }
     *out_keycode = mapping.keycode;
-    *out_mods = (axidev_io_keyboard_modifier_t)(mapping.required_mods |
-                                                request.mods);
+    *out_mods =
+        (axidev_io_keyboard_modifier_t)(mapping.required_mods | request.mods);
     *out_resolved_key = mapping.produced_key;
     return AXIDEV_IO_RESULT_OK;
   }
 }
 
-static axidev_io_result axidev_io_sender_send_raw_key(
-    axidev_io_keyboard_key_t key,
-    int32_t keycode,
-    bool down) {
+static axidev_io_result
+axidev_io_sender_send_raw_key(axidev_io_keyboard_key_t key, int32_t keycode,
+                              bool down) {
   axidev_io_result result = axidev_io_windows_send_vk((WORD)keycode, down);
   if (result == AXIDEV_IO_RESULT_OK) {
     axidev_io_sender_update_modifier_state(key, down);
@@ -174,7 +172,7 @@ static axidev_io_result axidev_io_sender_send_raw_key(
 
 axidev_io_result axidev_io_keyboard_sender_initialize(void) {
   axidev_io_keyboard_sender_impl *impl = axidev_io_sender_impl_get();
-  axidev_io_keyboard_sender_context *sender = axidev_io_sender_public_context();
+  axidev_io_keyboard_sender_context *sender;
 
   memset(impl, 0, sizeof(*impl));
   axidev_io_keyboard_reset_public_sender_state();
@@ -215,8 +213,8 @@ axidev_io_result axidev_io_keyboard_sender_hold_modifier_internal(
     }
   }
   if (axidev_io_keyboard_has_modifier(mods, AXIDEV_IO_MOD_CTRL)) {
-    result = axidev_io_sender_send_raw_key(AXIDEV_IO_KEY_CTRL_LEFT,
-                                           VK_LCONTROL, true);
+    result = axidev_io_sender_send_raw_key(AXIDEV_IO_KEY_CTRL_LEFT, VK_LCONTROL,
+                                           true);
     if (result != AXIDEV_IO_RESULT_OK) {
       return result;
     }
@@ -247,27 +245,28 @@ axidev_io_result axidev_io_keyboard_sender_release_modifier_internal(
     }
   }
   if (axidev_io_keyboard_has_modifier(mods, AXIDEV_IO_MOD_CTRL)) {
-    result = axidev_io_sender_send_raw_key(AXIDEV_IO_KEY_CTRL_LEFT,
-                                           VK_LCONTROL, false);
+    result = axidev_io_sender_send_raw_key(AXIDEV_IO_KEY_CTRL_LEFT, VK_LCONTROL,
+                                           false);
     if (result != AXIDEV_IO_RESULT_OK) {
       return result;
     }
   }
   if (axidev_io_keyboard_has_modifier(mods, AXIDEV_IO_MOD_ALT)) {
-    result = axidev_io_sender_send_raw_key(AXIDEV_IO_KEY_ALT_LEFT, VK_LMENU,
-                                           false);
+    result =
+        axidev_io_sender_send_raw_key(AXIDEV_IO_KEY_ALT_LEFT, VK_LMENU, false);
     if (result != AXIDEV_IO_RESULT_OK) {
       return result;
     }
   }
   if (axidev_io_keyboard_has_modifier(mods, AXIDEV_IO_MOD_SUPER)) {
-    result = axidev_io_sender_send_raw_key(AXIDEV_IO_KEY_SUPER_LEFT, VK_LWIN,
-                                           false);
+    result =
+        axidev_io_sender_send_raw_key(AXIDEV_IO_KEY_SUPER_LEFT, VK_LWIN, false);
   }
   return result;
 }
 
-axidev_io_result axidev_io_keyboard_sender_release_all_modifiers_internal(void) {
+axidev_io_result
+axidev_io_keyboard_sender_release_all_modifiers_internal(void) {
   return axidev_io_keyboard_sender_release_modifier_internal(
       AXIDEV_IO_MOD_SHIFT | AXIDEV_IO_MOD_CTRL | AXIDEV_IO_MOD_ALT |
       AXIDEV_IO_MOD_SUPER);
@@ -280,8 +279,8 @@ axidev_io_result axidev_io_keyboard_sender_key_down_internal(
   axidev_io_keyboard_key_t resolved_key;
   axidev_io_result result;
 
-  result = axidev_io_sender_resolve_mapping(key_mod, &keycode, &mods,
-                                            &resolved_key);
+  result =
+      axidev_io_sender_resolve_mapping(key_mod, &keycode, &mods, &resolved_key);
   if (result != AXIDEV_IO_RESULT_OK) {
     return result;
   }
@@ -301,8 +300,8 @@ axidev_io_result axidev_io_keyboard_sender_key_up_internal(
   axidev_io_keyboard_key_t resolved_key;
   axidev_io_result result;
 
-  result = axidev_io_sender_resolve_mapping(key_mod, &keycode, &mods,
-                                            &resolved_key);
+  result =
+      axidev_io_sender_resolve_mapping(key_mod, &keycode, &mods, &resolved_key);
   if (result != AXIDEV_IO_RESULT_OK) {
     return result;
   }
@@ -321,8 +320,8 @@ axidev_io_result axidev_io_keyboard_sender_tap_internal(
   axidev_io_keyboard_key_t resolved_key;
   axidev_io_result result;
 
-  result = axidev_io_sender_resolve_mapping(key_mod, &keycode, &mods,
-                                            &resolved_key);
+  result =
+      axidev_io_sender_resolve_mapping(key_mod, &keycode, &mods, &resolved_key);
   if (result != AXIDEV_IO_RESULT_OK) {
     return result;
   }
@@ -347,8 +346,8 @@ axidev_io_result axidev_io_keyboard_sender_tap_internal(
   return result;
 }
 
-axidev_io_result axidev_io_keyboard_sender_type_character_internal(
-    uint32_t codepoint) {
+axidev_io_result
+axidev_io_keyboard_sender_type_character_internal(uint32_t codepoint) {
   axidev_io_keyboard_key_with_modifier_t key_mod;
 
   if (axidev_io_keymap_lookup_character(codepoint, &key_mod) ==

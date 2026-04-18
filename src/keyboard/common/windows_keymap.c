@@ -84,8 +84,7 @@ static void axidev_io_windows_fill_fallback(axidev_io_windows_keymap *keymap) {
   axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_SCROLL_LOCK,
                                    VK_SCROLL);
   axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_PAUSE, VK_PAUSE);
-  axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_SHIFT_LEFT,
-                                   VK_LSHIFT);
+  axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_SHIFT_LEFT, VK_LSHIFT);
   axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_SHIFT_RIGHT,
                                    VK_RSHIFT);
   axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_CTRL_LEFT,
@@ -96,8 +95,7 @@ static void axidev_io_windows_fill_fallback(axidev_io_windows_keymap *keymap) {
   axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_ALT_RIGHT, VK_RMENU);
   axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_SUPER_LEFT, VK_LWIN);
   axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_SUPER_RIGHT, VK_RWIN);
-  axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_CAPS_LOCK,
-                                   VK_CAPITAL);
+  axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_CAPS_LOCK, VK_CAPITAL);
   axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_NUM_LOCK, VK_NUMLOCK);
   axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_F1, VK_F1);
   axidev_io_windows_set_if_missing(keymap, AXIDEV_IO_KEY_F2, VK_F2);
@@ -206,9 +204,9 @@ void axidev_io_windows_keymap_init(axidev_io_windows_keymap *out_keymap,
     }
 
     memset(key_state, 0, sizeof(key_state));
-    translated = ToUnicodeEx(vk, scan_code, key_state, buffer,
-                             (int)(sizeof(buffer) / sizeof(buffer[0])), 0,
-                             layout);
+    translated =
+        ToUnicodeEx(vk, scan_code, key_state, buffer,
+                    (int)(sizeof(buffer) / sizeof(buffer[0])), 0, layout);
     if (translated > 0) {
       char char_buffer[2];
       char_buffer[0] = '\0';
@@ -257,9 +255,8 @@ void axidev_io_windows_keymap_init(axidev_io_windows_keymap *out_keymap,
         codepoint = (uint32_t)buffer[0];
       } else if (ret >= 2 && buffer[0] >= 0xD800 && buffer[0] <= 0xDBFF &&
                  buffer[1] >= 0xDC00 && buffer[1] <= 0xDFFF) {
-        codepoint = 0x10000u +
-                    ((((uint32_t)buffer[0] - 0xD800u) << 10) |
-                     ((uint32_t)buffer[1] - 0xDC00u));
+        codepoint = 0x10000u + ((((uint32_t)buffer[0] - 0xD800u) << 10) |
+                                ((uint32_t)buffer[1] - 0xDC00u));
       } else {
         codepoint = (uint32_t)buffer[0];
       }
@@ -285,8 +282,7 @@ void axidev_io_windows_keymap_init(axidev_io_windows_keymap *out_keymap,
             hmgeti(out_keymap->vk_and_mods_to_key,
                    axidev_io_encode_vk_mods((WORD)vk, scans[i].mods)) < 0) {
           hmput(out_keymap->vk_and_mods_to_key,
-                axidev_io_encode_vk_mods((WORD)vk, scans[i].mods),
-                mapped_key);
+                axidev_io_encode_vk_mods((WORD)vk, scans[i].mods), mapped_key);
         }
       }
     }
@@ -307,8 +303,7 @@ void axidev_io_windows_keymap_free(axidev_io_windows_keymap *keymap) {
 }
 
 axidev_io_keyboard_key_t axidev_io_windows_resolve_key_from_vk_and_mods(
-    const axidev_io_windows_keymap *keymap,
-    WORD vk,
+    const axidev_io_windows_keymap *keymap, WORD vk,
     axidev_io_keyboard_modifier_t mods) {
   axidev_io_keymap_uint_to_key_entry *vk_and_mods_to_key;
   axidev_io_keymap_int_to_key_entry *vk_to_key;

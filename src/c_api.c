@@ -34,32 +34,23 @@ static axidev_io_result axidev_io_require_keyboard_initialized(void) {
   return AXIDEV_IO_RESULT_OK;
 }
 
-static bool axidev_io_try_consume_modifier_prefix(
-    const char **cursor,
-    axidev_io_keyboard_modifier_t *mods) {
+static bool
+axidev_io_try_consume_modifier_prefix(const char **cursor,
+                                      axidev_io_keyboard_modifier_t *mods) {
   static const struct {
     const char *prefix;
     axidev_io_keyboard_modifier_t flag;
-  } prefixes[] = {{"super+", AXIDEV_IO_MOD_SUPER},
-                  {"super-", AXIDEV_IO_MOD_SUPER},
-                  {"cmd+", AXIDEV_IO_MOD_SUPER},
-                  {"cmd-", AXIDEV_IO_MOD_SUPER},
-                  {"win+", AXIDEV_IO_MOD_SUPER},
-                  {"win-", AXIDEV_IO_MOD_SUPER},
-                  {"meta+", AXIDEV_IO_MOD_SUPER},
-                  {"meta-", AXIDEV_IO_MOD_SUPER},
-                  {"ctrl+", AXIDEV_IO_MOD_CTRL},
-                  {"ctrl-", AXIDEV_IO_MOD_CTRL},
-                  {"control+", AXIDEV_IO_MOD_CTRL},
-                  {"control-", AXIDEV_IO_MOD_CTRL},
-                  {"alt+", AXIDEV_IO_MOD_ALT},
-                  {"alt-", AXIDEV_IO_MOD_ALT},
-                  {"opt+", AXIDEV_IO_MOD_ALT},
-                  {"opt-", AXIDEV_IO_MOD_ALT},
-                  {"option+", AXIDEV_IO_MOD_ALT},
-                  {"option-", AXIDEV_IO_MOD_ALT},
-                  {"shift+", AXIDEV_IO_MOD_SHIFT},
-                  {"shift-", AXIDEV_IO_MOD_SHIFT}};
+  } prefixes[] = {
+      {"super+", AXIDEV_IO_MOD_SUPER},  {"super-", AXIDEV_IO_MOD_SUPER},
+      {"cmd+", AXIDEV_IO_MOD_SUPER},    {"cmd-", AXIDEV_IO_MOD_SUPER},
+      {"win+", AXIDEV_IO_MOD_SUPER},    {"win-", AXIDEV_IO_MOD_SUPER},
+      {"meta+", AXIDEV_IO_MOD_SUPER},   {"meta-", AXIDEV_IO_MOD_SUPER},
+      {"ctrl+", AXIDEV_IO_MOD_CTRL},    {"ctrl-", AXIDEV_IO_MOD_CTRL},
+      {"control+", AXIDEV_IO_MOD_CTRL}, {"control-", AXIDEV_IO_MOD_CTRL},
+      {"alt+", AXIDEV_IO_MOD_ALT},      {"alt-", AXIDEV_IO_MOD_ALT},
+      {"opt+", AXIDEV_IO_MOD_ALT},      {"opt-", AXIDEV_IO_MOD_ALT},
+      {"option+", AXIDEV_IO_MOD_ALT},   {"option-", AXIDEV_IO_MOD_ALT},
+      {"shift+", AXIDEV_IO_MOD_SHIFT},  {"shift-", AXIDEV_IO_MOD_SHIFT}};
   size_t i;
 
   if (cursor == NULL || *cursor == NULL || mods == NULL) {
@@ -91,7 +82,8 @@ static bool axidev_io_try_consume_modifier_prefix(
   return false;
 }
 
-static axidev_io_result axidev_io_keyboard_type_text_internal(const char *text) {
+static axidev_io_result
+axidev_io_keyboard_type_text_internal(const char *text) {
   const char *cursor = text;
 
   while (cursor != NULL && *cursor != '\0') {
@@ -116,8 +108,8 @@ static axidev_io_result axidev_io_keyboard_type_text_internal(const char *text) 
         if (result != AXIDEV_IO_RESULT_OK) {
           return result;
         }
-        key_mod.mods = (axidev_io_keyboard_modifier_t)(key_mod.mods |
-                                                       latched_mods);
+        key_mod.mods =
+            (axidev_io_keyboard_modifier_t)(key_mod.mods | latched_mods);
         result = axidev_io_keyboard_sender_tap_internal(key_mod);
       } else {
         result = axidev_io_keyboard_sender_type_character_internal(codepoint);
@@ -214,8 +206,8 @@ AXIDEV_IO_API bool axidev_io_keyboard_request_permissions(void) {
   return result == AXIDEV_IO_RESULT_OK;
 }
 
-AXIDEV_IO_API bool axidev_io_keyboard_key_down(
-    axidev_io_keyboard_key_with_modifier_t key_mod) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_key_down(axidev_io_keyboard_key_with_modifier_t key_mod) {
   axidev_io_result result;
 
   axidev_io_context_ensure_runtime();
@@ -232,8 +224,8 @@ AXIDEV_IO_API bool axidev_io_keyboard_key_down(
   return result == AXIDEV_IO_RESULT_OK;
 }
 
-AXIDEV_IO_API bool axidev_io_keyboard_key_up(
-    axidev_io_keyboard_key_with_modifier_t key_mod) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_key_up(axidev_io_keyboard_key_with_modifier_t key_mod) {
   axidev_io_result result;
 
   axidev_io_context_ensure_runtime();
@@ -250,8 +242,8 @@ AXIDEV_IO_API bool axidev_io_keyboard_key_up(
   return result == AXIDEV_IO_RESULT_OK;
 }
 
-AXIDEV_IO_API bool axidev_io_keyboard_tap(
-    axidev_io_keyboard_key_with_modifier_t key_mod) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_tap(axidev_io_keyboard_key_with_modifier_t key_mod) {
   axidev_io_result result;
 
   axidev_io_context_ensure_runtime();
@@ -274,8 +266,8 @@ axidev_io_keyboard_active_modifiers(void) {
   return axidev_io_global->keyboard.sender.active_modifiers;
 }
 
-AXIDEV_IO_API bool axidev_io_keyboard_hold_modifier(
-    axidev_io_keyboard_modifier_t mods) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_hold_modifier(axidev_io_keyboard_modifier_t mods) {
   axidev_io_result result;
 
   axidev_io_context_ensure_runtime();
@@ -292,8 +284,8 @@ AXIDEV_IO_API bool axidev_io_keyboard_hold_modifier(
   return result == AXIDEV_IO_RESULT_OK;
 }
 
-AXIDEV_IO_API bool axidev_io_keyboard_release_modifier(
-    axidev_io_keyboard_modifier_t mods) {
+AXIDEV_IO_API bool
+axidev_io_keyboard_release_modifier(axidev_io_keyboard_modifier_t mods) {
   axidev_io_result result;
 
   axidev_io_context_ensure_runtime();
@@ -385,9 +377,8 @@ AXIDEV_IO_API void axidev_io_keyboard_set_key_delay(uint32_t delay_us) {
   axidev_io_context_unlock();
 }
 
-AXIDEV_IO_API bool axidev_io_listener_start(
-    axidev_io_keyboard_listener_cb cb,
-    void *user_data) {
+AXIDEV_IO_API bool axidev_io_listener_start(axidev_io_keyboard_listener_cb cb,
+                                            void *user_data) {
   axidev_io_result result;
 
   axidev_io_context_ensure_runtime();
@@ -413,15 +404,15 @@ AXIDEV_IO_API bool axidev_io_listener_is_listening(void) {
   return axidev_io_global->keyboard.listener.is_listening;
 }
 
-AXIDEV_IO_API char *axidev_io_keyboard_key_to_string(
-    axidev_io_keyboard_key_t key) {
+AXIDEV_IO_API char *
+axidev_io_keyboard_key_to_string(axidev_io_keyboard_key_t key) {
   axidev_io_context_ensure_runtime();
   axidev_io_clear_last_error_internal();
   return axidev_io_key_to_string_alloc(key);
 }
 
-AXIDEV_IO_API axidev_io_keyboard_key_t axidev_io_keyboard_string_to_key(
-    const char *name) {
+AXIDEV_IO_API axidev_io_keyboard_key_t
+axidev_io_keyboard_string_to_key(const char *name) {
   axidev_io_context_ensure_runtime();
   axidev_io_clear_last_error_internal();
   if (name == NULL) {
@@ -440,8 +431,7 @@ AXIDEV_IO_API char *axidev_io_keyboard_key_to_string_with_modifier(
 }
 
 AXIDEV_IO_API bool axidev_io_keyboard_string_to_key_with_modifier(
-    const char *combo,
-    axidev_io_keyboard_key_with_modifier_t *out_key_mod) {
+    const char *combo, axidev_io_keyboard_key_with_modifier_t *out_key_mod) {
   axidev_io_context_ensure_runtime();
   axidev_io_clear_last_error_internal();
   if (combo == NULL || out_key_mod == NULL) {
