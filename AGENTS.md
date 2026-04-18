@@ -1,8 +1,5 @@
 # AGENTS.md
 
-This file defines repository-specific rules for AI agents and other automated
-contributors working in `axidev-io`.
-
 ## Start Here
 
 Before changing build logic, packaging, CI, release workflows, vendored code,
