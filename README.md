@@ -1,151 +1,90 @@
 # axidev-io
 
-A lightweight C++ library for cross-platform keyboard input injection and monitoring.
+`axidev-io` is a C library for keyboard input injection and global keyboard
+listening on Windows and Linux.
 
-## Documentation
+## Status
 
-Documentation is split by audience in the `docs/` directory:
+- Language: C only
+- Supported platforms: Windows, Linux
+- Removed: macOS, CMake, Conan, vcpkg
+- Build entrypoint: `Makefile`
+- Primary public header: `include/axidev-io/c_api.h`
 
-- Consumers: `docs/consumers/README.md` — quickstart, examples, and usage notes.
-- Developers: `docs/developers/README.md` — build instructions, architecture notes, testing, and contributing.
+## Build
 
-Start with the document that matches your goal.
-
-## Quickstart
-
-CMake (consumer) usage:
-
-```cpp
-cmake_minimum_required(VERSION 3.15)
-find_package(axidev-io CONFIG REQUIRED)
-add_executable(myapp src/main.cpp)
-target_link_libraries(myapp PRIVATE axidev::io)
+```sh
+make
+make test
+make example
 ```
 
-Minimal usage example:
+On Linux the build expects `libinput`, `libudev`, and `xkbcommon` through
+`pkg-config`.
 
-```cpp
-#include <axidev-io/keyboard/sender.hpp>
+## Public API
 
-int main() {
-  using namespace axidev::io::keyboard;
-  Sender sender;
-  if (sender.capabilities().canInjectKeys) {
-    // All operations use KeyWithModifier
-    sender.tap({Key::A, Modifier::None});     // Tap 'a'
-    sender.tap({Key::A, Modifier::Shift});    // Tap 'A' (uppercase)
-    sender.tap({Key::C, Modifier::Ctrl});     // Ctrl+C
-
-    // Or parse from string
-    auto combo = stringToKeyWithModifier("Ctrl+S");
-    sender.tap(combo);
-  }
-  return 0;
-}
-```
-
-## C API (C wrapper)
-
-A compact C ABI is available for consumers that want to bind axidev-io from other
-languages. The C API header is installed as `<axidev-io/c_api.h>` and provides
-opaque handle types for keyboard `Sender` and `Listener`, simple helpers to convert key
-names, and a small set of functions to control keyboard sending and listening from C.
-
-Basic usage (C):
+Most consumers only need:
 
 ```c
 #include <axidev-io/c_api.h>
-#include <stdio.h>
-
-/* Example keyboard listener callback */
-static void my_cb(uint32_t codepoint, axidev_io_keyboard_key_with_modifier_t key_mod,
-                  bool pressed, void *ud) {
-  (void)ud;
-  (void)codepoint; /* Prioritize key_mod for portability */
-  char *name = axidev_io_keyboard_key_to_string_with_modifier(key_mod);
-  printf("key=%s %s\n", name ? name : "?", pressed ? "pressed" : "released");
-  if (name) axidev_io_free_string(name);
-}
 
 int main(void) {
-  axidev_io_keyboard_sender_t sender = axidev_io_keyboard_sender_create();
-  if (!sender) {
-    char *err = axidev_io_get_last_error();
-    if (err) {
-      fprintf(stderr, "keyboard sender create: %s\n", err);
-      axidev_io_free_string(err);
-    }
+  if (!axidev_io_keyboard_initialize()) {
     return 1;
   }
 
-  axidev_io_keyboard_capabilities_t caps;
-  axidev_io_keyboard_sender_get_capabilities(sender, &caps);
-  if (caps.can_inject_keys) {
-    /* All operations use axidev_io_keyboard_key_with_modifier_t */
-    axidev_io_keyboard_key_with_modifier_t key_mod;
+  axidev_io_keyboard_type_text("Hello world");
+  axidev_io_keyboard_tap((axidev_io_keyboard_key_with_modifier_t){
+      .key = AXIDEV_IO_KEY_C,
+      .mods = AXIDEV_IO_MOD_CTRL
+  });
 
-    /* Tap 'A' key */
-    axidev_io_keyboard_string_to_key_with_modifier("A", &key_mod);
-    axidev_io_keyboard_sender_tap(sender, key_mod);
-
-    /* Ctrl+C combo */
-    axidev_io_keyboard_string_to_key_with_modifier("Ctrl+C", &key_mod);
-    axidev_io_keyboard_sender_tap(sender, key_mod);
-  } else if (caps.can_inject_text) {
-    axidev_io_keyboard_sender_type_text_utf8(sender, "Hello from C API\n");
-  }
-
-  axidev_io_keyboard_sender_destroy(sender);
-
-  /* Keyboard listener example (may require platform permissions) */
-  axidev_io_keyboard_listener_t listener = axidev_io_keyboard_listener_create();
-  if (listener && axidev_io_keyboard_listener_start(listener, my_cb, NULL)) {
-    /* ... application runs ... */
-    axidev_io_keyboard_listener_stop(listener);
-  }
-  axidev_io_keyboard_listener_destroy(listener);
-
+  axidev_io_keyboard_free();
   return 0;
 }
 ```
 
-Notes:
+The listener uses the same global-library model:
 
-- Strings returned by the C API are heap-allocated and must be freed with
-  `axidev_io_free_string`.
-- Keyboard listener callbacks may be invoked from an internal thread; your callback
-  must be thread-safe.
-- Use `axidev_io_get_last_error()` to retrieve a heap-allocated error message if
-  a function fails (free it with `axidev_io_free_string`).
+```c
+static void on_key(uint32_t codepoint,
+                   axidev_io_keyboard_key_with_modifier_t key_mod,
+                   bool pressed,
+                   void *user_data) {
+  (void)codepoint;
+  (void)key_mod;
+  (void)pressed;
+  (void)user_data;
+}
 
-An example C program is available at `examples/example_c.c`. Build it with:
+int main(void) {
+  if (!axidev_io_listener_start(on_key, NULL)) {
+    return 1;
+  }
 
-```bash
-mkdir build
-cd build
-cmake .. -DAXIDEV_IO_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build .
+  axidev_io_listener_stop();
+  return 0;
+}
 ```
 
-## Building from source
+## Notes
 
-```bash
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build .
-```
+- Normal sender calls do not take sender handles, listener handles, or context
+  handles.
+- Shared runtime state lives in the single exported `axidev_io_global`
+  pointer.
+- Printable text sending prefers layout-resolved key sequences; explicit
+  `key_down`, `key_up`, and `tap` remain available for low-level control.
+- Vendored dependency: `vendor/stb/stb_ds.h` with license text in
+  `vendor/licenses/stb.txt`.
 
-## Contributing
+## Docs
 
-- Update `docs/consumers/` or `docs/developers/` for user- or developer-facing changes.
-- Add tests or examples to `examples/` where relevant.
-- Open a pull request with a clear description and focused changes.
+- [docs/README.md](docs/README.md)
+- [docs/consumers/README.md](docs/consumers/README.md)
+- [docs/developers/README.md](docs/developers/README.md)
 
 ## License
 
-See the `LICENSE` file in the project root.
-
-## Reporting issues
-
-Open issues in the project's issue tracker and include reproduction steps, platform, and any relevant logs or details.
+See [LICENSE](LICENSE).

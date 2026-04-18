@@ -1,97 +1,147 @@
-# Makefile - convenience tasks for local development
-#
-# Usage examples:
-#   make configure                           # configure in Debug mode (exports compile_commands.json)
-#   make configure CMAKE_BUILD_TYPE=Release
-#   make build                               # build (after configure)
-#   make test                                # build and run tests
-#   make integration-test                    # run integration tests (interactive)
-#   make run-unit-tests                      # run unit tests binary directly
-#   make export-compile-commands             # copy compile_commands.json to repo root
-#   make clean
+ifeq ($(OS),Windows_NT)
+PLATFORM_TAG := windows
+else
+PLATFORM_TAG := linux
+endif
 
-CMAKE ?= cmake
-CTEST ?= ctest
+BUILD_DIR ?= build/$(PLATFORM_TAG)
+OBJ_DIR := $(BUILD_DIR)/obj
+BIN_DIR := $(BUILD_DIR)/bin
+LIB_DIR := $(BUILD_DIR)/lib
+LIB_NAME := $(LIB_DIR)/libaxidev-io.a
 
-BUILD_DIR ?= build
-CMAKE_BUILD_TYPE ?= Debug
-CMAKE_ARGS ?=
+ifeq ($(BUILD_DIR),build/$(PLATFORM_TAG))
+CLEAN_ROOT := build
+else
+CLEAN_ROOT := $(BUILD_DIR)
+endif
 
-# Number of parallel build jobs (try a few common probes)
-JOBS ?= $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
+ifeq ($(origin CC), default)
+ifeq ($(OS),Windows_NT)
+CC := clang
+else
+CC := cc
+endif
+endif
+
+ifeq ($(origin AR), default)
+ifeq ($(OS),Windows_NT)
+AR := llvm-ar
+else
+AR := ar
+endif
+endif
+
+PKG_CONFIG ?= pkg-config
+
+CPPFLAGS := -Iinclude -Isrc -Ivendor
+CFLAGS ?= -std=c11 -Wall -Wextra -Wno-unused-parameter
+LDFLAGS ?=
+LDLIBS ?=
+
+COMMON_SOURCES := \
+	src/c_api.c \
+	src/core/context.c \
+	src/core/log.c \
+	src/internal/utf.c \
+	src/vendor/stb_ds_impl.c \
+	src/keyboard/common/key_utils.c \
+	src/keyboard/common/keymap.c
+
+UNIT_TEST_SOURCES := tests/test_key_utils.c tests/test_c_api.c
+INTEGRATION_TEST_SOURCES := tests/test_integration_sender.c tests/test_integration_listener.c
 
 ifeq ($(OS),Windows_NT)
 EXE_EXT := .exe
+THREAD_SOURCE := src/internal/thread_win32.c
+PLATFORM_SOURCES := \
+	src/keyboard/common/windows_keymap.c \
+	src/keyboard/sender/sender_windows.c \
+	src/keyboard/listener/listener_windows.c
+PLATFORM_LIBS := -luser32 -lkernel32
+CPPFLAGS += -D_CRT_SECURE_NO_WARNINGS -DAXIDEV_IO_STATIC
+define make-dir
+	powershell -NoProfile -Command "New-Item -ItemType Directory -Force '$(1)' | Out-Null"
+endef
+define remove-path
+	powershell -NoProfile -Command "if (Test-Path '$(1)') { Remove-Item -Recurse -Force '$(1)' }"
+endef
+define run-bin
+	.\$(1)
+endef
 else
 EXE_EXT :=
+THREAD_SOURCE := src/internal/thread_pthread.c
+PLATFORM_SOURCES := \
+	src/keyboard/common/linux_layout.c \
+	src/keyboard/common/linux_keysym.c \
+	src/keyboard/sender/sender_uinput.c \
+	src/keyboard/listener/listener_linux.c
+PLATFORM_CFLAGS := $(shell $(PKG_CONFIG) --cflags libinput libudev xkbcommon 2>/dev/null)
+PLATFORM_LIBS := $(shell $(PKG_CONFIG) --libs libinput libudev xkbcommon 2>/dev/null) -pthread
+CPPFLAGS += -DAXIDEV_IO_STATIC $(PLATFORM_CFLAGS)
+define make-dir
+	mkdir -p '$(1)'
+endef
+define remove-path
+	rm -rf '$(1)'
+endef
+define run-bin
+	./$(1)
+endef
 endif
 
-RUN_UNIT_TESTS := $(BUILD_DIR)/tests/axidev-io-unit-tests$(EXE_EXT)
-RUN_INTEGRATION_TESTS := $(BUILD_DIR)/tests/axidev-io-integration-tests$(EXE_EXT)
+LIB_SOURCES := $(COMMON_SOURCES) $(THREAD_SOURCE) $(PLATFORM_SOURCES)
+LIB_OBJECTS := $(patsubst %.c,$(OBJ_DIR)/%.o,$(LIB_SOURCES))
+UNIT_TEST_BINS := $(patsubst tests/%.c,$(BIN_DIR)/%$(EXE_EXT),$(UNIT_TEST_SOURCES))
+INTEGRATION_TEST_BINS := $(patsubst tests/%.c,$(BIN_DIR)/%$(EXE_EXT),$(INTEGRATION_TEST_SOURCES))
+EXAMPLE_BIN := $(BIN_DIR)/example_c$(EXE_EXT)
 
-.PHONY: all configure configure-release build test integration-test run-unit-tests export-compile-commands clean help
+.PHONY: all build test test-unit test-integration example clean
 
 all: build
 
-configure:
-	@echo "Configuring (Build dir = $(BUILD_DIR), Type = $(CMAKE_BUILD_TYPE))..."
-	$(CMAKE) -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_ARGS)
+build: $(LIB_NAME)
 
-configure-release:
-	$(MAKE) configure CMAKE_BUILD_TYPE=Release
+test: test-unit
 
-build:
-	@echo "Building (parallel jobs = $(JOBS))..."
-	$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS)
+test-unit: $(UNIT_TEST_BINS)
+	@$(call run-bin,$(BIN_DIR)/test_key_utils$(EXE_EXT))
+	@$(call run-bin,$(BIN_DIR)/test_c_api$(EXE_EXT))
 
-test:
-	@echo "Configuring with tests enabled..."
-	$(CMAKE) -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DAXIDEV_IO_BUILD_TESTS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_ARGS)
-	@echo "Building (parallel jobs = $(JOBS))..."
-	$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS)
-	@echo "Running tests..."
-	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure
+test-integration: $(INTEGRATION_TEST_BINS)
+	@$(call run-bin,$(BIN_DIR)/test_integration_sender$(EXE_EXT))
+	@$(call run-bin,$(BIN_DIR)/test_integration_listener$(EXE_EXT))
 
-integration-test:
-	@echo "Running integration tests (interactive)..."
-	$(CMAKE) -S . -B $(BUILD_DIR) -DAXIDEV_IO_BUILD_TESTS=ON -DAXIDEV_IO_BUILD_INTEGRATION_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
-	$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS)
-	AXIDEV_IO_RUN_INTEGRATION_TESTS=1 AXIDEV_IO_INTERACTIVE=1 $(RUN_INTEGRATION_TESTS)
+example: $(EXAMPLE_BIN)
 
-run-unit-tests:
-	@if [ ! -x "$(RUN_UNIT_TESTS)" ]; then \
-		echo "Unit tests binary not found. Configuring and building with tests enabled..."; \
-		$(CMAKE) -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DAXIDEV_IO_BUILD_TESTS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_ARGS); \
-		$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS); \
-	fi
-	@echo "Running unit tests binary..."
-	@if [ -x "$(RUN_UNIT_TESTS)" ]; then \
-		"$(RUN_UNIT_TESTS)"; \
-	else \
-		echo "Unit tests binary not found: $(RUN_UNIT_TESTS)"; \
-		exit 1; \
-	fi
+$(LIB_NAME): $(LIB_OBJECTS)
+	@$(call make-dir,$(@D))
+	$(AR) rcs $@ $(LIB_OBJECTS)
 
-export-compile-commands:
-	@echo "Copying compile_commands.json from $(BUILD_DIR) to repository root (if present)..."
-	$(CMAKE) -E copy_if_different $(BUILD_DIR)/compile_commands.json compile_commands.json
-	@echo "Done."
+$(OBJ_DIR)/%.o: %.c
+	@$(call make-dir,$(@D))
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+$(BIN_DIR)/test_key_utils$(EXE_EXT): tests/test_key_utils.c $(LIB_NAME)
+	@$(call make-dir,$(@D))
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB_NAME) $(LDFLAGS) $(PLATFORM_LIBS) -o $@
+
+$(BIN_DIR)/test_c_api$(EXE_EXT): tests/test_c_api.c $(LIB_NAME)
+	@$(call make-dir,$(@D))
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB_NAME) $(LDFLAGS) $(PLATFORM_LIBS) -o $@
+
+$(BIN_DIR)/test_integration_sender$(EXE_EXT): tests/test_integration_sender.c $(LIB_NAME)
+	@$(call make-dir,$(@D))
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB_NAME) $(LDFLAGS) $(PLATFORM_LIBS) -o $@
+
+$(BIN_DIR)/test_integration_listener$(EXE_EXT): tests/test_integration_listener.c $(LIB_NAME)
+	@$(call make-dir,$(@D))
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB_NAME) $(LDFLAGS) $(PLATFORM_LIBS) -o $@
+
+$(EXAMPLE_BIN): examples/example_c.c $(LIB_NAME)
+	@$(call make-dir,$(@D))
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB_NAME) $(LDFLAGS) $(PLATFORM_LIBS) -o $@
 
 clean:
-	@echo "Cleaning build artifacts..."
-	rm -rf $(BUILD_DIR) compile_commands.json
-
-help:
-	@echo ""
-	@echo "Common targets:"
-	@echo "  configure                 Configure the project (Debug by default)."
-	@echo "                           Pass CMAKE_ARGS to forward -D flags to CMake."
-	@echo "  configure-release         Configure with Release build type."
-	@echo "  build                     Build the project."
-	@echo "  test                      Build and run tests (ctest)."
-	@echo "  integration-test          Configure, build, and run integration tests (interactive)."
-	@echo "  run-unit-tests            Run unit tests binary directly (must build first)."
-	@echo "  run-consumer              Run the in-tree consumer (use RUN_ARGS to pass args)."
-	@echo "  export-compile-commands   Copy build/compile_commands.json to repository root."
-	@echo "  clean                     Remove build dir and compile_commands.json."
-	@echo ""
+	@$(call remove-path,$(CLEAN_ROOT))
