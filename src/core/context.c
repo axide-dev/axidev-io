@@ -8,7 +8,7 @@
 
 static axidev_io_once g_context_once = AXIDEV_IO_ONCE_INIT;
 static axidev_io_global_context g_axidev_io_storage = {
-    AXIDEV_IO_LOG_LEVEL_INFO, NULL, {0}, {0}};
+    .log_level = AXIDEV_IO_LOG_LEVEL_INFO};
 
 AXIDEV_IO_API axidev_io_global_context *axidev_io_global = &g_axidev_io_storage;
 
