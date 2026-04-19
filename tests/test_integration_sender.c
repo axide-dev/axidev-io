@@ -7,6 +7,7 @@
 #include <windows.h>
 #else
 #include <errno.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <termios.h>
 #include <time.h>
@@ -40,13 +41,54 @@ static void sleep_half_second(void) {
   nanosleep(&delay, NULL);
 }
 
+static int g_tty_fd = -1;
 static struct termios g_old_termios;
 static int g_termios_saved = 0;
+
+static int open_tty(void) {
+  if (g_tty_fd >= 0) {
+    return 1;
+  }
+
+  g_tty_fd = open("/dev/tty", O_RDWR);
+  if (g_tty_fd < 0) {
+    perror("open(/dev/tty)");
+    return 0;
+  }
+
+  return 1;
+}
+
+static int read_line_from_tty(char *buffer, size_t buffer_size) {
+  size_t len = 0;
+
+  while (len + 1 < buffer_size) {
+    ssize_t read_count = read(g_tty_fd, &buffer[len], 1);
+    if (read_count < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      perror("read");
+      return 0;
+    }
+    if (read_count == 0) {
+      break;
+    }
+    if (buffer[len] == '\n' || buffer[len] == '\r') {
+      ++len;
+      break;
+    }
+    ++len;
+  }
+
+  buffer[len] = '\0';
+  return 1;
+}
 
 static int enable_raw_mode(void) {
   struct termios t;
 
-  if (tcgetattr(STDIN_FILENO, &g_old_termios) != 0) {
+  if (tcgetattr(g_tty_fd, &g_old_termios) != 0) {
     perror("tcgetattr");
     return 0;
   }
@@ -58,7 +100,7 @@ static int enable_raw_mode(void) {
   t.c_cc[VMIN] = 1;
   t.c_cc[VTIME] = 0;
 
-  if (tcsetattr(STDIN_FILENO, TCSANOW, &t) != 0) {
+  if (tcsetattr(g_tty_fd, TCSANOW, &t) != 0) {
     perror("tcsetattr");
     return 0;
   }
@@ -67,8 +109,15 @@ static int enable_raw_mode(void) {
 }
 
 static void restore_terminal(void) {
-  if (g_termios_saved) {
-    tcsetattr(STDIN_FILENO, TCSANOW, &g_old_termios);
+  if (g_termios_saved && g_tty_fd >= 0) {
+    tcsetattr(g_tty_fd, TCSANOW, &g_old_termios);
+  }
+}
+
+static void close_tty(void) {
+  if (g_tty_fd >= 0) {
+    close(g_tty_fd);
+    g_tty_fd = -1;
   }
 }
 
@@ -92,11 +141,10 @@ int main(void) {
   printf("Keep this terminal focused, then press ENTER.\n");
   fflush(stdout);
 
-  fgets(buffer, sizeof(buffer), stdin); // validation manuelle du focus
-
 #ifdef _WIN32
   {
     HANDLE thread = CreateThread(NULL, 0, send_thread_main, NULL, 0, NULL);
+    fgets(buffer, sizeof(buffer), stdin); // validation manuelle du focus
     fgets(buffer, sizeof(buffer), stdin);
     WaitForSingleObject(thread, INFINITE);
     CloseHandle(thread);
@@ -105,9 +153,21 @@ int main(void) {
   {
     size_t len = 0;
     pthread_t thread;
-    int ch;
+    char ch;
+
+    if (!open_tty()) {
+      axidev_io_keyboard_free();
+      return EXIT_FAILURE;
+    }
+
+    if (!read_line_from_tty(buffer, sizeof(buffer))) {
+      close_tty();
+      axidev_io_keyboard_free();
+      return EXIT_FAILURE;
+    }
 
     if (!enable_raw_mode()) {
+      close_tty();
       axidev_io_keyboard_free();
       return EXIT_FAILURE;
     }
@@ -116,12 +176,19 @@ int main(void) {
 
     // on attend réellement les caractères reçus par le process
     while (len + 1 < sizeof(buffer)) {
-      ch = getchar();
-      if (ch == EOF) {
+      ssize_t read_count = read(g_tty_fd, &ch, 1);
+      if (read_count < 0) {
+        if (errno == EINTR) {
+          continue;
+        }
+        perror("read");
+        break;
+      }
+      if (read_count == 0) {
         break;
       }
 
-      buffer[len++] = (char)ch;
+      buffer[len++] = ch;
 
       if (ch == '\n' || ch == '\r') {
         break;
@@ -132,6 +199,7 @@ int main(void) {
 
     pthread_join(thread, NULL);
     restore_terminal();
+    close_tty();
   }
 #endif
 
