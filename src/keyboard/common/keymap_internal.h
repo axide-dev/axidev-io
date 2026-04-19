@@ -69,10 +69,6 @@ axidev_io_keymap_base_key_from_code(int32_t keycode,
                                     axidev_io_keyboard_key_t *out_key);
 axidev_io_result axidev_io_keymap_code_for_key(axidev_io_keyboard_key_t key,
                                                int32_t *out_keycode);
-axidev_io_result axidev_io_keymap_resolve_key_request(
-    axidev_io_keyboard_key_with_modifier_t request, int32_t *out_keycode,
-    axidev_io_keyboard_modifier_t *out_mods,
-    axidev_io_keyboard_key_t *out_resolved_key);
 bool axidev_io_keymap_can_type_character(uint32_t codepoint);
 uint32_t axidev_io_keymap_encode_code_mods(int32_t keycode,
                                            axidev_io_keyboard_modifier_t mods);
