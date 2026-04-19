@@ -12,6 +12,7 @@ Additional targets:
 
 - `python build.py test-unit`
 - `python build.py test-integration`
+- `python build.py package-integration-tests --version run-123 --arch x64`
 - `python build.py clean`
 - `python build.py package --version v1.2.3`
 
