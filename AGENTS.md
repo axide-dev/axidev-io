@@ -22,6 +22,28 @@ Do not change build or release behavior until you understand those files.
 - If a requested change would conflict with the license/compliance rules below,
   stop and ask a human maintainer instead of guessing.
 
+## Keyboard API Contract
+
+The public keyboard API is layout-agnostic.
+
+Agents must preserve the rule that callers interact with logical keys and
+intended output, not layout-specific physical keys for their own sake.
+
+If a caller asks for a key, the library should resolve that request so the user
+gets that key/output on their active layout. The goal is not to send a virtual
+key merely because it exists if that would produce the wrong logical key or
+text on the current layout.
+
+This contract applies equally to sender and listener behavior:
+
+- Sender paths should resolve requests to the keycode/modifier combination that
+  produces the requested logical key or text on the active layout.
+- Listener paths should map observed platform key events back to the logical key
+  the user actually produced on that layout.
+
+Do not introduce changes that leak layout-specific physical key behavior into
+the public API unless a human maintainer explicitly asks for that behavior.
+
 ## Commit And PR Conventions
 
 - Open pull requests against the `main` branch.
