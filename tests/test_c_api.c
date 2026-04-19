@@ -2,6 +2,17 @@
 
 #include "test_assert.h"
 
+#if defined(__linux__)
+#include <linux/input-event-codes.h>
+#include <xkbcommon/xkbcommon.h>
+
+#include <stb/stb_ds.h>
+
+#include "keyboard/common/keymap_internal.h"
+#include "keyboard/common/linux_keysym_internal.h"
+#include "internal/context.h"
+#endif
+
 static void noop_listener_cb(uint32_t codepoint,
                              axidev_io_keyboard_key_with_modifier_t key_mod,
                              bool pressed, void *user_data) {
@@ -27,6 +38,102 @@ static void test_conversion_helpers(void) {
   TEST_CHECK_EQ_INT(parsed.key, AXIDEV_IO_KEY_A);
   TEST_CHECK((parsed.mods & AXIDEV_IO_MOD_SHIFT) != 0);
 }
+
+#if defined(__linux__)
+static void test_linux_fr_digit_key_resolution(void) {
+  struct xkb_context *xkb_context;
+  struct xkb_keymap *xkb_keymap;
+  struct xkb_state *xkb_state;
+  struct xkb_rule_names names;
+  axidev_io_linux_keymap linux_keymap;
+  ptrdiff_t index;
+  int32_t keycode = -1;
+  axidev_io_keyboard_modifier_t mods = AXIDEV_IO_MOD_NONE;
+  axidev_io_keyboard_key_t resolved_key = AXIDEV_IO_KEY_UNKNOWN;
+
+  axidev_io_context_ensure_runtime();
+
+  memset(&names, 0, sizeof(names));
+  memset(&linux_keymap, 0, sizeof(linux_keymap));
+  names.layout = "fr";
+
+  xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+  TEST_CHECK(xkb_context != NULL);
+  if (xkb_context == NULL) {
+    return;
+  }
+
+  xkb_keymap = xkb_keymap_new_from_names(
+      xkb_context, &names, XKB_KEYMAP_COMPILE_NO_FLAGS);
+  TEST_CHECK(xkb_keymap != NULL);
+  if (xkb_keymap == NULL) {
+    xkb_context_unref(xkb_context);
+    return;
+  }
+
+  xkb_state = xkb_state_new(xkb_keymap);
+  TEST_CHECK(xkb_state != NULL);
+  if (xkb_state == NULL) {
+    xkb_keymap_unref(xkb_keymap);
+    xkb_context_unref(xkb_context);
+    return;
+  }
+
+  axidev_io_linux_keymap_init(&linux_keymap, xkb_keymap, xkb_state);
+
+  index = hmgeti(linux_keymap.char_to_keycode, (uint32_t)'1');
+  TEST_CHECK(index >= 0);
+  if (index >= 0) {
+    TEST_CHECK_EQ_INT(linux_keymap.char_to_keycode[index].value.keycode, KEY_1);
+    TEST_CHECK((linux_keymap.char_to_keycode[index].value.required_mods &
+                AXIDEV_IO_MOD_SHIFT) != 0);
+    TEST_CHECK_EQ_INT(linux_keymap.char_to_keycode[index].value.produced_key,
+                      AXIDEV_IO_KEY_NUM1);
+  }
+
+  TEST_CHECK_EQ_INT(axidev_io_linux_resolve_key_from_evdev_and_mods(
+                        &linux_keymap, KEY_1, AXIDEV_IO_MOD_SHIFT),
+                    AXIDEV_IO_KEY_NUM1);
+
+  axidev_io_keyboard_keymap_free();
+  for (index = 0; index < hmlen(linux_keymap.char_to_keycode); ++index) {
+    hmput(axidev_io_keymap_impl_get()->char_to_mapping,
+          linux_keymap.char_to_keycode[index].key,
+          linux_keymap.char_to_keycode[index].value);
+  }
+  for (index = 0; index < hmlen(linux_keymap.evdev_to_key); ++index) {
+    hmput(axidev_io_keymap_impl_get()->code_to_key,
+          linux_keymap.evdev_to_key[index].key,
+          linux_keymap.evdev_to_key[index].value);
+  }
+  for (index = 0; index < hmlen(linux_keymap.code_and_mods_to_key); ++index) {
+    hmput(axidev_io_keymap_impl_get()->code_and_mods_to_key,
+          linux_keymap.code_and_mods_to_key[index].key,
+          linux_keymap.code_and_mods_to_key[index].value);
+  }
+  for (index = 0; index < hmlen(linux_keymap.key_to_evdev); ++index) {
+    hmput(axidev_io_keymap_impl_get()->key_to_code,
+          linux_keymap.key_to_evdev[index].key,
+          linux_keymap.key_to_evdev[index].value);
+  }
+  axidev_io_keymap_public_context()->initialized = true;
+
+  TEST_CHECK_EQ_INT(axidev_io_keymap_resolve_key_request(
+                        (axidev_io_keyboard_key_with_modifier_t){
+                            AXIDEV_IO_KEY_NUM1, AXIDEV_IO_MOD_NONE},
+                        &keycode, &mods, &resolved_key),
+                    AXIDEV_IO_RESULT_OK);
+  TEST_CHECK_EQ_INT(keycode, KEY_1);
+  TEST_CHECK((mods & AXIDEV_IO_MOD_SHIFT) != 0);
+  TEST_CHECK_EQ_INT(resolved_key, AXIDEV_IO_KEY_NUM1);
+
+  axidev_io_keyboard_keymap_free();
+  axidev_io_linux_keymap_free(&linux_keymap);
+  xkb_state_unref(xkb_state);
+  xkb_keymap_unref(xkb_keymap);
+  xkb_context_unref(xkb_context);
+}
+#endif
 
 static void test_sender_lifecycle_and_errors(void) {
   char *error_text;
@@ -92,6 +199,9 @@ static void test_listener_lifecycle(void) {
 
 int main(void) {
   TEST_RUN(test_conversion_helpers);
+#if defined(__linux__)
+  TEST_RUN(test_linux_fr_digit_key_resolution);
+#endif
   TEST_RUN(test_sender_lifecycle_and_errors);
   TEST_RUN(test_listener_lifecycle);
   return g_axidev_test_failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
