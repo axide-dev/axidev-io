@@ -1,8 +1,44 @@
-#ifndef _WIN32
+#include <axidev-io/c_api.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <errno.h>
 #include <pthread.h>
 #include <termios.h>
+#include <time.h>
 #include <unistd.h>
+#endif
+
+static void send_test_keys(void) {
+  axidev_io_keyboard_tap(
+      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_Z, 0});
+  axidev_io_keyboard_tap(
+      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_W, 0});
+  axidev_io_keyboard_tap(
+      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_NUM1, 0});
+  axidev_io_keyboard_tap(
+      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_ENTER, 0});
+}
+
+#ifdef _WIN32
+static DWORD WINAPI send_thread_main(LPVOID user_data) {
+  (void)user_data;
+  Sleep(500);
+  send_test_keys();
+  return 0;
+}
+#else
+static void sleep_half_second(void) {
+  struct timespec delay;
+
+  delay.tv_sec = 0;
+  delay.tv_nsec = 500000000L;
+  nanosleep(&delay, NULL);
+}
 
 static struct termios g_old_termios;
 static int g_termios_saved = 0;
@@ -38,24 +74,14 @@ static void restore_terminal(void) {
 
 static void *send_thread_main(void *user_data) {
   (void)user_data;
-  usleep(500000);
-
-  axidev_io_keyboard_tap(
-      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_Z, 0});
-  axidev_io_keyboard_tap(
-      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_W, 0});
-  axidev_io_keyboard_tap(
-      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_NUM1, 0});
-  axidev_io_keyboard_tap(
-      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_ENTER, 0});
-
+  sleep_half_second();
+  send_test_keys();
   return NULL;
 }
 #endif
 
 int main(void) {
   char buffer[256];
-  size_t len = 0;
 
   if (!axidev_io_keyboard_initialize()) {
     fprintf(stderr, "sender init failed\n");
@@ -77,6 +103,7 @@ int main(void) {
   }
 #else
   {
+    size_t len = 0;
     pthread_t thread;
     int ch;
 
