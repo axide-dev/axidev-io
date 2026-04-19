@@ -31,8 +31,6 @@ static void *send_thread_main(void *user_data) {
       (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_W, 0});
   axidev_io_keyboard_tap(
       (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_NUM1, 0});
-  axidev_io_keyboard_tap(
-      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_ENTER, 0});
   return NULL;
 }
 #endif
@@ -47,6 +45,7 @@ int main(void) {
 
   printf("Sender integration test\n");
   printf("Keep this terminal focused, then press ENTER.\n");
+  fflush(stdout);
   fgets(buffer, sizeof(buffer), stdin);
 
 #ifdef _WIN32
@@ -60,6 +59,8 @@ int main(void) {
   {
     pthread_t thread;
     pthread_create(&thread, NULL, send_thread_main, NULL);
+    printf("The test will type zw1. Press ENTER after you see it.\n");
+    fflush(stdout);
     fgets(buffer, sizeof(buffer), stdin);
     pthread_join(thread, NULL);
   }

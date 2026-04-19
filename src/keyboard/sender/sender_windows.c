@@ -128,36 +128,8 @@ axidev_io_sender_resolve_mapping(axidev_io_keyboard_key_with_modifier_t request,
                                  int32_t *out_keycode,
                                  axidev_io_keyboard_modifier_t *out_mods,
                                  axidev_io_keyboard_key_t *out_resolved_key) {
-  axidev_io_result result;
-  uint32_t codepoint;
-
-  if (out_keycode == NULL || out_mods == NULL || out_resolved_key == NULL) {
-    return AXIDEV_IO_RESULT_INVALID_ARGUMENT;
-  }
-
-  result = axidev_io_keymap_code_for_key(request.key, out_keycode);
-  if (result == AXIDEV_IO_RESULT_OK) {
-    *out_mods = request.mods;
-    *out_resolved_key = request.key;
-    return AXIDEV_IO_RESULT_OK;
-  }
-
-  if (!axidev_io_keyboard_key_to_codepoint(request.key, &codepoint)) {
-    return result;
-  }
-
-  {
-    axidev_io_keyboard_keymap_lookup mapping;
-    result = axidev_io_keymap_lookup_mapping(codepoint, &mapping);
-    if (result != AXIDEV_IO_RESULT_OK) {
-      return result;
-    }
-    *out_keycode = mapping.keycode;
-    *out_mods =
-        (axidev_io_keyboard_modifier_t)(mapping.required_mods | request.mods);
-    *out_resolved_key = mapping.produced_key;
-    return AXIDEV_IO_RESULT_OK;
-  }
+  return axidev_io_keymap_resolve_key_request(request, out_keycode, out_mods,
+                                              out_resolved_key);
 }
 
 static axidev_io_result
