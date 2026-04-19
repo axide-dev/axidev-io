@@ -22,6 +22,14 @@ Do not change build or release behavior until you understand those files.
 - If a requested change would conflict with the license/compliance rules below,
   stop and ask a human maintainer instead of guessing.
 
+## Commit And PR Conventions
+
+- Open pull requests against the `main` branch.
+- Do not open pull requests against the `release` branch.
+- Do not commit or push changes to the `release` branch.
+- If a human maintainer explicitly asks for a direct branch update, commit to
+  `main` and push `main`.
+
 ## Linux Dependency Policy
 
 On Linux, `libinput`, `libudev`, and `xkbcommon` are system dependencies
