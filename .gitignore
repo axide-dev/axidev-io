@@ -4,3 +4,4 @@ packages/
 __pycache__/
 .DS_Store
 *.plist
+compile_commands.json

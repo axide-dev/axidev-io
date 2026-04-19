@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import platform
 import shlex
@@ -44,6 +45,7 @@ INTEGRATION_TEST_SOURCES = [
 ]
 EXAMPLE_SOURCE = Path("examples/example_c.c")
 LINUX_PERMISSION_HELPER = Path("scripts/setup_uinput_permissions.sh")
+COMPILE_COMMANDS_FILENAME = "compile_commands.json"
 
 
 def split_flags(value: str | None) -> list[str]:
@@ -226,18 +228,63 @@ def binary_path(config: BuildConfig, source: Path) -> Path:
 def compile_source(config: BuildConfig, source: Path) -> Path:
     obj_path = object_path(config, source)
     ensure_parent(obj_path)
-    run_command(
-        [
-            config.compiler,
-            *config.cppflags,
-            *config.cflags,
-            "-c",
-            str(source),
-            "-o",
-            str(obj_path),
-        ]
-    )
+    run_command(compile_source_arguments(config, source, obj_path))
     return obj_path
+
+
+def compile_source_arguments(
+    config: BuildConfig, source: Path, output_path: Path | None = None
+) -> list[str]:
+    obj_path = output_path if output_path is not None else object_path(config, source)
+    return [
+        config.compiler,
+        *config.cppflags,
+        *config.cflags,
+        "-c",
+        str(source),
+        "-o",
+        str(obj_path),
+    ]
+
+
+def all_compilation_sources(config: BuildConfig) -> list[Path]:
+    ordered_sources = [
+        *config.library_sources,
+        *UNIT_TEST_SOURCES,
+        *INTEGRATION_TEST_SOURCES,
+        EXAMPLE_SOURCE,
+    ]
+    unique_sources: list[Path] = []
+    seen: set[Path] = set()
+    for source in ordered_sources:
+        if source in seen:
+            continue
+        seen.add(source)
+        unique_sources.append(source)
+    return unique_sources
+
+
+def write_compile_commands(config: BuildConfig) -> Path:
+    database_path = ROOT / COMPILE_COMMANDS_FILENAME
+    entries = []
+
+    for source in all_compilation_sources(config):
+        output_path = object_path(config, source)
+        entries.append(
+            {
+                "directory": str(ROOT),
+                "file": str((ROOT / source).resolve()),
+                "arguments": compile_source_arguments(config, source, output_path),
+                "output": str((ROOT / output_path).resolve()),
+            }
+        )
+
+    with database_path.open("w", encoding="utf-8", newline="\n") as handle:
+        json.dump(entries, handle, indent=2)
+        handle.write("\n")
+
+    print(f"Created {database_path}")
+    return database_path
 
 
 def build_library(config: BuildConfig) -> Path:
@@ -369,6 +416,7 @@ def parse_args() -> argparse.Namespace:
         default="build",
         choices=[
             "build",
+            "compile-commands",
             "test",
             "test-unit",
             "test-integration",
@@ -408,6 +456,10 @@ def main() -> int:
 
     if args.command == "build":
         build_library(config)
+        return 0
+
+    if args.command == "compile-commands":
+        write_compile_commands(config)
         return 0
 
     if args.command == "unit-binaries":
