@@ -26,6 +26,7 @@ static void test_conversion_helpers(void) {
   char *text;
   axidev_io_keyboard_key_with_modifier_t parsed;
 
+  AXIDEV_IO_LOG_DEBUG("test conversion helper compile check");
   TEST_CHECK(axidev_io_library_version() != NULL);
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("A"), AXIDEV_IO_KEY_A);
 

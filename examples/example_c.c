@@ -1,5 +1,4 @@
 #include <axidev-io/c_api.h>
-#include <axidev-io/log.h>
 
 #include <stdio.h>
 #include <stdlib.h>

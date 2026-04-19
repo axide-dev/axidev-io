@@ -4,7 +4,7 @@
 
 #include <Windows.h>
 
-#include <axidev-io/log.h>
+#include <axidev-io/c_api.h>
 
 #include <stdatomic.h>
 #include <stdlib.h>
