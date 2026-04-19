@@ -453,6 +453,19 @@ AXIDEV_IO_API void axidev_io_log_message(axidev_io_log_level_t level,
                                          const char *file, int line,
                                          const char *fmt, ...);
 
+#define AXIDEV_IO_LOG_DEBUG(fmt, ...)                                          \
+  axidev_io_log_message(AXIDEV_IO_LOG_LEVEL_DEBUG, __FILE__, __LINE__, fmt,    \
+                        ##__VA_ARGS__)
+#define AXIDEV_IO_LOG_INFO(fmt, ...)                                           \
+  axidev_io_log_message(AXIDEV_IO_LOG_LEVEL_INFO, __FILE__, __LINE__, fmt,     \
+                        ##__VA_ARGS__)
+#define AXIDEV_IO_LOG_WARN(fmt, ...)                                           \
+  axidev_io_log_message(AXIDEV_IO_LOG_LEVEL_WARN, __FILE__, __LINE__, fmt,     \
+                        ##__VA_ARGS__)
+#define AXIDEV_IO_LOG_ERROR(fmt, ...)                                          \
+  axidev_io_log_message(AXIDEV_IO_LOG_LEVEL_ERROR, __FILE__, __LINE__, fmt,    \
+                        ##__VA_ARGS__)
+
 #ifdef __cplusplus
 }
 #endif

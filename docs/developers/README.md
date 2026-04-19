@@ -21,7 +21,6 @@ Additional targets:
 ## Repo Layout
 
 - `include/axidev-io/c_api.h`: primary public API
-- `include/axidev-io/log.h`: optional logging macros
 - `src/c_api.c`: public entrypoints
 - `src/core/`: global context and logging modules
 - `src/internal/`: result, thread, and UTF helpers

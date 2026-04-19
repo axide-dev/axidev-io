@@ -2,7 +2,7 @@
 
 #include "sender_internal.h"
 
-#include <axidev-io/log.h>
+#include <axidev-io/c_api.h>
 
 #include <errno.h>
 #include <fcntl.h>

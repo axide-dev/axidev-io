@@ -1,7 +1,5 @@
 #include <axidev-io/c_api.h>
 
-#include <axidev-io/log.h>
-
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +21,34 @@ static void axidev_io_report_result(const char *function_name,
   axidev_io_set_last_error_result(function_name, result);
   AXIDEV_IO_LOG_ERROR("%s failed: %s", function_name,
                       axidev_io_result_to_string(result));
+}
+
+static const char *axidev_io_log_level_name(axidev_io_log_level_t level) {
+  switch (level) {
+  case AXIDEV_IO_LOG_LEVEL_DEBUG:
+    return "DEBUG";
+  case AXIDEV_IO_LOG_LEVEL_INFO:
+    return "INFO";
+  case AXIDEV_IO_LOG_LEVEL_WARN:
+    return "WARN";
+  case AXIDEV_IO_LOG_LEVEL_ERROR:
+  default:
+    return "ERROR";
+  }
+}
+
+static void axidev_io_log_non_error_threshold_notice(void) {
+  axidev_io_log_level_t level = axidev_io_global->log_level;
+
+  if ((int)level >= (int)AXIDEV_IO_LOG_LEVEL_ERROR) {
+    return;
+  }
+
+  axidev_io_log_message(
+      level, __FILE__, __LINE__,
+      "logging level is %s; set AXIDEV_IO_LOG_LEVEL_ERROR explicitly if you "
+      "want only bare-minimum error output",
+      axidev_io_log_level_name(level));
 }
 
 static axidev_io_result axidev_io_require_keyboard_initialized(void) {
@@ -145,6 +171,7 @@ AXIDEV_IO_API bool axidev_io_keyboard_initialize(void) {
 
   if (result == AXIDEV_IO_RESULT_OK) {
     axidev_io_global->keyboard.initialized = true;
+    axidev_io_log_non_error_threshold_notice();
   } else {
     axidev_io_global->keyboard.initialized = false;
     axidev_io_keyboard_sender_free();

@@ -3,8 +3,7 @@
 ## Include Surface
 
 Use `include/axidev-io/c_api.h` as the normal entry header.
-
-Optional logging macros live in `include/axidev-io/log.h`.
+It also exposes the logging macros.
 
 ## Build
 
@@ -129,7 +128,7 @@ Example:
 - Failure details are available through `axidev_io_get_last_error()`.
 - Strings returned by the library must be freed with `axidev_io_free_string()`.
 - Logging can be controlled with `axidev_io_log_set_level()` or the macros from
-  `log.h`.
+  `c_api.h`.
 
 ## Platform Notes
 

@@ -14,7 +14,8 @@ python build.py example
 On Linux the build expects `libinput`, `libudev`, and `xkbcommon` through
 `pkg-config`.
 
-The primary public header is `include/axidev-io/c_api.h`.
+The primary public header is `include/axidev-io/c_api.h`, including the logging
+macros.
 
 ## Public API
 

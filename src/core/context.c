@@ -1,6 +1,6 @@
 #include "../internal/context.h"
 
-#include <axidev-io/log.h>
+#include <axidev-io/c_api.h>
 
 #include <stdio.h>
 #include <stdlib.h>

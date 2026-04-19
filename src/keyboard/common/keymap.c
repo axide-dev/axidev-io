@@ -1,6 +1,6 @@
 #include "keymap_internal.h"
 
-#include <axidev-io/log.h>
+#include <axidev-io/c_api.h>
 
 #include <string.h>
 
