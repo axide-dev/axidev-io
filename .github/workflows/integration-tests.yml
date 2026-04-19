@@ -7,6 +7,9 @@ on:
   workflow_dispatch:
     # no inputs
 
+env:
+  INTEGRATION_PACKAGE_VERSION: run-${{ github.run_id }}
+
 permissions:
   contents: write
 
@@ -19,10 +22,10 @@ jobs:
       - uses: ./.github/actions/build-linux
         with:
           arch: x64
-          build-tests: "true"
-          build-integration-tests: "true"
-          upload-binaries: "true"
-          artifact-name: integration-test-binary-ubuntu-latest-x64
+          package-integration-tests: "true"
+          upload-integration-package: "true"
+          artifact-name: integration-test-package-ubuntu-latest-x64
+          version: ${{ env.INTEGRATION_PACKAGE_VERSION }}
 
   build-windows-x64:
     name: Build integration binaries (Windows x64)
@@ -32,10 +35,10 @@ jobs:
       - uses: ./.github/actions/build-windows-mingw
         with:
           arch: x64
-          build-tests: "true"
-          build-integration-tests: "true"
-          upload-binaries: "true"
-          artifact-name: integration-test-binary-windows-latest-x64
+          package-integration-tests: "true"
+          upload-integration-package: "true"
+          artifact-name: integration-test-package-windows-latest-x64
+          version: ${{ env.INTEGRATION_PACKAGE_VERSION }}
 
   release:
     name: Create integration test release
@@ -58,28 +61,33 @@ jobs:
 
       - name: Prepare release assets
         run: |
+          set -euo pipefail
           mkdir -p release-assets
           if [ ! -d artifacts ]; then
             echo "No artifacts downloaded; skipping asset collection."
             exit 0
           fi
-          while IFS= read -r -d '' file; do
-            artifact_dir=$(dirname "$file")
-            os_arch=$(basename "$artifact_dir" | sed 's/^integration-test-binary-//')
-            if [ -z "$os_arch" ]; then
-              os_arch=unknown
+
+          expected=(
+            "axidev-io-integration-tests-${INTEGRATION_PACKAGE_VERSION}-linux-x64.zip"
+            "axidev-io-integration-tests-${INTEGRATION_PACKAGE_VERSION}-windows-x64.zip"
+          )
+
+          missing=0
+          for name in "${expected[@]}"; do
+            src="$(find artifacts -type f -name "$name" -print -quit || true)"
+            if [ -z "$src" ]; then
+              echo "::error::Missing expected integration-test asset: $name"
+              missing=1
+              continue
             fi
-            artifact_name=$(basename "$file")
-            ext="${artifact_name##*.}"
-            if [ "$ext" = "$artifact_name" ]; then
-              base="$artifact_name"
-              ext=""
-            else
-              base="${artifact_name%.*}"
-              ext=".$ext"
-            fi
-            cp "$file" "release-assets/${base}-${os_arch}${ext}"
-          done < <(find artifacts -type f \( -name 'test_integration_*' -o -name 'test_integration_*.exe' \) ! -name '*.o' ! -name '*.obj' -print0)
+            cp "$src" "release-assets/$name"
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::One or more integration-test assets are missing."
+            exit 1
+          fi
 
       - name: Check for release assets
         id: check-assets
@@ -89,6 +97,31 @@ jobs:
           else
             echo "has_assets=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Verify packaged integration test assets
+        if: steps.check-assets.outputs.has_assets == 'true'
+        run: |
+          set -euo pipefail
+
+          linux_asset="release-assets/axidev-io-integration-tests-${INTEGRATION_PACKAGE_VERSION}-linux-x64.zip"
+          windows_asset="release-assets/axidev-io-integration-tests-${INTEGRATION_PACKAGE_VERSION}-windows-x64.zip"
+
+          unzip -Z1 "$linux_asset" | grep -Fx 'bin/test_integration_sender'
+          unzip -Z1 "$linux_asset" | grep -Fx 'bin/test_integration_listener'
+          unzip -Z1 "$linux_asset" | grep -Fx 'scripts/setup_uinput_permissions.sh'
+          unzip -Z1 "$linux_asset" | grep -Fx 'docs/consumers/README.md'
+          unzip -Z1 "$linux_asset" | grep -Fx 'LICENSE'
+          unzip -Z1 "$linux_asset" | grep -Fx 'vendor/licenses/stb.txt'
+
+          zipinfo -l "$linux_asset" | awk '{print $1 " " $NF}' | grep -Fx -- '-rwxr-xr-x bin/test_integration_sender'
+          zipinfo -l "$linux_asset" | awk '{print $1 " " $NF}' | grep -Fx -- '-rwxr-xr-x bin/test_integration_listener'
+          zipinfo -l "$linux_asset" | awk '{print $1 " " $NF}' | grep -Fx -- '-rwxr-xr-x scripts/setup_uinput_permissions.sh'
+
+          unzip -Z1 "$windows_asset" | grep -Fx 'bin/test_integration_sender.exe'
+          unzip -Z1 "$windows_asset" | grep -Fx 'bin/test_integration_listener.exe'
+          unzip -Z1 "$windows_asset" | grep -Fx 'docs/consumers/README.md'
+          unzip -Z1 "$windows_asset" | grep -Fx 'LICENSE'
+          unzip -Z1 "$windows_asset" | grep -Fx 'vendor/licenses/stb.txt'
 
       - name: Generate release metadata
         if: steps.check-assets.outputs.has_assets == 'true'

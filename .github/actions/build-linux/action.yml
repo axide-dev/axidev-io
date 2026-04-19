@@ -21,12 +21,20 @@ inputs:
     description: Package headers, the static library, consumer docs, LICENSE, and vendor/licenses into packages/
     required: false
     default: "false"
+  package-integration-tests:
+    description: Package integration binaries, consumer docs, licenses, and Linux helpers into packages/
+    required: false
+    default: "false"
   upload-binaries:
     description: Upload built test binaries as artifacts
     required: false
     default: "false"
+  upload-integration-package:
+    description: Upload packaged integration test zip artifacts
+    required: false
+    default: "false"
   artifact-name:
-    description: Artifact name (required when upload-binaries=true)
+    description: Artifact name used when uploading outputs
     required: false
   version:
     description: Release version override (otherwise uses tag ref)
@@ -57,7 +65,7 @@ runs:
       run: python build.py clean
 
     - name: Build library
-      if: ${{ inputs.run-tests != 'true' && inputs.build-integration-tests != 'true' && inputs.package-output != 'true' }}
+      if: ${{ inputs.run-tests != 'true' && inputs.build-integration-tests != 'true' && inputs.package-output != 'true' && inputs.package-integration-tests != 'true' }}
       shell: bash
       run: python build.py build
 
@@ -116,6 +124,17 @@ runs:
         fi
         python build.py package --version "$TAG" --arch '${{ inputs.arch }}'
 
+    - name: Package integration tests (Linux)
+      if: ${{ inputs.package-integration-tests == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        TAG='${{ inputs.version }}'
+        if [ -z "$TAG" ]; then
+          TAG="dev"
+        fi
+        python build.py package-integration-tests --version "$TAG" --arch '${{ inputs.arch }}'
+
     - name: Upload release package
       if: ${{ inputs.package-output == 'true' }}
       uses: actions/upload-artifact@v4
@@ -130,3 +149,11 @@ runs:
         name: ${{ inputs.artifact-name }}
         path: |
           build/linux/bin/test_*
+
+    - name: Upload integration test package
+      if: ${{ inputs.upload-integration-package == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          packages/*.zip

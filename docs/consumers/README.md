@@ -33,6 +33,55 @@ Example:
 cc main.c -laxidev-io -linput -ludev -lxkbcommon -lpthread
 ```
 
+## Linux Permissions
+
+Linux usually needs two different kinds of access:
+
+- injection needs write access to `/dev/uinput`
+- listening needs read access to the relevant `/dev/input/event*` devices
+
+For injection, load the kernel module and grant a group access to `/dev/uinput`
+through `udev`:
+
+```sh
+sudo modprobe uinput
+sudo groupadd -f input
+sudo usermod -aG input "$USER"
+```
+
+The Linux integration-test bundle also includes
+`scripts/setup_uinput_permissions.sh`, which applies the same setup steps.
+Review it before running it on a target system.
+
+Create `/etc/udev/rules.d/70-axidev-io-uinput.rules` with:
+
+```udev
+KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"
+```
+
+Then reload rules and re-login so the new group membership applies:
+
+```sh
+sudo udevadm control --reload-rules
+sudo udevadm trigger /dev/uinput
+```
+
+After that, `axidev_io_keyboard_initialize()` should be able to open
+`/dev/uinput`. On Linux, `axidev_io_keyboard_request_permissions()` only checks
+whether access is already available; it does not open a desktop permission
+prompt.
+
+For listening, `libinput` opens device nodes such as `/dev/input/event*`. On
+most desktop Linux systems this works when the process runs in the active local
+session on `seat0`. If listener startup fails, first confirm the process is
+running in a real local login session with access to the input seat.
+
+Avoid broad `udev` rules that make all `/dev/input/event*` nodes world-readable.
+Those devices expose raw keyboard events and can capture sensitive input. If a
+headless or service environment needs listener access, grant that access with a
+dedicated service account or seat/session setup instead of relaxing permissions
+globally.
+
 ## Basic Usage
 
 ```c

@@ -43,6 +43,7 @@ INTEGRATION_TEST_SOURCES = [
     Path("tests/test_integration_listener.c"),
 ]
 EXAMPLE_SOURCE = Path("examples/example_c.c")
+LINUX_PERMISSION_HELPER = Path("scripts/setup_uinput_permissions.sh")
 
 
 def split_flags(value: str | None) -> list[str]:
@@ -286,6 +287,22 @@ def copy_file(source: Path, destination: Path) -> None:
     shutil.copy2(source, destination)
 
 
+def write_zip_tree(archive_path: Path, source_dir: Path) -> None:
+    with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for file_path in source_dir.rglob("*"):
+            if not file_path.is_file():
+                continue
+
+            archive_name = file_path.relative_to(source_dir).as_posix()
+            info = zipfile.ZipInfo.from_file(file_path, archive_name)
+            info.create_system = 3
+            info.external_attr = (file_path.stat().st_mode & 0xFFFF) << 16
+            info.compress_type = zipfile.ZIP_DEFLATED
+
+            with file_path.open("rb") as handle:
+                archive.writestr(info, handle.read())
+
+
 def package_output(config: BuildConfig, version: str, arch: str) -> Path:
     library_path = build_library(config)
     dist_dir = ROOT / "dist"
@@ -306,15 +323,40 @@ def package_output(config: BuildConfig, version: str, arch: str) -> Path:
 
     if IS_WINDOWS:
         archive_path = packages_dir / f"{archive_base}.zip"
-        with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            for file_path in dist_dir.rglob("*"):
-                if file_path.is_file():
-                    archive.write(file_path, file_path.relative_to(dist_dir))
+        write_zip_tree(archive_path, dist_dir)
     else:
         archive_path = packages_dir / f"{archive_base}.tar.gz"
         with tarfile.open(archive_path, "w:gz") as archive:
             archive.add(dist_dir, arcname=".")
 
+    print(f"Created {archive_path}")
+    return archive_path
+
+
+def package_integration_tests_output(config: BuildConfig, version: str, arch: str) -> Path:
+    binaries = [build_binary(config, source) for source in INTEGRATION_TEST_SOURCES]
+    dist_dir = ROOT / "dist"
+    packages_dir = ROOT / "packages"
+    archive_base = f"axidev-io-integration-tests-{version}-{PLATFORM_TAG}-{arch}"
+
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(parents=True, exist_ok=True)
+    packages_dir.mkdir(parents=True, exist_ok=True)
+
+    for binary in binaries:
+        copy_file(binary, dist_dir / "bin" / binary.name)
+
+    copy_tree(VENDOR_LICENSES_DIR, dist_dir / "vendor" / "licenses")
+    copy_file(ROOT / "docs" / "consumers" / "README.md", dist_dir / "docs" / "consumers" / "README.md")
+    copy_file(ROOT / "README.md", dist_dir / "README.md")
+    copy_file(ROOT / "LICENSE", dist_dir / "LICENSE")
+
+    if not IS_WINDOWS:
+        copy_file(LINUX_PERMISSION_HELPER, dist_dir / "scripts" / LINUX_PERMISSION_HELPER.name)
+
+    archive_path = packages_dir / f"{archive_base}.zip"
+    write_zip_tree(archive_path, dist_dir)
     print(f"Created {archive_path}")
     return archive_path
 
@@ -332,6 +374,7 @@ def parse_args() -> argparse.Namespace:
             "test-integration",
             "unit-binaries",
             "integration-binaries",
+            "package-integration-tests",
             "example",
             "clean",
             "package",
@@ -398,6 +441,10 @@ def main() -> int:
 
     if args.command == "package":
         package_output(config, args.version, args.arch)
+        return 0
+
+    if args.command == "package-integration-tests":
+        package_integration_tests_output(config, args.version, args.arch)
         return 0
 
     raise SystemExit(f"Unsupported command: {args.command}")

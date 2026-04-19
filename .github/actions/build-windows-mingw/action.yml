@@ -21,12 +21,20 @@ inputs:
     description: Package headers, the static library, consumer docs, LICENSE, and vendor/licenses into packages/
     required: false
     default: "false"
+  package-integration-tests:
+    description: Package integration binaries, consumer docs, and licenses into packages/
+    required: false
+    default: "false"
   upload-binaries:
     description: Upload built test binaries as artifacts
     required: false
     default: "false"
+  upload-integration-package:
+    description: Upload packaged integration test zip artifacts
+    required: false
+    default: "false"
   artifact-name:
-    description: Artifact name (required when upload-binaries=true)
+    description: Artifact name used when uploading outputs
     required: false
   version:
     description: Release version override (otherwise uses tag ref)
@@ -45,7 +53,7 @@ runs:
       run: python build.py clean
 
     - name: Build library
-      if: ${{ inputs.run-tests != 'true' && inputs.build-integration-tests != 'true' && inputs.package-output != 'true' }}
+      if: ${{ inputs.run-tests != 'true' && inputs.build-integration-tests != 'true' && inputs.package-output != 'true' && inputs.package-integration-tests != 'true' }}
       shell: pwsh
       run: python build.py build
 
@@ -72,6 +80,16 @@ runs:
         }
         python build.py package --version $tag --arch "${{ inputs.arch }}"
 
+    - name: Package integration tests (Windows)
+      if: ${{ inputs.package-integration-tests == 'true' }}
+      shell: pwsh
+      run: |
+        $tag = "${{ inputs.version }}"
+        if (-not $tag) {
+          $tag = "dev"
+        }
+        python build.py package-integration-tests --version $tag --arch "${{ inputs.arch }}"
+
     - name: Upload release package
       if: ${{ inputs.package-output == 'true' }}
       uses: actions/upload-artifact@v4
@@ -86,3 +104,11 @@ runs:
         name: ${{ inputs.artifact-name }}
         path: |
           build/windows/bin/test_*.exe
+
+    - name: Upload integration test package
+      if: ${{ inputs.upload-integration-package == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          packages/*.zip
