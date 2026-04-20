@@ -47,7 +47,7 @@ static void on_key(uint32_t codepoint,
                    axidev_io_keyboard_key_with_modifier_t key_mod,
                    bool pressed,
                    void *user_data) {
-  (printf("Key event: codepoint=%u, key=%u, mods=%u, pressed=%d\n",
+  printf("Key event: codepoint=%u, key=%u, mods=%u, pressed=%d\n",
           codepoint, key_mod.key, key_mod.mods, pressed));
 }
 
