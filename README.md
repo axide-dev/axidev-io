@@ -14,7 +14,8 @@ python build.py example
 On Linux the build expects `libinput`, `libudev`, and `xkbcommon` through
 `pkg-config`.
 
-The primary public header is `include/axidev-io/c_api.h`.
+The primary public header is `include/axidev-io/c_api.h`, including the logging
+macros.
 
 ## Public API
 
@@ -46,10 +47,8 @@ static void on_key(uint32_t codepoint,
                    axidev_io_keyboard_key_with_modifier_t key_mod,
                    bool pressed,
                    void *user_data) {
-  (void)codepoint;
-  (void)key_mod;
-  (void)pressed;
-  (void)user_data;
+  printf("Key event: codepoint=%u, key=%u, mods=%u, pressed=%d\n",
+          codepoint, key_mod.key, key_mod.mods, pressed));
 }
 
 int main(void) {
