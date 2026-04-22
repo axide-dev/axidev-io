@@ -40,8 +40,12 @@ static void test_aliases_and_synonyms(void) {
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("grave"),
                     AXIDEV_IO_KEY_GRAVE);
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("@"), AXIDEV_IO_KEY_AT);
+  TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("#"),
+                    AXIDEV_IO_KEY_HASHTAG);
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("hash"),
                     AXIDEV_IO_KEY_HASHTAG);
+  TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("%"),
+                    AXIDEV_IO_KEY_PERCENT);
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("?"), AXIDEV_IO_KEY_SLASH);
   TEST_CHECK_EQ_INT(axidev_io_keyboard_string_to_key("Control_L"),
                     AXIDEV_IO_KEY_CTRL_LEFT);

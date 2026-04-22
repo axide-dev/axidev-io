@@ -386,11 +386,13 @@ static void axidev_io_init_reverse_map(void) {
   axidev_io_seed_alias("bracketleft", AXIDEV_IO_KEY_LEFT_BRACKET);
   axidev_io_seed_alias("bracketright", AXIDEV_IO_KEY_RIGHT_BRACKET);
   axidev_io_seed_alias("@", AXIDEV_IO_KEY_AT);
+  axidev_io_seed_alias("#", AXIDEV_IO_KEY_HASHTAG);
   axidev_io_seed_alias("&", AXIDEV_IO_KEY_AMPERSAND);
   axidev_io_seed_alias("(", AXIDEV_IO_KEY_LEFT_PAREN);
   axidev_io_seed_alias(")", AXIDEV_IO_KEY_RIGHT_PAREN);
   axidev_io_seed_alias("!", AXIDEV_IO_KEY_EXCLAMATION);
   axidev_io_seed_alias("$", AXIDEV_IO_KEY_DOLLAR);
+  axidev_io_seed_alias("%", AXIDEV_IO_KEY_PERCENT);
   axidev_io_seed_alias("^", AXIDEV_IO_KEY_CARET);
   axidev_io_seed_alias("*", AXIDEV_IO_KEY_ASTERISK);
   axidev_io_seed_alias(" ", AXIDEV_IO_KEY_SPACE);
