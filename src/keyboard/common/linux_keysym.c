@@ -154,8 +154,10 @@ axidev_io_keyboard_key_t axidev_io_linux_keysym_to_key(xkb_keysym_t sym) {
 static void axidev_io_linux_set_if_missing(axidev_io_linux_keymap *keymap,
                                            axidev_io_keyboard_key_t key,
                                            int evdev_code) {
-  if (hmgeti(keymap->key_to_evdev, (uint32_t)key) < 0) {
-    hmput(keymap->key_to_evdev, (uint32_t)key, evdev_code);
+  uint32_t key_id = (uint32_t)key;
+
+  if (hmgeti(keymap->key_to_evdev, key_id) < 0) {
+    hmput(keymap->key_to_evdev, key_id, evdev_code);
   }
   if (hmgeti(keymap->evdev_to_key, evdev_code) < 0) {
     hmput(keymap->evdev_to_key, evdev_code, key);
@@ -335,13 +337,15 @@ void axidev_io_linux_keymap_init(axidev_io_linux_keymap *out_keymap,
 
       keysym = xkb_state_key_get_one_sym(state, xkb_key);
       mapped_key = axidev_io_linux_keysym_to_key(keysym);
-      if (mapped_key != AXIDEV_IO_KEY_UNKNOWN &&
-          hmgeti(out_keymap->key_to_evdev, (uint32_t)mapped_key) < 0) {
-        hmput(out_keymap->key_to_evdev, (uint32_t)mapped_key, evdev_code);
-      }
-      if (mapped_key != AXIDEV_IO_KEY_UNKNOWN &&
-          hmgeti(out_keymap->evdev_to_key, evdev_code) < 0) {
-        hmput(out_keymap->evdev_to_key, evdev_code, mapped_key);
+      if (mapped_key != AXIDEV_IO_KEY_UNKNOWN) {
+        uint32_t mapped_key_id = (uint32_t)mapped_key;
+
+        if (hmgeti(out_keymap->key_to_evdev, mapped_key_id) < 0) {
+          hmput(out_keymap->key_to_evdev, mapped_key_id, evdev_code);
+        }
+        if (hmgeti(out_keymap->evdev_to_key, evdev_code) < 0) {
+          hmput(out_keymap->evdev_to_key, evdev_code, mapped_key);
+        }
       }
 
       for (i = 0; i < scan_count; ++i) {
@@ -370,13 +374,15 @@ void axidev_io_linux_keymap_init(axidev_io_linux_keymap *out_keymap,
         if (hmgeti(out_keymap->char_to_keycode, character) < 0) {
           hmput(out_keymap->char_to_keycode, character, mapping_value);
         }
-        if (char_key != AXIDEV_IO_KEY_UNKNOWN &&
-            hmgeti(out_keymap->code_and_mods_to_key,
-                   axidev_io_encode_evdev_mods(evdev_code, scans[i].mods)) <
-                0) {
+        if (char_key != AXIDEV_IO_KEY_UNKNOWN) {
+          uint32_t encoded_evdev_mods =
+              axidev_io_encode_evdev_mods(evdev_code, scans[i].mods);
+
+          if (hmgeti(out_keymap->code_and_mods_to_key, encoded_evdev_mods) <
+              0) {
           hmput(out_keymap->code_and_mods_to_key,
-                axidev_io_encode_evdev_mods(evdev_code, scans[i].mods),
-                char_key);
+                encoded_evdev_mods, char_key);
+          }
         }
       }
     }
@@ -401,6 +407,7 @@ axidev_io_keyboard_key_t axidev_io_linux_resolve_key_from_evdev_and_mods(
     axidev_io_keyboard_modifier_t mods) {
   axidev_io_keymap_uint_to_key_entry *code_and_mods_to_key;
   axidev_io_keymap_int_to_key_entry *evdev_to_key;
+  uint32_t encoded_evdev_mods;
   ptrdiff_t index;
 
   if (keymap == NULL) {
@@ -408,8 +415,8 @@ axidev_io_keyboard_key_t axidev_io_linux_resolve_key_from_evdev_and_mods(
   }
 
   code_and_mods_to_key = keymap->code_and_mods_to_key;
-  index = hmgeti(code_and_mods_to_key,
-                 axidev_io_encode_evdev_mods(evdev_code, mods));
+  encoded_evdev_mods = axidev_io_encode_evdev_mods(evdev_code, mods);
+  index = hmgeti(code_and_mods_to_key, encoded_evdev_mods);
   if (index >= 0) {
     return code_and_mods_to_key[index].value;
   }

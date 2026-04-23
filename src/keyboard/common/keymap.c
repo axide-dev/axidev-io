@@ -241,6 +241,7 @@ axidev_io_keymap_key_from_code(int32_t keycode,
                                axidev_io_keyboard_modifier_t mods,
                                axidev_io_keyboard_key_t *out_key) {
   axidev_io_keyboard_keymap_impl *impl = axidev_io_keymap_impl_get();
+  uint32_t encoded_code_mods;
   ptrdiff_t index;
 
   if (out_key == NULL) {
@@ -251,8 +252,8 @@ axidev_io_keymap_key_from_code(int32_t keycode,
     return AXIDEV_IO_RESULT_NOT_INITIALIZED;
   }
 
-  index = hmgeti(impl->code_and_mods_to_key,
-                 axidev_io_keymap_encode_code_mods(keycode, mods));
+  encoded_code_mods = axidev_io_keymap_encode_code_mods(keycode, mods);
+  index = hmgeti(impl->code_and_mods_to_key, encoded_code_mods);
   if (index >= 0) {
     *out_key = impl->code_and_mods_to_key[index].value;
     return AXIDEV_IO_RESULT_OK;
@@ -287,6 +288,7 @@ axidev_io_keymap_base_key_from_code(int32_t keycode,
 axidev_io_result axidev_io_keymap_code_for_key(axidev_io_keyboard_key_t key,
                                                int32_t *out_keycode) {
   axidev_io_keyboard_keymap_impl *impl = axidev_io_keymap_impl_get();
+  uint32_t key_id;
   ptrdiff_t index;
 
   if (out_keycode == NULL) {
@@ -297,7 +299,8 @@ axidev_io_result axidev_io_keymap_code_for_key(axidev_io_keyboard_key_t key,
     return AXIDEV_IO_RESULT_NOT_INITIALIZED;
   }
 
-  index = hmgeti(impl->key_to_code, (uint32_t)key);
+  key_id = (uint32_t)key;
+  index = hmgeti(impl->key_to_code, key_id);
   if (index < 0) {
     return AXIDEV_IO_RESULT_NOT_FOUND;
   }

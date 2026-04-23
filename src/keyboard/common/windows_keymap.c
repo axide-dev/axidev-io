@@ -55,11 +55,14 @@ bool axidev_io_is_windows_extended_key(WORD vk) {
 static void axidev_io_windows_set_if_missing(axidev_io_windows_keymap *keymap,
                                              axidev_io_keyboard_key_t key,
                                              WORD vk) {
-  if (hmgeti(keymap->key_to_vk, (uint32_t)key) < 0) {
-    hmput(keymap->key_to_vk, (uint32_t)key, (int32_t)vk);
+  uint32_t key_id = (uint32_t)key;
+  int32_t vk_code = (int32_t)vk;
+
+  if (hmgeti(keymap->key_to_vk, key_id) < 0) {
+    hmput(keymap->key_to_vk, key_id, vk_code);
   }
-  if (hmgeti(keymap->vk_to_key, (int32_t)vk) < 0) {
-    hmput(keymap->vk_to_key, (int32_t)vk, key);
+  if (hmgeti(keymap->vk_to_key, vk_code) < 0) {
+    hmput(keymap->vk_to_key, vk_code, key);
   }
 }
 
@@ -220,11 +223,14 @@ void axidev_io_windows_keymap_init(axidev_io_windows_keymap *out_keymap,
         axidev_io_keyboard_key_t mapped_key =
             axidev_io_string_to_key_internal(char_buffer);
         if (mapped_key != AXIDEV_IO_KEY_UNKNOWN) {
-          if (hmgeti(out_keymap->key_to_vk, (uint32_t)mapped_key) < 0) {
-            hmput(out_keymap->key_to_vk, (uint32_t)mapped_key, (int32_t)vk);
+          uint32_t mapped_key_id = (uint32_t)mapped_key;
+          int32_t vk_code = (int32_t)vk;
+
+          if (hmgeti(out_keymap->key_to_vk, mapped_key_id) < 0) {
+            hmput(out_keymap->key_to_vk, mapped_key_id, vk_code);
           }
-          if (hmgeti(out_keymap->vk_to_key, (int32_t)vk) < 0) {
-            hmput(out_keymap->vk_to_key, (int32_t)vk, mapped_key);
+          if (hmgeti(out_keymap->vk_to_key, vk_code) < 0) {
+            hmput(out_keymap->vk_to_key, vk_code, mapped_key);
           }
         }
       }
@@ -278,11 +284,14 @@ void axidev_io_windows_keymap_init(axidev_io_windows_keymap *out_keymap,
           mapping_value.produced_key = mapped_key;
           hmput(out_keymap->char_to_keycode, codepoint, mapping_value);
         }
-        if (mapped_key != AXIDEV_IO_KEY_UNKNOWN &&
-            hmgeti(out_keymap->vk_and_mods_to_key,
-                   axidev_io_encode_vk_mods((WORD)vk, scans[i].mods)) < 0) {
+        if (mapped_key != AXIDEV_IO_KEY_UNKNOWN) {
+          uint32_t encoded_vk_mods =
+              axidev_io_encode_vk_mods((WORD)vk, scans[i].mods);
+
+          if (hmgeti(out_keymap->vk_and_mods_to_key, encoded_vk_mods) < 0) {
           hmput(out_keymap->vk_and_mods_to_key,
-                axidev_io_encode_vk_mods((WORD)vk, scans[i].mods), mapped_key);
+                encoded_vk_mods, mapped_key);
+          }
         }
       }
     }
@@ -307,6 +316,8 @@ axidev_io_keyboard_key_t axidev_io_windows_resolve_key_from_vk_and_mods(
     axidev_io_keyboard_modifier_t mods) {
   axidev_io_keymap_uint_to_key_entry *vk_and_mods_to_key;
   axidev_io_keymap_int_to_key_entry *vk_to_key;
+  uint32_t encoded_vk_mods;
+  int32_t vk_code;
   ptrdiff_t index;
 
   if (keymap == NULL) {
@@ -314,13 +325,15 @@ axidev_io_keyboard_key_t axidev_io_windows_resolve_key_from_vk_and_mods(
   }
 
   vk_and_mods_to_key = keymap->vk_and_mods_to_key;
-  index = hmgeti(vk_and_mods_to_key, axidev_io_encode_vk_mods(vk, mods));
+  encoded_vk_mods = axidev_io_encode_vk_mods(vk, mods);
+  index = hmgeti(vk_and_mods_to_key, encoded_vk_mods);
   if (index >= 0) {
     return vk_and_mods_to_key[index].value;
   }
 
   vk_to_key = keymap->vk_to_key;
-  index = hmgeti(vk_to_key, (int32_t)vk);
+  vk_code = (int32_t)vk;
+  index = hmgeti(vk_to_key, vk_code);
   if (index >= 0) {
     return vk_to_key[index].value;
   }

@@ -115,6 +115,7 @@ axidev_io_listener_handle_event(axidev_io_keyboard_listener_impl *impl,
   BYTE keyboard_state[256];
   wchar_t wbuf[4] = {0};
   uint32_t codepoint = 0;
+  uint32_t vk_key;
   int ret;
 
   if (impl == NULL || kbd == NULL || platform == NULL) {
@@ -122,6 +123,7 @@ axidev_io_listener_handle_event(axidev_io_keyboard_listener_impl *impl,
   }
 
   vk = (WORD)kbd->vkCode;
+  vk_key = (uint32_t)vk;
   mods = axidev_io_listener_derive_modifiers();
   mapped_key = axidev_io_windows_resolve_key_from_vk_and_mods(&platform->keymap,
                                                               vk, mods);
@@ -158,13 +160,13 @@ axidev_io_listener_handle_event(axidev_io_keyboard_listener_impl *impl,
 
   if (pressed) {
     if (codepoint != 0) {
-      hmput(platform->last_press_cp, (uint32_t)vk, codepoint);
+      hmput(platform->last_press_cp, vk_key, codepoint);
     } else {
-      (void)hmdel(platform->last_press_cp, (uint32_t)vk);
+      (void)hmdel(platform->last_press_cp, vk_key);
     }
   } else {
     ptrdiff_t press_index;
-    press_index = hmgeti(platform->last_press_cp, (uint32_t)vk);
+    press_index = hmgeti(platform->last_press_cp, vk_key);
     if (codepoint == 0 && press_index >= 0 &&
         mapped_key != AXIDEV_IO_KEY_ENTER &&
         mapped_key != AXIDEV_IO_KEY_BACKSPACE) {
@@ -172,23 +174,23 @@ axidev_io_listener_handle_event(axidev_io_keyboard_listener_impl *impl,
     }
 
     {
-      ptrdiff_t time_index = hmgeti(platform->last_release_time, (uint32_t)vk);
-      ptrdiff_t sig_index = hmgeti(platform->last_release_sig, (uint32_t)vk);
+      ptrdiff_t time_index = hmgeti(platform->last_release_time, vk_key);
+      ptrdiff_t sig_index = hmgeti(platform->last_release_sig, vk_key);
       uint64_t now = axidev_io_monotonic_time_ms();
       if (time_index >= 0 && sig_index >= 0 &&
           (now - platform->last_release_time[time_index].value) < 50u &&
           platform->last_release_sig[sig_index].value.codepoint == codepoint &&
           platform->last_release_sig[sig_index].value.mods == mods) {
-        hmput(platform->last_release_time, (uint32_t)vk, now);
-        hmput(platform->last_release_sig, (uint32_t)vk,
+        hmput(platform->last_release_time, vk_key, now);
+        hmput(platform->last_release_sig, vk_key,
               ((axidev_io_vk_signature){codepoint, mods}));
-        (void)hmdel(platform->last_press_cp, (uint32_t)vk);
+        (void)hmdel(platform->last_press_cp, vk_key);
         return;
       }
-      hmput(platform->last_release_time, (uint32_t)vk, now);
-      hmput(platform->last_release_sig, (uint32_t)vk,
+      hmput(platform->last_release_time, vk_key, now);
+      hmput(platform->last_release_sig, vk_key,
             ((axidev_io_vk_signature){codepoint, mods}));
-      (void)hmdel(platform->last_press_cp, (uint32_t)vk);
+      (void)hmdel(platform->last_press_cp, vk_key);
     }
   }
 
