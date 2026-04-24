@@ -14,13 +14,21 @@
 
 static void axidev_io_report_result(const char *function_name,
                                     axidev_io_result result) {
+  char *existing_error;
+
   if (result == AXIDEV_IO_RESULT_OK) {
     return;
   }
 
-  axidev_io_set_last_error_result(function_name, result);
-  AXIDEV_IO_LOG_ERROR("%s failed: %s", function_name,
-                      axidev_io_result_to_string(result));
+  existing_error = axidev_io_get_last_error();
+  if (existing_error == NULL || existing_error[0] == '\0') {
+    axidev_io_set_last_error_result(function_name, result);
+    AXIDEV_IO_LOG_ERROR("%s failed: %s", function_name,
+                        axidev_io_result_to_string(result));
+  } else {
+    AXIDEV_IO_LOG_ERROR("%s failed: %s", function_name, existing_error);
+  }
+  axidev_io_free_string(existing_error);
 }
 
 static const char *axidev_io_log_level_name(axidev_io_log_level_t level) {

@@ -12,7 +12,8 @@ python build.py example
 ```
 
 On Linux the build expects `libinput`, `libudev`, and `xkbcommon` through
-`pkg-config`.
+`pkg-config`. Runtime keyboard initialization also needs the XKB data files
+from `xkeyboard-config` or `xkb-data`, usually under `/usr/share/X11/xkb`.
 
 The primary public header is `include/axidev-io/c_api.h`, including the logging
 macros.

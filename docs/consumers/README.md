@@ -17,6 +17,7 @@ On Linux, the project expects the following system packages:
 * `libinput`
 * `libudev`
 * `xkbcommon`
+* XKB keyboard data files from `xkeyboard-config` or `xkb-data`
 
 ## Linking
 
@@ -74,6 +75,32 @@ For listening, `libinput` opens device nodes such as `/dev/input/event*`. On
 most desktop Linux systems this works when the process runs in the active local
 session on `seat0`. If listener startup fails, first confirm the process is
 running in a real local login session with access to the input seat.
+
+Linux sender and listener initialization also require the XKB data tree that
+`xkbcommon` compiles layouts from. On most distros that means the
+`xkeyboard-config` or `xkb-data` package, which normally installs files under
+`/usr/share/X11/xkb`.
+
+If that directory is missing, incomplete, or your environment uses a custom
+location, set `XKB_CONFIG_ROOT` to a valid XKB data directory before starting
+the process.
+
+When this requirement is not met, `axidev_io_keyboard_initialize()` and
+`axidev_io_listener_start()` now fail early and report that the xkb keymap
+could not be set instead of continuing with a broken listener startup.
+
+Typical fix:
+
+```sh
+# Debian/Ubuntu
+sudo apt-get install xkb-data
+
+# Fedora
+sudo dnf install xkeyboard-config
+
+# Arch
+sudo pacman -S xkeyboard-config
+```
 
 Avoid broad `udev` rules that make all `/dev/input/event*` nodes world-readable.
 Those devices expose raw keyboard events and can capture sensitive input. If a

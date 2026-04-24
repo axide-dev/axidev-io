@@ -33,6 +33,7 @@ struct axidev_io_linux_listener_platform {
   struct xkb_state *xkb_state;
   axidev_io_linux_keymap keymap;
   axidev_io_pending_codepoint_entry *pending_codepoints;
+  atomic_bool startup_failed;
 };
 
 static void axidev_io_linux_listener_reset_session_state(
@@ -222,9 +223,11 @@ static int axidev_io_listener_thread_main(void *user_data) {
 
   platform->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
   if (platform->xkb_context == NULL) {
+    axidev_io_set_xkb_keymap_error("axidev_io_listener_start");
     libinput_unref(platform->libinput);
     platform->libinput = NULL;
     udev_unref(udev);
+    atomic_store(&platform->startup_failed, true);
     atomic_store(&impl->running, false);
     return 1;
   }
@@ -243,17 +246,20 @@ static int axidev_io_listener_thread_main(void *user_data) {
         XKB_KEYMAP_COMPILE_NO_FLAGS);
   }
   if (platform->xkb_keymap == NULL) {
+    axidev_io_set_xkb_keymap_error("axidev_io_listener_start");
     xkb_context_unref(platform->xkb_context);
     platform->xkb_context = NULL;
     libinput_unref(platform->libinput);
     platform->libinput = NULL;
     udev_unref(udev);
+    atomic_store(&platform->startup_failed, true);
     atomic_store(&impl->running, false);
     return 1;
   }
 
   platform->xkb_state = xkb_state_new(platform->xkb_keymap);
   if (platform->xkb_state == NULL) {
+    axidev_io_set_xkb_keymap_error("axidev_io_listener_start");
     xkb_keymap_unref(platform->xkb_keymap);
     platform->xkb_keymap = NULL;
     xkb_context_unref(platform->xkb_context);
@@ -261,6 +267,7 @@ static int axidev_io_listener_thread_main(void *user_data) {
     libinput_unref(platform->libinput);
     platform->libinput = NULL;
     udev_unref(udev);
+    atomic_store(&platform->startup_failed, true);
     atomic_store(&impl->running, false);
     return 1;
   }
@@ -344,6 +351,8 @@ axidev_io_result axidev_io_keyboard_listener_start_internal(
     axidev_io_linux_listener_reset_session_state(impl->platform);
   }
 
+  atomic_store(&impl->platform->startup_failed, false);
+
   axidev_io_mutex_lock(&impl->callback_lock);
   impl->callback = callback;
   impl->user_data = user_data;
@@ -360,6 +369,9 @@ axidev_io_result axidev_io_keyboard_listener_start_internal(
   for (int i = 0; i < 40; ++i) {
     if (!atomic_load(&impl->running)) {
       axidev_io_thread_join(&impl->worker);
+      if (atomic_load(&impl->platform->startup_failed)) {
+        return AXIDEV_IO_RESULT_PLATFORM_ERROR;
+      }
       return AXIDEV_IO_RESULT_PLATFORM_ERROR;
     }
     if (atomic_load(&impl->ready)) {
@@ -378,6 +390,9 @@ axidev_io_result axidev_io_keyboard_listener_start_internal(
 
   atomic_store(&impl->running, false);
   axidev_io_thread_join(&impl->worker);
+  if (atomic_load(&impl->platform->startup_failed)) {
+    return AXIDEV_IO_RESULT_PLATFORM_ERROR;
+  }
   return AXIDEV_IO_RESULT_PLATFORM_ERROR;
 }
 

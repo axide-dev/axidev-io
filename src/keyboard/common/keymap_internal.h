@@ -55,6 +55,10 @@ axidev_io_keyboard_keymap_impl *axidev_io_keymap_impl_get(void);
 axidev_io_result axidev_io_keyboard_keymap_initialize(void);
 void axidev_io_keyboard_keymap_free(void);
 
+#if defined(__linux__)
+void axidev_io_set_xkb_keymap_error(const char *operation);
+#endif
+
 axidev_io_result axidev_io_keymap_lookup_character(
     uint32_t codepoint, axidev_io_keyboard_key_with_modifier_t *out_key);
 axidev_io_result

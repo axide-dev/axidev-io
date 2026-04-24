@@ -18,6 +18,19 @@ axidev_io_keyboard_keymap_impl *axidev_io_keymap_impl_get(void) {
   return (axidev_io_keyboard_keymap_impl *)axidev_io_keymap_storage_ptr();
 }
 
+#if defined(__linux__)
+void axidev_io_set_xkb_keymap_error(const char *operation) {
+  const char *action = operation != NULL ? operation : "initialize keyboard";
+
+  axidev_io_set_last_errorf(
+      "%s: xkb keymap could not be set; install the XKB data files "
+      "(usually the xkeyboard-config or xkb-data package) and ensure "
+      "/usr/share/X11/xkb is present or XKB_CONFIG_ROOT points to a valid XKB "
+      "data directory",
+      action);
+}
+#endif
+
 uint32_t axidev_io_keymap_encode_code_mods(int32_t keycode,
                                            axidev_io_keyboard_modifier_t mods) {
   uint8_t mod_bits = 0;
@@ -121,7 +134,12 @@ axidev_io_result axidev_io_keyboard_keymap_initialize(void) {
     struct xkb_state *xkb_state = NULL;
     memset(&linux_keymap, 0, sizeof(linux_keymap));
     xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-    if (xkb_context != NULL) {
+    if (xkb_context == NULL) {
+      axidev_io_set_xkb_keymap_error("axidev_io_keyboard_initialize");
+      return AXIDEV_IO_RESULT_PLATFORM_ERROR;
+    }
+
+    {
       axidev_io_xkb_rule_names_strings names =
           axidev_io_detect_xkb_rule_names();
       struct xkb_rule_names native_names;
@@ -134,10 +152,21 @@ axidev_io_result axidev_io_keyboard_keymap_initialize(void) {
       xkb_keymap = xkb_keymap_new_from_names(
           xkb_context, names.has_any ? &native_names : NULL,
           XKB_KEYMAP_COMPILE_NO_FLAGS);
-      if (xkb_keymap != NULL) {
-        xkb_state = xkb_state_new(xkb_keymap);
+      if (xkb_keymap == NULL) {
+        xkb_context_unref(xkb_context);
+        axidev_io_set_xkb_keymap_error("axidev_io_keyboard_initialize");
+        return AXIDEV_IO_RESULT_PLATFORM_ERROR;
+      }
+
+      xkb_state = xkb_state_new(xkb_keymap);
+      if (xkb_state == NULL) {
+        xkb_keymap_unref(xkb_keymap);
+        xkb_context_unref(xkb_context);
+        axidev_io_set_xkb_keymap_error("axidev_io_keyboard_initialize");
+        return AXIDEV_IO_RESULT_PLATFORM_ERROR;
       }
     }
+
     axidev_io_linux_keymap_init(&linux_keymap, xkb_keymap, xkb_state);
     axidev_io_keymap_copy_char_mappings(linux_keymap.char_to_keycode,
                                         &impl->char_to_mapping);
