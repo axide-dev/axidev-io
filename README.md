@@ -69,6 +69,12 @@ int main(void) {
   pointer.
 - Printable text sending prefers layout-resolved key sequences; explicit
   `key_down`, `key_up`, and `tap` remain available for low-level control.
+- `axidev_io_keyboard_key_down(key_mod, true)` requests backend-managed repeat
+  for that held key where supported. On Windows, this repeat is emulated by the
+  SendInput backend using the user's system keyboard repeat delay and speed
+  settings. It is not native hardware typematic behavior and does not make the
+  backend a HID device; `can_simulate_hid` remains false. On Linux/uinput, this
+  flag does not change the existing backend behavior.
 - Vendored dependency: `vendor/stb/stb_ds.h` with license text in
   `vendor/licenses/stb.txt`.
 

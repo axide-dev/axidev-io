@@ -2,11 +2,21 @@
 #ifndef AXIDEV_IO_KEYBOARD_SENDER_INTERNAL_H
 #define AXIDEV_IO_KEYBOARD_SENDER_INTERNAL_H
 
+#include "../../internal/thread.h"
 #include "../common/keymap_internal.h"
 
 typedef struct axidev_io_keyboard_sender_impl {
 #ifdef _WIN32
   void *layout;
+  void *repeat_entries;
+  void *repeat_wake_event;
+  axidev_io_mutex repeat_lock;
+  axidev_io_thread repeat_worker;
+  bool repeat_lock_initialized;
+  bool repeat_worker_running;
+  bool repeat_stop_worker;
+  size_t repeat_len;
+  size_t repeat_cap;
 #elif defined(__linux__)
   int fd;
   void *xkb_ctx;
@@ -27,7 +37,7 @@ axidev_io_result axidev_io_keyboard_sender_initialize(void);
 void axidev_io_keyboard_sender_free(void);
 axidev_io_result axidev_io_keyboard_sender_request_permissions(void);
 axidev_io_result axidev_io_keyboard_sender_key_down_internal(
-    axidev_io_keyboard_key_with_modifier_t key_mod);
+    axidev_io_keyboard_key_with_modifier_t key_mod, bool repeat);
 axidev_io_result axidev_io_keyboard_sender_key_up_internal(
     axidev_io_keyboard_key_with_modifier_t key_mod);
 axidev_io_result axidev_io_keyboard_sender_tap_internal(
@@ -41,5 +51,9 @@ axidev_io_result
 axidev_io_keyboard_sender_type_character_internal(uint32_t codepoint);
 void axidev_io_keyboard_sender_flush_internal(void);
 void axidev_io_keyboard_sender_set_key_delay_internal(uint32_t delay_us);
+
+#ifdef _WIN32
+size_t axidev_io_windows_sender_repeat_count_for_tests(void);
+#endif
 
 #endif
