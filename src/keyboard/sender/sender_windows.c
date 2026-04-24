@@ -510,6 +510,12 @@ axidev_io_result axidev_io_keyboard_sender_initialize(void) {
   sender = axidev_io_sender_public_context();
 
   impl->layout = GetKeyboardLayout(0);
+  result = axidev_io_windows_read_repeat_settings(&sender->repeat_delay_ns,
+                                                  &sender->repeat_interval_ns);
+  if (result != AXIDEV_IO_RESULT_OK) {
+    return result;
+  }
+
   result = axidev_io_windows_repeat_start_state(impl);
   if (result != AXIDEV_IO_RESULT_OK) {
     axidev_io_windows_repeat_stop_state(impl);
@@ -628,8 +634,7 @@ axidev_io_result axidev_io_keyboard_sender_key_down_internal(
   axidev_io_keyboard_modifier_t mods;
   axidev_io_keyboard_key_t resolved_key;
   axidev_io_result result;
-  uint64_t repeat_delay_ns;
-  uint64_t repeat_interval_ns;
+  axidev_io_keyboard_sender_context *sender = axidev_io_sender_public_context();
 
   result =
       axidev_io_sender_resolve_mapping(key_mod, &keycode, &mods, &resolved_key);
@@ -659,10 +664,6 @@ axidev_io_result axidev_io_keyboard_sender_key_down_internal(
   }
 
   result = axidev_io_sender_send_raw_key(resolved_key, keycode, true);
-  if (result == AXIDEV_IO_RESULT_OK) {
-    result = axidev_io_windows_read_repeat_settings(&repeat_delay_ns,
-                                                    &repeat_interval_ns);
-  }
   if (result == AXIDEV_IO_RESULT_OK &&
       !axidev_io_windows_repeat_reserve(impl, impl->repeat_len + 1u)) {
     result = AXIDEV_IO_RESULT_INTERNAL_ERROR;
@@ -677,8 +678,8 @@ axidev_io_result axidev_io_keyboard_sender_key_down_internal(
     entry->keycode = keycode;
     entry->mods = mods;
     entry->next_fire_at_ns =
-        axidev_io_windows_monotonic_time_ns() + repeat_delay_ns;
-    entry->interval_ns = repeat_interval_ns;
+        axidev_io_windows_monotonic_time_ns() + sender->repeat_delay_ns;
+    entry->interval_ns = sender->repeat_interval_ns;
     SetEvent((HANDLE)impl->repeat_wake_event);
   } else {
     axidev_io_sender_send_raw_key(resolved_key, keycode, false);

@@ -150,10 +150,15 @@ Example:
 - `axidev_io_keyboard_key_down(key_mod, true)` sends the key down and requests
   backend-managed repeat for that held key where supported.
 - On Windows, repeat is emulated by the SendInput backend using
-  `SystemParametersInfo` keyboard delay and speed settings. It is not native
-  hardware typematic behavior and does not make the backend a HID device;
-  `can_simulate_hid` remains false. In capabilities, `supports_key_repeat`
-  means backend-emulated repeat is available on Windows.
+  `SystemParametersInfo` keyboard delay and speed settings captured during
+  `axidev_io_keyboard_initialize()`. It is not native hardware typematic
+  behavior and does not make the backend a HID device; `can_simulate_hid`
+  remains false. In capabilities, `supports_key_repeat` means backend-emulated
+  repeat is available on Windows.
+- On Windows, changes to the user's keyboard repeat settings after
+  initialization are not picked up automatically. To refresh those settings,
+  call `axidev_io_keyboard_free()` and then `axidev_io_keyboard_initialize()`
+  again before starting new repeated holds.
 - On Linux/uinput, this flag does not change the existing backend behavior.
 - On Windows, repeated keys are tied to the key/modifier mapping resolved by
   the original `key_down(..., true)` call. Modifier-only holds do not repeat.

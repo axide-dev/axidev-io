@@ -7,10 +7,10 @@
 #include <stdint.h>
 
 #ifndef AXIDEV_IO_VERSION
-#define AXIDEV_IO_VERSION "0.7.0"
+#define AXIDEV_IO_VERSION "0.7.3"
 #define AXIDEV_IO_VERSION_MAJOR 0
 #define AXIDEV_IO_VERSION_MINOR 7
-#define AXIDEV_IO_VERSION_PATCH 0
+#define AXIDEV_IO_VERSION_PATCH 3
 #endif
 
 #ifndef AXIDEV_IO_API
@@ -361,6 +361,8 @@ typedef struct axidev_io_keyboard_sender_context {
   bool ready;
   axidev_io_keyboard_modifier_t active_modifiers;
   uint32_t key_delay_us;
+  uint64_t repeat_delay_ns;
+  uint64_t repeat_interval_ns;
   axidev_io_keyboard_capabilities_t capabilities;
   axidev_io_keyboard_sender_storage_t storage;
 } axidev_io_keyboard_sender_context;
