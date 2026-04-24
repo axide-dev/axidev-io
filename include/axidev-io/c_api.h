@@ -410,7 +410,8 @@ AXIDEV_IO_API void axidev_io_keyboard_get_capabilities(
     axidev_io_keyboard_capabilities_t *out_capabilities);
 AXIDEV_IO_API bool axidev_io_keyboard_request_permissions(void);
 AXIDEV_IO_API bool
-axidev_io_keyboard_key_down(axidev_io_keyboard_key_with_modifier_t key_mod);
+axidev_io_keyboard_key_down(axidev_io_keyboard_key_with_modifier_t key_mod,
+                            bool repeat);
 AXIDEV_IO_API bool
 axidev_io_keyboard_key_up(axidev_io_keyboard_key_with_modifier_t key_mod);
 AXIDEV_IO_API bool

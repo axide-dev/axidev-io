@@ -241,12 +241,15 @@ axidev_io_keyboard_sender_release_all_modifiers_internal(void) {
 }
 
 axidev_io_result axidev_io_keyboard_sender_key_down_internal(
-    axidev_io_keyboard_key_with_modifier_t key_mod) {
+    axidev_io_keyboard_key_with_modifier_t key_mod, bool repeat) {
   int32_t keycode;
   axidev_io_keyboard_modifier_t mods;
   axidev_io_keyboard_key_t resolved_key;
   axidev_io_result result =
       axidev_io_linux_resolve_mapping(key_mod, &keycode, &mods, &resolved_key);
+  /* Linux/uinput keeps its existing virtual-device repeat behavior.
+     The repeat flag is only used by the Windows SendInput backend. */
+  (void)repeat;
   if (result != AXIDEV_IO_RESULT_OK) {
     return result;
   }

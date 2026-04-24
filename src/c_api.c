@@ -234,7 +234,8 @@ AXIDEV_IO_API bool axidev_io_keyboard_request_permissions(void) {
 }
 
 AXIDEV_IO_API bool
-axidev_io_keyboard_key_down(axidev_io_keyboard_key_with_modifier_t key_mod) {
+axidev_io_keyboard_key_down(axidev_io_keyboard_key_with_modifier_t key_mod,
+                            bool repeat) {
   axidev_io_result result;
 
   axidev_io_context_ensure_runtime();
@@ -242,7 +243,7 @@ axidev_io_keyboard_key_down(axidev_io_keyboard_key_with_modifier_t key_mod) {
   axidev_io_context_lock();
   result = axidev_io_require_keyboard_initialized();
   if (result == AXIDEV_IO_RESULT_OK) {
-    result = axidev_io_keyboard_sender_key_down_internal(key_mod);
+    result = axidev_io_keyboard_sender_key_down_internal(key_mod, repeat);
   }
   if (result != AXIDEV_IO_RESULT_OK) {
     axidev_io_report_result("axidev_io_keyboard_key_down", result);

@@ -2,15 +2,19 @@
 
 #include "test_assert.h"
 
+#if defined(_WIN32)
+#include "keyboard/sender/sender_internal.h"
+#endif
+
 #if defined(__linux__)
 #include <linux/input-event-codes.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include <stb/stb_ds.h>
 
+#include "internal/context.h"
 #include "keyboard/common/keymap_internal.h"
 #include "keyboard/common/linux_keysym_internal.h"
-#include "internal/context.h"
 #endif
 
 static void noop_listener_cb(uint32_t codepoint,
@@ -64,8 +68,8 @@ static void test_linux_fr_digit_key_resolution(void) {
     return;
   }
 
-  xkb_keymap = xkb_keymap_new_from_names(
-      xkb_context, &names, XKB_KEYMAP_COMPILE_NO_FLAGS);
+  xkb_keymap = xkb_keymap_new_from_names(xkb_context, &names,
+                                         XKB_KEYMAP_COMPILE_NO_FLAGS);
   TEST_CHECK(xkb_keymap != NULL);
   if (xkb_keymap == NULL) {
     xkb_context_unref(xkb_context);
@@ -168,6 +172,10 @@ static void test_sender_lifecycle_and_errors(void) {
   TEST_CHECK(axidev_io_keyboard_is_ready());
   axidev_io_keyboard_get_capabilities(&capabilities);
   TEST_CHECK(capabilities.can_inject_keys);
+#if defined(_WIN32)
+  TEST_CHECK(capabilities.supports_key_repeat);
+  TEST_CHECK(!capabilities.can_simulate_hid);
+#endif
 
   axidev_io_keyboard_set_key_delay(1000);
   TEST_CHECK(axidev_io_keyboard_release_all_modifiers());
@@ -175,6 +183,59 @@ static void test_sender_lifecycle_and_errors(void) {
   axidev_io_keyboard_free();
   TEST_CHECK(!axidev_io_keyboard_is_ready());
 }
+
+#if defined(_WIN32)
+static void test_windows_repeat_state(void) {
+  TEST_CHECK(axidev_io_keyboard_initialize());
+  TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 0);
+
+  TEST_CHECK(axidev_io_keyboard_key_down(
+      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_A,
+                                               AXIDEV_IO_MOD_NONE},
+      false));
+  TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 0);
+  TEST_CHECK(axidev_io_keyboard_key_up((axidev_io_keyboard_key_with_modifier_t){
+      AXIDEV_IO_KEY_A, AXIDEV_IO_MOD_NONE}));
+
+  TEST_CHECK(axidev_io_keyboard_key_down(
+      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_A,
+                                               AXIDEV_IO_MOD_NONE},
+      true));
+  TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 1);
+  TEST_CHECK(axidev_io_keyboard_key_down(
+      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_A,
+                                               AXIDEV_IO_MOD_NONE},
+      true));
+  TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 1);
+  TEST_CHECK(axidev_io_keyboard_key_up((axidev_io_keyboard_key_with_modifier_t){
+      AXIDEV_IO_KEY_A, AXIDEV_IO_MOD_NONE}));
+  TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 0);
+
+  TEST_CHECK(axidev_io_keyboard_key_down(
+      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_SHIFT_LEFT,
+                                               AXIDEV_IO_MOD_NONE},
+      true));
+  TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 0);
+  TEST_CHECK(axidev_io_keyboard_key_up((axidev_io_keyboard_key_with_modifier_t){
+      AXIDEV_IO_KEY_SHIFT_LEFT, AXIDEV_IO_MOD_NONE}));
+
+  TEST_CHECK(axidev_io_keyboard_key_down(
+      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_A,
+                                               AXIDEV_IO_MOD_SHIFT},
+      true));
+  TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 1);
+  TEST_CHECK(axidev_io_keyboard_release_all_modifiers());
+  TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 0);
+
+  TEST_CHECK(axidev_io_keyboard_key_down(
+      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_B,
+                                               AXIDEV_IO_MOD_NONE},
+      true));
+  TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 1);
+  axidev_io_keyboard_free();
+  TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 0);
+}
+#endif
 
 static void test_listener_lifecycle(void) {
   char *error_text;
@@ -204,6 +265,9 @@ int main(void) {
   TEST_RUN(test_linux_fr_digit_key_resolution);
 #endif
   TEST_RUN(test_sender_lifecycle_and_errors);
+#if defined(_WIN32)
+  TEST_RUN(test_windows_repeat_state);
+#endif
   TEST_RUN(test_listener_lifecycle);
   return g_axidev_test_failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

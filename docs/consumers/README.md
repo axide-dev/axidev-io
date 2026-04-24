@@ -117,6 +117,24 @@ Example:
 - `Ctrl+Shift+ca,E` means `Ctrl+Shift+C`, `Ctrl+Shift+A`, then uppercase `E`
   after the comma reset.
 
+## Held Keys And Repeat
+
+- `axidev_io_keyboard_key_down(key_mod, false)` sends one key-down transition.
+- `axidev_io_keyboard_key_down(key_mod, true)` sends the key down and requests
+  backend-managed repeat for that held key where supported.
+- On Windows, repeat is emulated by the SendInput backend using
+  `SystemParametersInfo` keyboard delay and speed settings. It is not native
+  hardware typematic behavior and does not make the backend a HID device;
+  `can_simulate_hid` remains false. In capabilities, `supports_key_repeat`
+  means backend-emulated repeat is available on Windows.
+- On Linux/uinput, this flag does not change the existing backend behavior.
+- On Windows, repeated keys are tied to the key/modifier mapping resolved by
+  the original `key_down(..., true)` call. Modifier-only holds do not repeat.
+  Multiple non-modifier keys may repeat simultaneously.
+- `axidev_io_keyboard_release_all_modifiers()` cancels active Windows emulated
+  repeats before releasing modifiers.
+- Repeated synthetic Windows events may be observed by the global listener.
+
 ## Listener
 
 - `axidev_io_listener_start()` starts the single global listener.
