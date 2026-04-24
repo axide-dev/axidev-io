@@ -12,9 +12,9 @@
 
 #include <stb/stb_ds.h>
 
+#include "internal/context.h"
 #include "keyboard/common/keymap_internal.h"
 #include "keyboard/common/linux_keysym_internal.h"
-#include "internal/context.h"
 #endif
 
 static void noop_listener_cb(uint32_t codepoint,
@@ -68,8 +68,8 @@ static void test_linux_fr_digit_key_resolution(void) {
     return;
   }
 
-  xkb_keymap = xkb_keymap_new_from_names(
-      xkb_context, &names, XKB_KEYMAP_COMPILE_NO_FLAGS);
+  xkb_keymap = xkb_keymap_new_from_names(xkb_context, &names,
+                                         XKB_KEYMAP_COMPILE_NO_FLAGS);
   TEST_CHECK(xkb_keymap != NULL);
   if (xkb_keymap == NULL) {
     xkb_context_unref(xkb_context);
@@ -194,9 +194,8 @@ static void test_windows_repeat_state(void) {
                                                AXIDEV_IO_MOD_NONE},
       false));
   TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 0);
-  TEST_CHECK(axidev_io_keyboard_key_up(
-      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_A,
-                                               AXIDEV_IO_MOD_NONE}));
+  TEST_CHECK(axidev_io_keyboard_key_up((axidev_io_keyboard_key_with_modifier_t){
+      AXIDEV_IO_KEY_A, AXIDEV_IO_MOD_NONE}));
 
   TEST_CHECK(axidev_io_keyboard_key_down(
       (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_A,
@@ -208,9 +207,8 @@ static void test_windows_repeat_state(void) {
                                                AXIDEV_IO_MOD_NONE},
       true));
   TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 1);
-  TEST_CHECK(axidev_io_keyboard_key_up(
-      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_A,
-                                               AXIDEV_IO_MOD_NONE}));
+  TEST_CHECK(axidev_io_keyboard_key_up((axidev_io_keyboard_key_with_modifier_t){
+      AXIDEV_IO_KEY_A, AXIDEV_IO_MOD_NONE}));
   TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 0);
 
   TEST_CHECK(axidev_io_keyboard_key_down(
@@ -218,9 +216,8 @@ static void test_windows_repeat_state(void) {
                                                AXIDEV_IO_MOD_NONE},
       true));
   TEST_CHECK_EQ_INT((int)axidev_io_windows_sender_repeat_count_for_tests(), 0);
-  TEST_CHECK(axidev_io_keyboard_key_up(
-      (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_SHIFT_LEFT,
-                                               AXIDEV_IO_MOD_NONE}));
+  TEST_CHECK(axidev_io_keyboard_key_up((axidev_io_keyboard_key_with_modifier_t){
+      AXIDEV_IO_KEY_SHIFT_LEFT, AXIDEV_IO_MOD_NONE}));
 
   TEST_CHECK(axidev_io_keyboard_key_down(
       (axidev_io_keyboard_key_with_modifier_t){AXIDEV_IO_KEY_A,

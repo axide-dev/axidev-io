@@ -162,8 +162,7 @@ axidev_io_windows_repeat_entries(axidev_io_keyboard_sender_impl *impl) {
   return (axidev_io_windows_repeat_entry *)impl->repeat_entries;
 }
 
-static bool
-axidev_io_windows_key_is_modifier(axidev_io_keyboard_key_t key) {
+static bool axidev_io_windows_key_is_modifier(axidev_io_keyboard_key_t key) {
   switch (key) {
   case AXIDEV_IO_KEY_SHIFT_LEFT:
   case AXIDEV_IO_KEY_SHIFT_RIGHT:
@@ -258,8 +257,9 @@ axidev_io_windows_repeat_reserve(axidev_io_keyboard_sender_impl *impl,
   return true;
 }
 
-static void axidev_io_windows_repeat_remove_at(
-    axidev_io_keyboard_sender_impl *impl, size_t index) {
+static void
+axidev_io_windows_repeat_remove_at(axidev_io_keyboard_sender_impl *impl,
+                                   size_t index) {
   axidev_io_windows_repeat_entry *entries =
       axidev_io_windows_repeat_entries(impl);
 
@@ -273,8 +273,9 @@ static void axidev_io_windows_repeat_remove_at(
   --impl->repeat_len;
 }
 
-static uint64_t axidev_io_windows_repeat_next_deadline(
-    uint64_t previous_deadline_ns, uint64_t interval_ns, uint64_t now_ns) {
+static uint64_t
+axidev_io_windows_repeat_next_deadline(uint64_t previous_deadline_ns,
+                                       uint64_t interval_ns, uint64_t now_ns) {
   uint64_t missed_intervals;
 
   if (interval_ns == 0 || previous_deadline_ns > UINT64_MAX - interval_ns) {
@@ -291,8 +292,8 @@ static uint64_t axidev_io_windows_repeat_next_deadline(
   return previous_deadline_ns + (missed_intervals * interval_ns);
 }
 
-static DWORD
-axidev_io_windows_repeat_timeout_ms(uint64_t now_ns, uint64_t deadline_ns) {
+static DWORD axidev_io_windows_repeat_timeout_ms(uint64_t now_ns,
+                                                 uint64_t deadline_ns) {
   uint64_t remaining_ns;
   uint64_t timeout_ms;
 
@@ -347,8 +348,8 @@ static axidev_io_result axidev_io_windows_release_repeat_entries(
       final_result = result;
     }
 
-    result = axidev_io_keyboard_sender_release_modifier_internal(
-        entries[i].mods);
+    result =
+        axidev_io_keyboard_sender_release_modifier_internal(entries[i].mods);
     if (result != AXIDEV_IO_RESULT_OK && final_result == AXIDEV_IO_RESULT_OK) {
       final_result = result;
     }
@@ -389,8 +390,7 @@ static int axidev_io_windows_repeat_worker_main(void *user_data) {
       axidev_io_mutex_unlock(&impl->repeat_lock);
 
       new_due =
-          (axidev_io_windows_repeat_send *)realloc(due,
-                                                   needed * sizeof(*due));
+          (axidev_io_windows_repeat_send *)realloc(due, needed * sizeof(*due));
       if (new_due == NULL) {
         AXIDEV_IO_LOG_ERROR("Windows repeat scheduler allocation failed");
         axidev_io_sleep_ms(1);
@@ -420,14 +420,12 @@ static int axidev_io_windows_repeat_worker_main(void *user_data) {
     }
 
     now_ns = axidev_io_windows_monotonic_time_ns();
-    timeout_ms =
-        axidev_io_windows_repeat_timeout_ms(now_ns, next_deadline_ns);
+    timeout_ms = axidev_io_windows_repeat_timeout_ms(now_ns, next_deadline_ns);
     axidev_io_mutex_unlock(&impl->repeat_lock);
 
     for (i = 0; i < due_count; ++i) {
-      axidev_io_result result =
-          axidev_io_sender_send_raw_key(due[i].resolved_key, due[i].keycode,
-                                        true);
+      axidev_io_result result = axidev_io_sender_send_raw_key(
+          due[i].resolved_key, due[i].keycode, true);
       if (result != AXIDEV_IO_RESULT_OK) {
         AXIDEV_IO_LOG_ERROR("Windows repeat SendInput failed: %s",
                             axidev_io_result_to_string(result));
@@ -620,8 +618,7 @@ axidev_io_keyboard_sender_release_all_modifiers_internal(void) {
   modifier_result = axidev_io_keyboard_sender_release_modifier_internal(
       AXIDEV_IO_MOD_SHIFT | AXIDEV_IO_MOD_CTRL | AXIDEV_IO_MOD_ALT |
       AXIDEV_IO_MOD_SUPER);
-  return repeat_result != AXIDEV_IO_RESULT_OK ? repeat_result
-                                              : modifier_result;
+  return repeat_result != AXIDEV_IO_RESULT_OK ? repeat_result : modifier_result;
 }
 
 axidev_io_result axidev_io_keyboard_sender_key_down_internal(
