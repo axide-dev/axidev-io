@@ -52,7 +52,9 @@ static void wait_for_repeat_count(size_t expected) {
 #endif
 
 #if defined(__linux__)
+#include <fcntl.h>
 #include <linux/input-event-codes.h>
+#include <unistd.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include <stb/stb_ds.h>
@@ -60,6 +62,7 @@ static void wait_for_repeat_count(size_t expected) {
 #include "internal/context.h"
 #include "keyboard/common/keymap_internal.h"
 #include "keyboard/common/linux_keysym_internal.h"
+#include "keyboard/sender/sender_internal.h"
 #endif
 
 static void noop_listener_cb(uint32_t codepoint,
@@ -96,6 +99,29 @@ static void test_conversion_helpers(void) {
 }
 
 #if defined(__linux__)
+static void test_linux_uninitialized_sender_free_preserves_stdin(void) {
+  int saved_stdin = dup(STDIN_FILENO);
+  int pipe_fds[2];
+
+  TEST_CHECK(pipe(pipe_fds) == 0);
+  TEST_CHECK(dup2(pipe_fds[0], STDIN_FILENO) == STDIN_FILENO);
+  close(pipe_fds[0]);
+  close(pipe_fds[1]);
+
+  axidev_io_context_ensure_runtime();
+  axidev_io_global->keyboard.sender.initialized = false;
+  axidev_io_sender_impl_get()->fd = STDIN_FILENO;
+  axidev_io_keyboard_sender_free();
+
+  TEST_CHECK(fcntl(STDIN_FILENO, F_GETFD) >= 0);
+  if (saved_stdin >= 0) {
+    TEST_CHECK(dup2(saved_stdin, STDIN_FILENO) == STDIN_FILENO);
+    close(saved_stdin);
+  } else {
+    close(STDIN_FILENO);
+  }
+}
+
 static void test_linux_fr_digit_key_resolution(void) {
   struct xkb_context *xkb_context;
   struct xkb_keymap *xkb_keymap;
@@ -463,6 +489,7 @@ static void test_mouse_api_lifecycle(void) {
 int main(void) {
   TEST_RUN(test_conversion_helpers);
 #if defined(__linux__)
+  TEST_RUN(test_linux_uninitialized_sender_free_preserves_stdin);
   TEST_RUN(test_linux_fr_digit_key_resolution);
 #endif
   TEST_RUN(test_sender_lifecycle_and_errors);

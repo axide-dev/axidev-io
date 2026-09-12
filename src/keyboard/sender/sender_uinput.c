@@ -153,8 +153,10 @@ axidev_io_result axidev_io_keyboard_sender_initialize(void) {
 
 void axidev_io_keyboard_sender_free(void) {
   axidev_io_keyboard_sender_impl *impl = axidev_io_sender_impl_get();
+  axidev_io_keyboard_sender_context *sender =
+      axidev_io_sender_public_context();
 
-  if (impl->fd >= 0) {
+  if (sender->initialized && impl->fd >= 0) {
     ioctl(impl->fd, UI_DEV_DESTROY);
     close(impl->fd);
   }
