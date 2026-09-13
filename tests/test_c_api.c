@@ -215,6 +215,37 @@ static void test_linux_fr_digit_key_resolution(void) {
   xkb_keymap_unref(xkb_keymap);
   xkb_context_unref(xkb_context);
 }
+
+static void test_linux_special_key_resolution(void) {
+  static const struct {
+    xkb_keysym_t keysym;
+    int evdev_code;
+    axidev_io_keyboard_key_t key;
+  } cases[] = {
+      {XKB_KEY_F13, KEY_F13, AXIDEV_IO_KEY_F13},
+      {XKB_KEY_F20, KEY_F20, AXIDEV_IO_KEY_F20},
+      {XKB_KEY_Caps_Lock, KEY_CAPSLOCK, AXIDEV_IO_KEY_CAPS_LOCK},
+      {XKB_KEY_Print, KEY_SYSRQ, AXIDEV_IO_KEY_PRINT_SCREEN},
+      {XKB_KEY_Scroll_Lock, KEY_SCROLLLOCK, AXIDEV_IO_KEY_SCROLL_LOCK},
+      {XKB_KEY_Pause, KEY_PAUSE, AXIDEV_IO_KEY_PAUSE},
+      {XKB_KEY_Menu, KEY_MENU, AXIDEV_IO_KEY_MENU}};
+  axidev_io_linux_keymap linux_keymap;
+  size_t i;
+
+  memset(&linux_keymap, 0, sizeof(linux_keymap));
+  axidev_io_linux_keymap_fill_fallback(&linux_keymap);
+
+  for (i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+    TEST_CHECK_EQ_INT(axidev_io_linux_keysym_to_key(cases[i].keysym),
+                      cases[i].key);
+    TEST_CHECK_EQ_INT(axidev_io_linux_resolve_key_from_evdev_and_mods(
+                          &linux_keymap, cases[i].evdev_code,
+                          AXIDEV_IO_MOD_NONE),
+                      cases[i].key);
+  }
+
+  axidev_io_linux_keymap_free(&linux_keymap);
+}
 #endif
 
 static void test_sender_lifecycle_and_errors(void) {
@@ -491,6 +522,7 @@ int main(void) {
 #if defined(__linux__)
   TEST_RUN(test_linux_uninitialized_sender_free_preserves_stdin);
   TEST_RUN(test_linux_fr_digit_key_resolution);
+  TEST_RUN(test_linux_special_key_resolution);
 #endif
   TEST_RUN(test_sender_lifecycle_and_errors);
 #if defined(_WIN32)

@@ -72,6 +72,12 @@ axidev_io_keyboard_key_t axidev_io_linux_keysym_to_key(xkb_keysym_t sym) {
     return AXIDEV_IO_KEY_DELETE;
   case XKB_KEY_Insert:
     return AXIDEV_IO_KEY_INSERT;
+  case XKB_KEY_Print:
+    return AXIDEV_IO_KEY_PRINT_SCREEN;
+  case XKB_KEY_Scroll_Lock:
+    return AXIDEV_IO_KEY_SCROLL_LOCK;
+  case XKB_KEY_Pause:
+    return AXIDEV_IO_KEY_PAUSE;
   case XKB_KEY_KP_Divide:
     return AXIDEV_IO_KEY_NUMPAD_DIVIDE;
   case XKB_KEY_KP_Multiply:
@@ -124,6 +130,8 @@ axidev_io_keyboard_key_t axidev_io_linux_keysym_to_key(xkb_keysym_t sym) {
     return AXIDEV_IO_KEY_CAPS_LOCK;
   case XKB_KEY_Num_Lock:
     return AXIDEV_IO_KEY_NUM_LOCK;
+  case XKB_KEY_Menu:
+    return AXIDEV_IO_KEY_MENU;
   case XKB_KEY_comma:
     return AXIDEV_IO_KEY_COMMA;
   case XKB_KEY_period:
@@ -196,6 +204,11 @@ void axidev_io_linux_keymap_fill_fallback(axidev_io_linux_keymap *keymap) {
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_PAGE_UP, KEY_PAGEUP);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_PAGE_DOWN, KEY_PAGEDOWN);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_INSERT, KEY_INSERT);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_PRINT_SCREEN, KEY_SYSRQ);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_SCROLL_LOCK,
+                                 KEY_SCROLLLOCK);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_PAUSE, KEY_PAUSE);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_MENU, KEY_MENU);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_A, KEY_A);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_B, KEY_B);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_C, KEY_C);
@@ -244,6 +257,14 @@ void axidev_io_linux_keymap_fill_fallback(axidev_io_linux_keymap *keymap) {
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_F10, KEY_F10);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_F11, KEY_F11);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_F12, KEY_F12);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_F13, KEY_F13);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_F14, KEY_F14);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_F15, KEY_F15);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_F16, KEY_F16);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_F17, KEY_F17);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_F18, KEY_F18);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_F19, KEY_F19);
+  axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_F20, KEY_F20);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_NUMPAD0, KEY_KP0);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_NUMPAD1, KEY_KP1);
   axidev_io_linux_set_if_missing(keymap, AXIDEV_IO_KEY_NUMPAD2, KEY_KP2);
