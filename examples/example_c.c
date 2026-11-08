@@ -1,3 +1,7 @@
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include <axidev-io/c_api.h>
 
 #include <stdio.h>
@@ -7,9 +11,11 @@
 #include <Windows.h>
 static void sleep_ms(unsigned int milliseconds) { Sleep(milliseconds); }
 #else
-#include <unistd.h>
+#include <time.h>
 static void sleep_ms(unsigned int milliseconds) {
-  usleep(milliseconds * 1000u);
+  struct timespec delay = {(time_t)(milliseconds / 1000u),
+                           (long)(milliseconds % 1000u) * 1000000L};
+  nanosleep(&delay, NULL);
 }
 #endif
 
